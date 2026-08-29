@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createReceiveEmailUseCase } from "../../src/application/use-cases/receive-email.use-case.js";
+import { createReceiveEmailUseCase } from "../../src/application/use-cases/email/receive-email.use-case.js";
 import type { ExtractedAttachment } from "../../src/domain/model/attachment-content.js";
 import type { NormalizedEmail } from "../../src/domain/model/email.js";
 import type { AttachmentExtractor } from "../../src/domain/ports/attachment-extractor.port.js";

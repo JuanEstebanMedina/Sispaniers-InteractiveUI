@@ -1,7 +1,7 @@
-import type { ExtractedAttachment } from "../../domain/model/attachment-content.js";
-import type { NormalizedEmail } from "../../domain/model/email.js";
-import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
-import type { IdGenerator } from "../../domain/ports/id-generator.port.js";
+import type { ExtractedAttachment } from "../../../domain/model/attachment-content.js";
+import type { NormalizedEmail } from "../../../domain/model/email.js";
+import type { AttachmentExtractor } from "../../../domain/ports/attachment-extractor.port.js";
+import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
 
 export interface ReceiveEmailResult {
   runId: string;

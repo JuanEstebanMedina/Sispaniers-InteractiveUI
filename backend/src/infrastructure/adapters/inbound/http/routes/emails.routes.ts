@@ -1,9 +1,9 @@
 import type { FastifyPluginAsyncZod, ZodTypeProvider } from "fastify-type-provider-zod";
-import type { ReceiveEmailResult } from "../../../../../application/use-cases/receive-email.use-case.js";
+import type { ReceiveEmailResult } from "../../../../../application/use-cases/email/receive-email.use-case.js";
 import type {
   SendEmailInput,
   SendEmailResult,
-} from "../../../../../application/use-cases/send-email.use-case.js";
+} from "../../../../../application/use-cases/email/send-email.use-case.js";
 import type { NormalizedEmail } from "../../../../../domain/model/email.js";
 import { EmailSendError } from "../../../../../domain/model/errors.js";
 import { toNormalizedEmail } from "../mappers/email.mapper.js";
