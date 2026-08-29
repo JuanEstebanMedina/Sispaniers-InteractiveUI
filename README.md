@@ -1,90 +1,90 @@
 # Hackaton-InteractiveUI
 
-**El escenario: automatización logística impulsada por IA.** Agentes de IA leen los correos y documentos de importadores y exportadores, hacen seguimiento de contenedores, detectan problemas y ejecutan acciones — y los humanos los supervisan.
+**The scenario: AI-powered logistics automation.** AI agents read importers' and exporters' emails and documents, track containers, detect problems and execute actions — and humans supervise them.
 
-## Definiciones clave
+## Key definitions
 
-**El dominio logístico:**
+**The logistics domain:**
 
-- **Cliente:** empresa importadora/exportadora que usa la plataforma
-- **Operación logística:** un embarque — agrupa órdenes de compra, contenedores y documentos
-- **Booking:** la reserva de espacio en un buque para transportar contenedores; confirmada por la naviera
-- **Contenedor:** la unidad física que se rastrea desde el origen hasta el destino
-- **ETD / ETA:** hora estimada de salida / llegada del embarque
-- **Estados del contenedor:** booking confirmado → en tránsito → arribado a puerto → aduana → entregado
-- **Documentos:** Orden de Compra (PO: el pedido del cliente a su proveedor) · Booking Confirmation (la naviera confirma buque, ruta, fechas) · Bill of Lading (BL: el contrato de transporte; identifica el embarque) · Factura / Packing List (factura comercial y detalle de la carga) · Arrival Notice (aviso de llegada al puerto de destino)
+- **Client:** importer/exporter company using the platform
+- **Logistics operation:** a shipment — groups purchase orders, containers and documents
+- **Booking:** the reservation of space on a vessel to transport containers; confirmed by the shipping line
+- **Container:** the physical unit tracked from origin to destination
+- **ETD / ETA:** estimated time of departure / arrival of the shipment
+- **Container states:** booking confirmed → in transit → arrived at port → customs → delivered
+- **Documents:** Purchase Order (PO: the client's order to its supplier) · Booking Confirmation (the carrier confirms vessel, route, dates) · Bill of Lading (BL: the transport contract; identifies the shipment) · Invoice / Packing List (commercial invoice and cargo detail) · Arrival Notice (notice of arrival at destination port)
 
-**Los agentes:**
+**The agents:**
 
-- **Agente:** un sistema de IA que ejecuta trabajo de forma autónoma usando herramientas — no solo conversa, hace
-- **Flujo (workflow):** la secuencia de pasos y decisiones que un agente ejecuta cuando se dispara un trigger
-- **Trigger:** el evento que inicia un flujo (llega un correo, cambia un ETA, una hora programada)
-- **Run:** una ejecución individual de un flujo; el mismo flujo corre muchas veces
-- **Human-in-the-loop:** un punto del flujo donde un humano debe revisar, aprobar o decidir
+- **Agent:** an AI system that executes work autonomously using tools — it doesn't just chat, it does
+- **Flow (workflow):** the sequence of steps and decisions an agent executes when a trigger fires
+- **Trigger:** the event that starts a flow (an email arrives, an ETA changes, a scheduled time)
+- **Run:** one individual execution of a flow; the same flow runs many times
+- **Human-in-the-loop:** a point in the flow where a human must review, approve or decide
 
-## 1. El problema
+## 1. The problem
 
-Los agentes ejecutan flujos que toman decisiones reales: revisan documentos, detectan demoras, escalan problemas, notifican clientes. Pero los humanos que supervisan esos agentes no necesariamente entienden cómo funcionan estos sistemas, y están acostumbrados a ver el mundo a través de interfaces que:
+Agents run flows that make real decisions: they review documents, detect delays, escalate problems, notify clients. But the humans supervising those agents don't necessarily understand how these systems work, and they are used to seeing the world through interfaces that:
 
-- Fueron **diseñadas** para escenarios que alguien anticipó
-- Requieren **trabajo de frontend** cada vez que nace un flujo nuevo
-- **No pueden mostrar lo inesperado**: cuando el agente se topa con un caso raro, la pantalla no existe
+- Were **designed** for scenarios someone anticipated
+- Require **frontend work** every time a new flow is born
+- **Can't show the unexpected**: when the agent hits a rare case, the screen doesn't exist
 
-El resultado: humanos ciegos frente a agentes que están trabajando; decisiones y aprobaciones lentas y sin contexto; y el frontend se convierte en **el cuello de botella de la automatización** cuando se trata de confianza y adopción del usuario final.
+The result: humans blind in front of agents that are working; slow, out-of-context decisions and approvals; and the frontend becomes **the bottleneck of automation** when it comes to end-user trust and adoption.
 
-## 2. Objetivo
+## 2. Objective
 
-Construir un sistema donde **un agente que ejecuta un flujo genera y renderiza su propia interfaz (UI/front) en tiempo real**:
+Build a system where **an agent executing a flow generates and renders its own interface (UI/front) in real time**:
 
-- ☐ La UI **nace del estado del flujo** y de las decisiones que el agente toma en el camino, no de pantallas predefinidas
-- ☐ La UI está **viva dentro de un mismo run**: a medida que el flujo avanza paso a paso, la interfaz se reestructura en tiempo real — en streaming mientras el agente trabaja, no un refresh cuando el run termina
-- ☐ La UI **evoluciona con cada run**: el agente ejecuta, la interfaz cambia
-- ☐ Si el flujo **cambia**, la interfaz **cambia**
-- ☐ Es **bidireccional e interactiva, en el mismo run**: lo que el humano responde en la UI generada vuelve al agente, cambia lo que hace a continuación, y la interfaz renderiza inmediatamente la consecuencia de esa decisión — un round-trip completo, no un reporte renderizado
+- ☐ The UI **is born from the flow's state** and the decisions the agent makes along the way, not from predefined screens
+- ☐ The UI is **alive inside a single run**: as the flow advances step by step, the interface restructures itself in real time — streaming while the agent works, not a refresh when the run ends
+- ☐ The UI **evolves with each run**: the agent executes, the interface changes
+- ☐ If the flow **changes**, the interface **changes**
+- ☐ It is **bidirectional and interactive, in the same run**: what the human answers in the generated UI goes back to the agent, changes what it does next, and the interface immediately renders the consequence of that decision — a full round-trip, not a rendered report
 
-> **Prueba de fuego.** Los jueces van a modificar el flujo en vivo (agregar un paso, cambiar una decisión) — la interfaz debe adaptarse sola.
+> **Trial by fire.** The judges will modify the flow live (add a step, change a decision) — the interface must adapt on its own.
 
-## 3. Resultados esperados
+## 3. Expected results
 
-Un demo o prototipo que muestre:
+A demo or prototype showing:
 
-- ☐ Un agente ejecutando un flujo con decisiones visibles
-- ☐ Una interfaz **generada en runtime** que refleje el estado del flujo
-- ☐ La interfaz **reestructurándose en vivo a mitad del run** mientras el agente avanza por el flujo — la audiencia la ve cambiar mientras el agente trabaja
-- ☐ Runs sucesivos del agente → **la interfaz se actualiza con cada run**
-- ☐ Un momento **human-in-the-loop** resuelto a través de una interfaz generada (aprobar, elegir, corregir) — y el agente **cambia visiblemente de rumbo por eso**, con la UI mostrando la consecuencia
-- ☐ El flujo modificado → **la interfaz se adapta sin trabajo manual**
+- ☐ An agent executing a flow with visible decisions
+- ☐ An interface **generated at runtime** that reflects the state of the flow
+- ☐ The interface **restructuring itself live mid-run** as the agent moves through the flow — the audience watches it change while the agent works
+- ☐ Successive agent runs → **the interface updates itself with each run**
+- ☐ A **human-in-the-loop** moment resolved through a generated interface (approve, choose, correct) — and the agent **visibly changes course because of it**, with the UI showing the consequence
+- ☐ The flow modified → **the interface adapts with no manual work**
 
-### Puntos extra
+### Bonus points
 
-- Coherencia visual: la UI generada respeta un design system — no es un collage
-- Varios flujos corriendo a la vez, cada uno con su propia interfaz
-- Seguridad: qué puede y qué no puede hacer una UI generada por un agente
+- Visual coherence: the generated UI respects a design system — it isn't a collage
+- Several flows running at once, each with its own interface
+- Security: what an agent-generated UI can and cannot do
 
-## 4. Caso ficticio mínimo
+## 4. Minimal fictional case
 
-- **Empresa:** "Muebles del Sur", una importadora que trae muebles desde Vietnam a México.
-- **Agente:** *Ari* — gestiona los bookings de la empresa y monitorea sus embarques.
+- **Company:** "Muebles del Sur", an importer bringing furniture from Vietnam to Mexico.
+- **Agent:** *Ari* — manages the company's bookings and monitors its shipments.
 
-**Flujo base:**
+**Base flow:**
 
-1. **Trigger:** llega un correo con un Booking Confirmation
-2. Ari extrae los datos: naviera, buque, puerto de origen/destino, ETD/ETA, contenedores
-3. Crea la operación y monitorea el viaje en cada run
-4. Si detecta un problema serio → un humano decide en la misma interfaz
+1. **Trigger:** an email arrives with a Booking Confirmation
+2. Ari extracts the data: carrier, vessel, origin/destination port, ETD/ETA, containers
+3. Creates the operation and monitors the voyage on every run
+4. If it detects a serious problem → a human decides in the same interface
 
-**Momentos clave (cada run cambia el front):**
+**Key moments (every run changes the front):**
 
-1. **Run 1 — booking confirmado** → nace la interfaz: un **mapa con la ruta** (Vietnam → México), la tarjeta del booking y sus contenedores
-2. **Run 2 — el buque zarpa** → el front cambia solo: posición del buque en el mapa, contenedores en tránsito
-3. **Run 3 — transbordo inesperado** (el buque hace una parada no planificada y el ETA se corre 9 días) → el mapa **redibuja la ruta** y la interfaz genera un panel de decisión human-in-the-loop: *¿esperar, buscar una alternativa o notificar al cliente final?*
-4. **La prueba** → agregar un paso nuevo al flujo (por ejemplo, "validar el Bill of Lading contra el booking antes de confirmar") y la interfaz debe reflejarlo por sí sola
+1. **Run 1 — booking confirmed** → the interface is born: a **map with the route** (Vietnam → Mexico), the booking card and its containers
+2. **Run 2 — the vessel departs** → the front changes by itself: vessel position on the map, containers in transit
+3. **Run 3 — unexpected transshipment** (the vessel makes an unplanned stop and the ETA slips 9 days) → the map **redraws the route** and the interface generates a human-in-the-loop decision panel: *wait, look for an alternative, or notify the end client?*
+4. **The trial** → add a new step to the flow (e.g. "validate the Bill of Lading against the booking before confirming") and the interface must reflect it on its own
 
-Empleados, correos, documentos, buques y datos pueden ser todos inventados.
+Employees, emails, documents, vessels and data can all be invented.
 
-## Estructura
+## Structure
 
 ```
-frontend/   # UI generada en runtime
-backend/    # agentes, flujos y orquestación
+frontend/   # runtime-generated UI
+backend/    # agents, flows and orchestration
 ```
