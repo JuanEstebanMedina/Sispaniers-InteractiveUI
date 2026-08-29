@@ -48,3 +48,12 @@ jobs:
 
       - name: Smoke run
         run: make smoke
+
+  compose:
+    name: Compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate compose
+        run: MONGO_PASSWORD=ci docker compose config --quiet
