@@ -1,4 +1,4 @@
-import type { Client } from "../logistics/client.js";
+import type { Client } from "../model/client.js";
 
 export interface ClientRepository {
   findById(id: string): Promise<Client | null>;

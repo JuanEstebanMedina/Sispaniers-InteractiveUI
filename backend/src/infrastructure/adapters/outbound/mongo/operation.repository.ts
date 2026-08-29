@@ -1,5 +1,5 @@
 import type { Collection, Db } from "mongodb";
-import type { ContainerState, Operation } from "../../../../domain/logistics/operation.js";
+import type { ContainerState, Operation } from "../../../../domain/model/operation.js";
 import type { OperationRepository } from "../../../../domain/ports/operation.repository.js";
 import { type OperationDocument, toOperation, toOperationDocument } from "./operation.mapper.js";
 

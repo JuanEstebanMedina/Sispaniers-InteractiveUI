@@ -1,4 +1,4 @@
-import type { Operation } from "../logistics/operation.js";
+import type { Operation } from "../model/operation.js";
 
 export interface OperationRepository {
   findById(id: string): Promise<Operation | null>;

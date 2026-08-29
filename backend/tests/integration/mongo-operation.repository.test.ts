@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { type Db, MongoClient } from "mongodb";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
-import type { Operation } from "../../src/domain/logistics/operation.js";
+import type { Operation } from "../../src/domain/model/operation.js";
 import { MongoOperationRepository } from "../../src/infrastructure/adapters/outbound/mongo/operation.repository.js";
 
 const uri = process.env.MONGODB_URI ?? "mongodb://localhost:27017";

@@ -1,4 +1,4 @@
-import type { Operation } from "../../../../domain/logistics/operation.js";
+import type { Operation } from "../../../../domain/model/operation.js";
 
 export type OperationDocument = Omit<Operation, "id"> & { _id: string };
 

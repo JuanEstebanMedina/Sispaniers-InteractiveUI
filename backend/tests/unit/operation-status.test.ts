@@ -2,13 +2,13 @@ import { expect, test } from "vitest";
 import {
   deriveBookingStatus,
   deriveOperationStatus,
-} from "../../src/domain/logistics/operation-status.js";
+} from "../../src/domain/model/operation-status.js";
 import type {
   Booking,
   Container,
   ContainerState,
   Operation,
-} from "../../src/domain/logistics/operation.js";
+} from "../../src/domain/model/operation.js";
 
 function containerIn(state: ContainerState): Container {
   return { id: `container-${state}`, containerNumber: `MSKU${state}`, state };
