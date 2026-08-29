@@ -1,11 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { createApp } from "../../src/infrastructure/config/composition.js";
+import { FakeOperationRepository } from "../support/fakes.js";
 
 let app: FastifyInstance;
 
-beforeEach(() => {
-  app = createApp();
+beforeEach(async () => {
+  app = await createApp({ operationRepository: new FakeOperationRepository() });
 });
 
 afterEach(async () => {
