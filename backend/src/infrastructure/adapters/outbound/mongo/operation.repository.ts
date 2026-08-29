@@ -1,6 +1,10 @@
-import type { Collection, Db } from "mongodb";
-import type { ContainerState, Operation } from "../../../../domain/logistics/operation.js";
-import type { OperationRepository } from "../../../../domain/ports/operation.repository.js";
+import type { Collection, Db, Filter } from "mongodb";
+import type { ContainerState } from "../../../../domain/enums/container-state.js";
+import type { Operation } from "../../../../domain/logistics/operation.js";
+import type {
+  OperationQueryFilter,
+  OperationRepository,
+} from "../../../../domain/ports/operation.repository.js";
 import { type OperationDocument, toOperation, toOperationDocument } from "./operation.mapper.js";
 
 const COLLECTION_NAME = "operations";
@@ -32,6 +36,27 @@ export class MongoOperationRepository implements OperationRepository {
         ],
       })
       .toArray();
+
+    return documents.map(toOperation);
+  }
+
+  async findAll(filter: OperationQueryFilter = {}): Promise<Operation[]> {
+    const query: Filter<OperationDocument> = {};
+
+    if (filter.health !== undefined) {
+      query.health = filter.health;
+    }
+    if (filter.clientIdContains !== undefined) {
+      query.clientId = { $regex: filter.clientIdContains, $options: "i" };
+    }
+    if (filter.createdFrom !== undefined || filter.createdTo !== undefined) {
+      query.createdAt = {
+        ...(filter.createdFrom !== undefined ? { $gte: filter.createdFrom } : {}),
+        ...(filter.createdTo !== undefined ? { $lte: filter.createdTo } : {}),
+      };
+    }
+
+    const documents = await this.operations.find(query).toArray();
 
     return documents.map(toOperation);
   }
