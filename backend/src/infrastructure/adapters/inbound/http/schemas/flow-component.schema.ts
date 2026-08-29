@@ -37,3 +37,9 @@ export const updateLayoutResponseSchema = z.object({
   cols: gridColsSchema,
   layout: z.array(layoutEntrySchema),
 });
+
+export const updateComponentContentBodySchema = z.object({
+  content: z.record(z.unknown()),
+});
+
+export const updateComponentContentResponseSchema = componentResponseSchema;

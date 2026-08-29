@@ -18,6 +18,12 @@ export class MongoComponentRepository implements ComponentRepository {
     return documents.map(toComponent);
   }
 
+  async findById(id: string): Promise<Component | null> {
+    const document = await this.components.findOne({ _id: id });
+
+    return document === null ? null : toComponent(document);
+  }
+
   async save(component: Component): Promise<void> {
     const document = toComponentDocument(component);
 

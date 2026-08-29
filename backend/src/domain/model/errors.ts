@@ -25,3 +25,10 @@ export class InvalidLayoutError extends Error {
     this.name = "InvalidLayoutError";
   }
 }
+
+export class ComponentNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Component not found: ${id}`);
+    this.name = "ComponentNotFoundError";
+  }
+}

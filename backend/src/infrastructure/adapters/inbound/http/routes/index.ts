@@ -17,9 +17,14 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     listOperations,
     getOperationComponents,
     updateOperationLayout,
+    updateComponentContent,
   } = deps;
 
   await fastify.register(emailsRoutes, { receiveEmail, sendEmail });
   await fastify.register(flowsRoutes, { createOperation, getOperation, listOperations });
-  await fastify.register(flowComponentsRoutes, { getOperationComponents, updateOperationLayout });
+  await fastify.register(flowComponentsRoutes, {
+    getOperationComponents,
+    updateOperationLayout,
+    updateComponentContent,
+  });
 };
