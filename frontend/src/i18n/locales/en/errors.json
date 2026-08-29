@@ -1,0 +1,46 @@
+{
+  "kinds": {
+    "network": "We couldn't reach the server. Check your connection.",
+    "timeout": "The server took too long to respond. Try again.",
+    "canceled": "Request canceled.",
+    "unauthorized": "Your session expired. Please sign in again.",
+    "forbidden": "You don't have permission to do this.",
+    "notFound": "We couldn't find what you were looking for.",
+    "validation": "Check the data: some fields have errors.",
+    "conflict": "This action conflicts with the current state of the resource.",
+    "rateLimit": "Too many requests. Wait a few seconds.",
+    "server": "Something broke on our side. We're on it.",
+    "unknown": "An unexpected error occurred.",
+    "parse": "The server responded in an unexpected format."
+  },
+  "titles": {
+    "network": "No connection to the server",
+    "timeout": "The server took too long",
+    "server": "Server error",
+    "rateLimit": "Too many requests",
+    "forbidden": "No access",
+    "unauthorized": "Session expired",
+    "notFound": "Not found",
+    "validation": "Invalid data",
+    "conflict": "State conflict",
+    "canceled": "Canceled",
+    "unknown": "Something went wrong",
+    "parse": "Unexpected response"
+  },
+  "reference": "ref: {{traceId}}",
+  "technicalDetail": "Technical detail (development only)",
+  "boundary": {
+    "title": "Something went wrong on this screen",
+    "body": "You can go back to the dashboard and keep using the rest of the app."
+  },
+  "notFoundPage": {
+    "title": "This page doesn't exist",
+    "body": "The link may be misspelled, or the section moved."
+  },
+  "forbiddenPage": {
+    "title": "You don't have access to this section",
+    "bodyWithRole": "You signed in as <1>{{role}}</1>, and this section requires permissions that role doesn't include.",
+    "bodyNoRole": "This section requires permissions your account doesn't have.",
+    "hint": "If you think this is a mistake, ask an administrator to review your role."
+  }
+}

@@ -1,0 +1,253 @@
+/* Everything in rem. The only px allowed are 1px borders and shadows. */
+
+@theme {
+  --spacing: 0.25rem;
+
+  /* No t-shirt aliases here (--spacing-sm, --spacing-md, ...): in Tailwind v4
+     the --spacing-x namespace also feeds width utilities, so --spacing-sm
+     would silently redefine max-w-sm from 24rem to 0.75rem. Only
+     non-colliding semantic names below. */
+  --spacing-field: 0.75rem;
+  --spacing-card: 1rem;
+  --spacing-stack: 1rem;
+  --spacing-gutter: 1.5rem;
+  --spacing-section: 2.5rem;
+  --spacing-page: 2rem;
+
+  --spacing-control-xs: 1.75rem;
+  --spacing-control-sm: 2rem;
+  --spacing-control-md: 2.5rem;
+  --spacing-control-lg: 3rem;
+  --spacing-control-xl: 3.5rem;
+
+  --spacing-brandbar: 3.75rem;
+  --spacing-sidebar: 16rem;
+  --spacing-sidebar-collapsed: 4.25rem;
+  --spacing-row: 3.25rem;
+  --spacing-row-dense: 2.5rem;
+
+  --spacing-prose: 68ch;
+  --spacing-content: 80rem;
+  --spacing-content-wide: 96rem;
+
+  --breakpoint-xs: 24rem;
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
+  --breakpoint-3xl: 120rem;
+
+  --container-2xs: 16rem;
+  --container-xs: 20rem;
+  --container-sm: 24rem;
+  --container-md: 28rem;
+  --container-lg: 32rem;
+  --container-xl: 36rem;
+  --container-2xl: 42rem;
+  --container-3xl: 48rem;
+
+  --font-sans: var(--sem-font-sans), ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', sans-serif;
+  --font-display: var(--sem-font-display), var(--sem-font-sans), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: var(--sem-font-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 0.9375rem;
+  --text-2xs--letter-spacing: 0.02em;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+
+  --text-md: 1.125rem;
+  --text-md--line-height: 1.75rem;
+
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.75rem;
+  --text-lg--letter-spacing: -0.01em;
+
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 2rem;
+  --text-xl--letter-spacing: -0.015em;
+
+  --text-2xl: 2rem;
+  --text-2xl--line-height: 2.5rem;
+  --text-2xl--letter-spacing: -0.02em;
+
+  --text-3xl: 3rem;
+  --text-3xl--line-height: 3.25rem;
+  --text-3xl--letter-spacing: -0.025em;
+
+  --text-4xl: 3.75rem;
+  --text-4xl--line-height: 4rem;
+  --text-4xl--letter-spacing: -0.03em;
+
+  --text-5xl: 4.5rem;
+  --text-5xl--line-height: 4.75rem;
+  --text-5xl--letter-spacing: -0.035em;
+
+  --radius-none: 0rem;
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+  --radius-full: 9999px;
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.1), 0 4px 8px -4px rgb(0 0 0 / 0.06);
+  --shadow-xl: 0 24px 48px -12px rgb(0 0 0 / 0.16);
+  --shadow-inner: inset 0 1px 2px 0 rgb(0 0 0 / 0.06);
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --duration-instant: 80ms;
+  --duration-fast: 140ms;
+  --duration-normal: 220ms;
+  --duration-slow: 360ms;
+
+  --animate-fade-in: fade-in var(--duration-normal) var(--ease-out-quart);
+  --animate-slide-up: slide-up var(--duration-normal) var(--ease-out-quart);
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-pulse-ring: pulse-ring 1.8s var(--ease-out-quart) infinite;
+
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-sidebar: 200;
+  --z-dropdown: 400;
+  --z-overlay: 500;
+  --z-modal: 600;
+  --z-toast: 700;
+  --z-tooltip: 800;
+}
+
+@theme {
+  --color-yuno-50: #f5f2ff;
+  --color-yuno-100: #ede6ff;
+  --color-yuno-200: #dcd0ff;
+  --color-yuno-300: #c3aaff;
+  --color-yuno-400: #a78bfa;
+  --color-yuno-500: #8b5cf6;
+  --color-yuno-600: #7c3aed;
+  --color-yuno-700: #6b26d9;
+  --color-yuno-800: #5a20b0;
+  --color-yuno-900: #4a1c8f;
+  --color-yuno-950: #2d1063;
+
+  --color-nauta-50: #eff6ff;
+  --color-nauta-100: #dbeafe;
+  --color-nauta-200: #bfdbfe;
+  --color-nauta-300: #93c5fd;
+  --color-nauta-400: #60a5fa;
+  --color-nauta-500: #3b82f6;
+  --color-nauta-600: #1e4e8c;
+  --color-nauta-700: #17406f;
+  --color-nauta-800: #0f2a4a;
+  --color-nauta-900: #0b1f38;
+  --color-nauta-950: #061423;
+
+  --color-flux-50: #ecfeff;
+  --color-flux-100: #cffafe;
+  --color-flux-200: #a5f3fc;
+  --color-flux-300: #67e8f9;
+  --color-flux-400: #22d3ee;
+  --color-flux-500: #06b6d4;
+  --color-flux-600: #0891b2;
+  --color-flux-700: #0e7490;
+  --color-flux-800: #155e75;
+  --color-flux-900: #164e63;
+  --color-flux-950: #083344;
+
+  --color-signal-50: #fffbeb;
+  --color-signal-100: #fef3c7;
+  --color-signal-200: #fde68a;
+  --color-signal-300: #fcd34d;
+  --color-signal-400: #fbbf24;
+  --color-signal-500: #f59e0b;
+  --color-signal-600: #d97706;
+  --color-signal-700: #b45309;
+  --color-signal-800: #92400e;
+  --color-signal-900: #78350f;
+  --color-signal-950: #451a03;
+
+  --color-ink-0: #ffffff;
+  --color-ink-25: #fcfcfd;
+  --color-ink-50: #f7f8fa;
+  --color-ink-100: #eff1f5;
+  --color-ink-200: #e2e6ec;
+  --color-ink-300: #cbd2dc;
+  --color-ink-400: #98a2b3;
+  --color-ink-500: #6b7688;
+  --color-ink-600: #4b5566;
+  --color-ink-700: #363e4d;
+  --color-ink-800: #232937;
+  --color-ink-900: #161b26;
+  --color-ink-950: #0d1017;
+  --color-ink-1000: #06080c;
+
+  --color-void-700: #2a2a3d;
+  --color-void-800: #1e1e2e;
+  --color-void-850: #17172380;
+  --color-void-900: #14141f;
+  --color-void-950: #0b0b12;
+  --color-void-1000: #07070c;
+
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 0.6;
+  }
+  70% {
+    box-shadow: 0 0 0 0.5rem transparent;
+    opacity: 0;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    opacity: 0;
+  }
+}
