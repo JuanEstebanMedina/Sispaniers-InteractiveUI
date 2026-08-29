@@ -36,6 +36,12 @@ export class MongoOperationRepository implements OperationRepository {
     return documents.map(toOperation);
   }
 
+  async findAll(): Promise<Operation[]> {
+    const documents = await this.operations.find({}).toArray();
+
+    return documents.map(toOperation);
+  }
+
   async save(operation: Operation): Promise<void> {
     const document = toOperationDocument(operation);
 
