@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CONTAINER_STATES } from "../../../../../domain/logistics/operation.js";
+import { CONTAINER_STATES } from "../../../../../domain/enums/container-state.js";
 
 const containerStateSchema = z.enum(CONTAINER_STATES);
 

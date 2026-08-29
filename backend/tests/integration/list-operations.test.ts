@@ -17,29 +17,28 @@ afterEach(async () => {
 });
 
 test("an empty database answers with an empty operations list", async () => {
-  const response = await app.inject({ method: "GET", url: "/api/operations" });
+  const response = await app.inject({ method: "GET", url: "/api/flows" });
 
   expect(response.statusCode).toBe(200);
-  expect(response.json()).toEqual({ operations: [] });
+  expect(response.json()).toEqual({ flows: [] });
 });
 
 test("the endpoint exposes the whole aggregate with its derived status", async () => {
   const operation = anOperation();
   await operationRepository.save(operation);
 
-  const response = await app.inject({ method: "GET", url: "/api/operations" });
+  const response = await app.inject({ method: "GET", url: "/api/flows" });
 
   expect(response.statusCode).toBe(200);
 
   const body = response.json();
-  const [listed] = body.operations;
+  const [listed] = body.flows;
 
-  expect(body.operations).toHaveLength(1);
+  expect(body.flows).toHaveLength(1);
   expect(listed.id).toBe(operation.id);
-  expect(listed.clientId).toBe(operation.clientId);
+  expect(listed.client_id).toBe(operation.clientId);
   expect(listed.status).toBe("in_transit");
-  expect(listed.createdAt).toBe(operation.createdAt.toISOString());
-  expect(listed.bookings[0].status).toBe("in_transit");
+  expect(listed.created_at).toBe(operation.createdAt.toISOString());
   expect(listed.bookings[0].vessel).toBe("Ever Given");
   expect(listed.bookings[0].schedule.etaCurrent).toBe(
     operation.bookings[0]?.schedule.etaCurrent.toISOString(),

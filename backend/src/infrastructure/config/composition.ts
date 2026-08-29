@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { createListOperationsUseCase } from "../../application/use-cases/list-operations.use-case.js";
+import { createCreateOperationUseCase } from "../../application/use-cases/dashboard/create-operation.use-case.js";
+import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
+import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/send-email.use-case.js";
 import type { EmailSender } from "../../domain/ports/email-sender.port.js";
 import type { OperationRepository } from "../../domain/ports/operation.repository.js";
@@ -28,24 +30,38 @@ function buildEmailSender(override: EmailSender | undefined): EmailSender {
   );
 }
 
-export async function createApp(overrides: CreateAppOverrides = {}): Promise<FastifyInstance> {
-  const emailSender = buildEmailSender(overrides.emailSender);
-  const idGenerator = new CryptoIdGenerator();
+interface OperationRepositorySource {
+  repository: OperationRepository;
+  close?: () => Promise<void>;
+}
 
-  const assemble = (operations: OperationRepository): FastifyInstance =>
-    buildApp({
-      sendEmail: createSendEmailUseCase({ emailSender, idGenerator }),
-      listOperations: createListOperationsUseCase({ operations }),
-    });
-
-  if (overrides.operationRepository !== undefined) {
-    return assemble(overrides.operationRepository);
+async function buildOperationRepository(
+  override: OperationRepository | undefined,
+): Promise<OperationRepositorySource> {
+  if (override !== undefined) {
+    return { repository: override };
   }
-
   const mongo = await connectMongo();
-  const app = assemble(new MongoOperationRepository(mongo.db));
+  return { repository: new MongoOperationRepository(mongo.db), close: mongo.close };
+}
 
-  app.addHook("onClose", () => mongo.close());
+export async function createApp(overrides: CreateAppOverrides = {}): Promise<FastifyInstance> {
+  const idGenerator = new CryptoIdGenerator();
+  const emailSender = buildEmailSender(overrides.emailSender);
+  const { repository: operationRepository, close } = await buildOperationRepository(
+    overrides.operationRepository,
+  );
+
+  const sendEmail = createSendEmailUseCase({ emailSender, idGenerator });
+  const createOperation = createCreateOperationUseCase({ operationRepository, idGenerator });
+  const getOperation = createGetOperationUseCase({ operationRepository });
+  const listOperations = createListOperationsUseCase({ operationRepository });
+
+  const app = buildApp({ sendEmail, createOperation, getOperation, listOperations });
+
+  if (close !== undefined) {
+    app.addHook("onClose", () => close());
+  }
 
   return app;
 }

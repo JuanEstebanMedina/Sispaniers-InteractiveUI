@@ -1,20 +1,8 @@
-export const CONTAINER_STATES = [
-  "booking_confirmed",
-  "in_transit",
-  "arrived_port",
-  "customs",
-  "delivered",
-] as const;
+import type { ContainerState } from "../enums/container-state.js";
+import type { DocumentType } from "../enums/document-type.js";
+import type { OperationHealth } from "../enums/operation-health.js";
 
-export type ContainerState = (typeof CONTAINER_STATES)[number];
-
-export type DocumentType =
-  | "PO"
-  | "BookingConfirmation"
-  | "BillOfLading"
-  | "Invoice"
-  | "PackingList"
-  | "ArrivalNotice";
+export type { ContainerState } from "../enums/container-state.js";
 
 export interface Container {
   id: string;
@@ -68,4 +56,5 @@ export interface Operation {
   bookings: Booking[];
   documents: LogisticsDocument[];
   createdAt: Date;
+  health?: OperationHealth;
 }

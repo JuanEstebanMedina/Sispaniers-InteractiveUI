@@ -1,9 +1,5 @@
-import {
-  type Booking,
-  CONTAINER_STATES,
-  type ContainerState,
-  type Operation,
-} from "./operation.js";
+import { CONTAINER_STATES, type ContainerState } from "../enums/container-state.js";
+import type { Booking, Operation } from "./operation.js";
 
 const EARLIEST_STATE: ContainerState = CONTAINER_STATES[0];
 
