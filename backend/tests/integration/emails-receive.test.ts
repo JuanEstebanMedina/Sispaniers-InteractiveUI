@@ -1,12 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, expect, test } from "vitest";
+import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 import { createApp } from "../../src/infrastructure/config/composition.js";
 import { FakeEmailSender } from "../support/fakes.js";
 
 let app: FastifyInstance;
 
-beforeEach(() => {
-  app = createApp({ emailSender: new FakeEmailSender() });
+beforeEach(async () => {
+  app = await createApp({
+    emailSender: new FakeEmailSender(),
+    operationRepository: new InMemoryOperationRepository(),
+  });
 });
 
 afterEach(async () => {
