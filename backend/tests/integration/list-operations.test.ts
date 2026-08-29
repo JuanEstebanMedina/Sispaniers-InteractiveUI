@@ -1,14 +1,14 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, expect, test } from "vitest";
+import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 import { createApp } from "../../src/infrastructure/config/composition.js";
-import { FakeOperationRepository } from "../support/fakes.js";
 import { anOperation } from "../support/operation-fixtures.js";
 
 let app: FastifyInstance;
-let operationRepository: FakeOperationRepository;
+let operationRepository: InMemoryOperationRepository;
 
 beforeEach(async () => {
-  operationRepository = new FakeOperationRepository();
+  operationRepository = new InMemoryOperationRepository();
   app = await createApp({ operationRepository });
 });
 
