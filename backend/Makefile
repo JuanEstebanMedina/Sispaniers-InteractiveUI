@@ -23,6 +23,9 @@ check: lint types test ## Everything CI runs, minus build and smoke
 dev: ## Run the API with autoreload
 	pnpm run dev
 
+seed: ## Fill the running mongo with synthetic operations
+	pnpm run seed
+
 smoke: build ## Boot the built API and probe /health
 	pnpm run smoke
 
@@ -35,4 +38,4 @@ hooks: ## Enable the versioned git hooks in this clone
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-10s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: install format lint types build test check ci dev smoke hooks help
+.PHONY: install format lint types build test check ci dev seed smoke hooks help

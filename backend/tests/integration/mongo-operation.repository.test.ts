@@ -3,13 +3,14 @@ import { type Db, MongoClient } from "mongodb";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import type { Operation } from "../../src/domain/logistics/operation.js";
 import { MongoOperationRepository } from "../../src/infrastructure/adapters/outbound/mongo/operation.repository.js";
+import { resolveMongoUri } from "../../src/infrastructure/config/mongo.js";
 import {
   anOperation,
   withAllContainersDelivered,
   withoutContainers,
 } from "../support/operation-fixtures.js";
 
-const uri = process.env.MONGODB_URI ?? "mongodb://localhost:27017";
+const uri = resolveMongoUri();
 const databaseName = `sispaniers_test_${randomUUID().replaceAll("-", "")}`;
 
 let client: MongoClient;
