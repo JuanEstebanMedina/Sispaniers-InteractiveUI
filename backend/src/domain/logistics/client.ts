@@ -1,4 +1,4 @@
-export type NotificationChannel = "email" | "slack";
+import type { NotificationChannel } from "../enums/notification-channel.js";
 
 export interface Client {
   id: string;

@@ -4,3 +4,17 @@ export class EmailSendError extends Error {
     this.name = "EmailSendError";
   }
 }
+
+export class OperationNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Operation not found: ${id}`);
+    this.name = "OperationNotFoundError";
+  }
+}
+
+export class InvalidFilterCombinationError extends Error {
+  constructor(reason: string) {
+    super(`Invalid filter combination: ${reason}`);
+    this.name = "InvalidFilterCombinationError";
+  }
+}
