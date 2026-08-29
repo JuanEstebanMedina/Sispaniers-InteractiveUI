@@ -1,21 +1,26 @@
 # Backend — working agreement
 
-Python service, hexagonal architecture, managed with `uv`. Read this before changing
-anything under `backend/`.
+TypeScript service on Node.js, hexagonal architecture, managed with `pnpm`. Read this
+before changing anything under `backend/`.
 
 ## Tooling
 
-Never call `python`, `pip`, `pytest`, `ruff` or `mypy` directly. Every command goes
-through `uv run`, so it resolves against the locked environment:
+| Concern | Tool |
+|---|---|
+| Runtime | Node.js 22 |
+| Package manager | pnpm (pinned via `packageManager` in `package.json`) |
+| Lint + format | Biome |
+| Types | `tsc` in strict mode |
+| Tests | Vitest |
+| HTTP | Fastify |
 
-```bash
-uv sync --all-groups   # install
-uv run <command>       # anything else
-```
+`pnpm-lock.yaml` is committed and authoritative. CI installs with `--frozen-lockfile`
+and fails if the lock does not match `package.json`. If you change a dependency, commit
+the updated lockfile in the same change.
 
-`uv.lock` is committed and authoritative. CI installs with `--locked` and fails if the
-lock does not match `pyproject.toml`. If you change a dependency, run `uv lock` and
-commit the result in the same change.
+The project is ESM (`"type": "module"`) with `moduleResolution: NodeNext`, so **relative
+imports must carry a `.js` extension** even though the source file is `.ts`. Biome's
+`useImportExtensions` rule enforces this.
 
 ## The three validation layers — do not confuse them
 
@@ -35,23 +40,25 @@ and none of them may be skipped, weakened or excluded with a blanket ignore:
 
 | Gate | Command | What it protects |
 |---|---|---|
-| Lint | `uv run ruff check .` | dead code, unused imports, import order |
-| Format | `uv run ruff format --check .` | one formatting, zero diff noise |
-| Types | `uv run mypy` | Python does not compile — strict typing is the compiler |
-| Build | `uv build` | the package is importable and installable |
-| Tests | `uv run pytest` | behaviour |
-| Smoke run | `uv run python -m scripts.smoke` | the app actually boots and answers `/health` |
+| Lint + format | `make lint` | dead code, unused imports, one formatting |
+| Types | `make types` | the contract between every layer |
+| Build | `make build` | the service compiles to `dist/` |
+| Tests | `make test` | behaviour |
+| Smoke run | `make smoke` | the built app boots and answers `/health` |
 
-`make check` runs lint, format, types and tests in one go. Run it before every commit.
+`make check` runs lint, types and tests in one go. Run it before every commit.
 
-A green import is not proof the app starts. The smoke run exists because it boots
-uvicorn for real and demands a `200`. Keep it that way.
+A clean `tsc` is not proof the app starts. The smoke run exists because it boots the
+compiled output for real and demands a `200`. Keep it that way.
+
+`tsc` is the compiler, not a linter. A `// @ts-ignore`, an `any`, or a cast that silences
+it is a defect in the design, not a fix. Model the type properly instead.
 
 ## Single source of truth — this is the important one
 
 **The Makefile owns the commands. Nothing else may restate them.** The pre-commit hook
 calls `make check`; CI calls `make lint`, `make types`, `make build`, `make test` and
-`make smoke`. Neither one spells out `uv run ruff ...` on its own.
+`make smoke`. Neither one spells out `pnpm run ...` on its own.
 
 A pipeline that does something you cannot reproduce locally is a slot machine: push,
 wait, read logs, guess, repeat. Three copies of the command list guarantee exactly that,
@@ -59,11 +66,15 @@ because they drift.
 
 To add a validation:
 
-1. add a target to `Makefile`
-2. add it to the `check` and/or `ci` aggregate targets
-3. add a CI step that **calls that target**
+1. add a script to `package.json`
+2. add a target to `Makefile` that calls it
+3. add it to the `check` and/or `ci` aggregate targets
+4. add a CI step that **calls that target**
 
 Copying the raw command into `ci.yml` or into a hook is a defect, not a shortcut.
+
+The CI job is named `Backend`. The `main` branch ruleset requires that exact status
+check by name — renaming the job blocks every pull request from merging.
 
 ## Architecture rule
 
@@ -74,20 +85,22 @@ infrastructure  →  application  →  domain
 ```
 
 - `domain/` imports nothing from `application/` or `infrastructure/`, and never a
-  framework (no FastAPI, no pydantic, no httpx). Pure Python only.
+  framework (no Fastify, no database driver). Plain TypeScript only.
 - `application/` imports only `domain/`.
 - `infrastructure/` is the only layer allowed to know about frameworks, I/O and
   transport.
-- `infrastructure/config/composition.py` is the composition root: the single place
-  where concrete implementations are wired to ports. Nothing else instantiates an
-  adapter.
+- `infrastructure/config/composition.ts` is the composition root: the single place where
+  concrete implementations are wired to ports. Nothing else instantiates an adapter.
 
-Ports are declared in `domain/ports/`: inbound ports are what drives the application,
-outbound ports are what the application drives.
+Ports are declared in `domain/ports/` as plain `interface` or `type` declarations:
+inbound ports are what drives the application, outbound ports are what the application
+drives. TypeScript's structural typing means an adapter satisfies a port by shape — it
+never needs to import and extend a base class.
 
 ## Tests
 
-- `tests/unit/` — domain and use cases, no I/O, no ASGI client.
-- `tests/integration/` — adapters through the real app built by `create_app()`.
+- `tests/unit/` — domain and use cases, no I/O, no HTTP.
+- `tests/integration/` — adapters through the real app built by `createApp()`, driven
+  with Fastify's `app.inject()` rather than a real socket.
 - Tests are written before the implementation, and each one names the behaviour it
   protects, not the function it calls.

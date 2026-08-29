@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+tests/
+scripts/
+Makefile
+README.md
+CLAUDE.md
+.git/

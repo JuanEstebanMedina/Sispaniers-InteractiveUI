@@ -1,22 +1,22 @@
 # Sispaniers InteractiveUI — Backend
 
-Hexagonal (ports & adapters) scaffolding on FastAPI + uv. The layers are empty on
-purpose: only the wiring, the tooling and the pipeline are in place.
+Hexagonal (ports & adapters) scaffolding on Node.js + TypeScript + Fastify. The layers
+are empty on purpose: only the wiring, the tooling and the pipeline are in place.
 
 ```
-src/sispaniers/
+src/
   domain/
-    model/          entities and value objects — pure Python, no dependencies
+    model/          entities and value objects — plain TypeScript, no dependencies
     ports/          inbound (driving) and outbound (driven) contracts
   application/
-    use_cases/      orchestration; depends only on domain ports
+    use-cases/      orchestration; depends only on domain ports
   infrastructure/
     adapters/
-      inbound/http/ FastAPI routes, schemas and the app factory
+      inbound/http/ Fastify routes, schemas and the app factory
       outbound/     repositories and gateways
     config/         composition root — the only place that wires concretes
-  main.py           ASGI entry point
-scripts/smoke.py    boots the API and probes /health
+  main.ts           process entry point
+scripts/smoke.ts    boots the built API and probes /health
 ```
 
 The dependency rule: `domain` imports nothing from `application` or `infrastructure`,
@@ -25,11 +25,17 @@ and never a framework. `application` imports only `domain`.
 ## Commands
 
 ```bash
-make install   # uv sync --all-groups
-make check     # lint + format check + types + tests
-make test      # pytest
+make install   # pnpm install
+make check     # lint + types + tests
+make test      # vitest
 make dev       # API with autoreload on http://127.0.0.1:8000
-make smoke     # boot the API and probe /health
+make smoke     # build, boot the compiled app and probe /health
+make ci        # the exact sequence CI runs
 ```
 
-Interactive API docs at `/docs`, health probe at `/health`.
+Health probe at `/health`.
+
+## Notes
+
+The project is ESM with `moduleResolution: NodeNext`, so relative imports carry a `.js`
+extension even in `.ts` files. That is correct, not a typo.

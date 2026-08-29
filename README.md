@@ -94,10 +94,13 @@ backend/     # agents, flows and orchestration
 
 ```bash
 cd backend
-make install     # uv sync --all-groups
+make install     # pnpm install
 make hooks       # REQUIRED once per clone — see below
 make dev         # API on http://127.0.0.1:8000
 ```
+
+The backend runs on Node.js 22 with pnpm. Enable pnpm with `corepack enable` if you do
+not have it.
 
 ### Enable the git hooks — once per clone
 
