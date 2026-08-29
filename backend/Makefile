@@ -1,31 +1,30 @@
 .DEFAULT_GOAL := help
 
-install: ## Install dependencies into .venv
-	uv sync --all-groups
+install: ## Install dependencies
+	pnpm install
 
-format: ## Format the codebase
-	uv run ruff format .
+format: ## Format and autofix the codebase
+	pnpm run format
 
 lint: ## Lint and check formatting
-	uv run ruff check .
-	uv run ruff format --check .
+	pnpm run lint
 
 types: ## Static type check
-	uv run mypy
+	pnpm run typecheck
+
+build: ## Compile TypeScript to dist/
+	pnpm run build
 
 test: ## Run the test suite
-	uv run pytest
-
-build: ## Build the distributable package
-	uv build
+	pnpm run test
 
 check: lint types test ## Everything CI runs, minus build and smoke
 
 dev: ## Run the API with autoreload
-	uv run uvicorn sispaniers.main:app --reload --port 8000
+	pnpm run dev
 
-smoke: ## Boot the API and probe /health
-	uv run python -m scripts.smoke
+smoke: build ## Boot the built API and probe /health
+	pnpm run smoke
 
 ci: install lint types build test smoke ## The exact sequence CI runs
 
