@@ -1,16 +1,24 @@
 import type { FastifyInstance } from "fastify";
+import { createCreateComponentUseCase } from "../../application/use-cases/dashboard/create-component.use-case.js";
 import { createCreateOperationUseCase } from "../../application/use-cases/dashboard/create-operation.use-case.js";
+import { createGetOperationComponentsUseCase } from "../../application/use-cases/dashboard/get-operation-components.use-case.js";
 import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
+import { createUpdateComponentContentUseCase } from "../../application/use-cases/dashboard/update-component-content.use-case.js";
+import { createUpdateOperationLayoutUseCase } from "../../application/use-cases/dashboard/update-operation-layout.use-case.js";
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
+import type { ComponentRepository } from "../../domain/ports/component.repository.js";
 import type { EmailSender } from "../../domain/ports/email-sender.port.js";
+import type { OperationLayoutRepository } from "../../domain/ports/operation-layout.repository.js";
 import type { OperationRepository } from "../../domain/ports/operation.repository.js";
 import { buildApp } from "../adapters/inbound/http/app.js";
 import { MultiFormatAttachmentExtractor } from "../adapters/outbound/attachment/multi-format-attachment-extractor.js";
 import { NodemailerEmailSender } from "../adapters/outbound/email/nodemailer-email-sender.js";
 import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.js";
+import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
+import { MongoOperationLayoutRepository } from "../adapters/outbound/mongo/operation-layout.repository.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
 import { connectMongo } from "./mongo.js";
 
@@ -22,6 +30,8 @@ export interface CreateAppOverrides {
   emailSender?: EmailSender;
   attachmentExtractor?: AttachmentExtractor;
   operationRepository?: OperationRepository;
+  componentRepository?: ComponentRepository;
+  operationLayoutRepository?: OperationLayoutRepository;
 }
 
 function buildEmailSender(override: EmailSender | undefined): EmailSender {
@@ -34,34 +44,63 @@ function buildEmailSender(override: EmailSender | undefined): EmailSender {
   );
 }
 
-interface OperationRepositorySource {
-  repository: OperationRepository;
+interface RepositorySources {
+  operationRepository: OperationRepository;
+  componentRepository: ComponentRepository;
+  operationLayoutRepository: OperationLayoutRepository;
   close?: () => Promise<void>;
 }
 
-async function buildOperationRepository(
-  override: OperationRepository | undefined,
-): Promise<OperationRepositorySource> {
-  if (override !== undefined) {
-    return { repository: override };
+async function buildRepositories(overrides: CreateAppOverrides): Promise<RepositorySources> {
+  if (
+    overrides.operationRepository !== undefined &&
+    overrides.componentRepository !== undefined &&
+    overrides.operationLayoutRepository !== undefined
+  ) {
+    return {
+      operationRepository: overrides.operationRepository,
+      componentRepository: overrides.componentRepository,
+      operationLayoutRepository: overrides.operationLayoutRepository,
+    };
   }
+
   const mongo = await connectMongo();
-  return { repository: new MongoOperationRepository(mongo.db), close: mongo.close };
+
+  return {
+    operationRepository: overrides.operationRepository ?? new MongoOperationRepository(mongo.db),
+    componentRepository: overrides.componentRepository ?? new MongoComponentRepository(mongo.db),
+    operationLayoutRepository:
+      overrides.operationLayoutRepository ?? new MongoOperationLayoutRepository(mongo.db),
+    close: mongo.close,
+  };
 }
 
 export async function createApp(overrides: CreateAppOverrides = {}): Promise<FastifyInstance> {
   const idGenerator = new CryptoIdGenerator();
   const emailSender = buildEmailSender(overrides.emailSender);
   const attachmentExtractor = overrides.attachmentExtractor ?? new MultiFormatAttachmentExtractor();
-  const { repository: operationRepository, close } = await buildOperationRepository(
-    overrides.operationRepository,
-  );
+  const { operationRepository, componentRepository, operationLayoutRepository, close } =
+    await buildRepositories(overrides);
 
   const receiveEmail = createReceiveEmailUseCase({ idGenerator, attachmentExtractor });
   const sendEmail = createSendEmailUseCase({ emailSender, idGenerator });
   const createOperation = createCreateOperationUseCase({ operationRepository, idGenerator });
+  const createComponent = createCreateComponentUseCase({ componentRepository, idGenerator });
   const getOperation = createGetOperationUseCase({ operationRepository });
   const listOperations = createListOperationsUseCase({ operationRepository });
+  const getOperationComponents = createGetOperationComponentsUseCase({
+    operationRepository,
+    componentRepository,
+    operationLayoutRepository,
+  });
+  const updateOperationLayout = createUpdateOperationLayoutUseCase({
+    operationRepository,
+    operationLayoutRepository,
+  });
+  const updateComponentContent = createUpdateComponentContentUseCase({
+    operationRepository,
+    componentRepository,
+  });
 
   const app = buildApp({
     receiveEmail,
@@ -69,7 +108,12 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     createOperation,
     getOperation,
     listOperations,
+    getOperationComponents,
+    updateOperationLayout,
+    updateComponentContent,
   });
+
+  app.decorate("createComponent", createComponent);
 
   if (close !== undefined) {
     app.addHook("onClose", () => close());

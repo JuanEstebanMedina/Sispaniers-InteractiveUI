@@ -18,3 +18,17 @@ export class InvalidFilterCombinationError extends Error {
     this.name = "InvalidFilterCombinationError";
   }
 }
+
+export class InvalidLayoutError extends Error {
+  constructor(reason: string) {
+    super(`Invalid layout: ${reason}`);
+    this.name = "InvalidLayoutError";
+  }
+}
+
+export class ComponentNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Component not found: ${id}`);
+    this.name = "ComponentNotFoundError";
+  }
+}
