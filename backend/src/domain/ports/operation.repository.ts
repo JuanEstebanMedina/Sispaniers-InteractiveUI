@@ -9,6 +9,7 @@ export interface OperationQueryFilter {
 }
 
 export interface OperationRepository {
+  findAll(): Promise<Operation[]>;
   findById(id: string): Promise<Operation | null>;
   findActiveByClient(clientId: string): Promise<Operation[]>;
   findAll(filter?: OperationQueryFilter): Promise<Operation[]>;
