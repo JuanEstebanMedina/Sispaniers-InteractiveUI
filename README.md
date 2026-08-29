@@ -85,6 +85,45 @@ Employees, emails, documents, vessels and data can all be invented.
 ## Structure
 
 ```
-frontend/   # runtime-generated UI
-backend/    # agents, flows and orchestration
+frontend/    # runtime-generated UI
+backend/     # agents, flows and orchestration
+.githooks/   # versioned git hooks, shared by every clone
 ```
+
+## Getting started
+
+```bash
+cd backend
+make install     # uv sync --all-groups
+make hooks       # REQUIRED once per clone — see below
+make dev         # API on http://127.0.0.1:8000
+```
+
+### Enable the git hooks — once per clone
+
+Git hooks live in `.git/hooks/`, which is **never committed**. Cloning the repo does not
+give you the hooks; every contributor has to opt in once:
+
+```bash
+make -C backend hooks
+```
+
+That points `core.hooksPath` at the versioned `.githooks/` directory. From then on
+`git commit` runs `make -C backend check` automatically whenever the commit touches
+`backend/`, so lint, types and tests are verified before the commit is created. To skip
+it in a genuine emergency: `git commit --no-verify`.
+
+Verify it is active with `git config core.hooksPath` — it should print `.githooks`.
+
+### Validation
+
+One definition of "valid", three ways to reach it. The `Makefile` owns the commands;
+the pre-commit hook and CI both call it, so they can never drift apart.
+
+| Where | Command | When |
+|---|---|---|
+| Locally, on demand | `make check` | whenever you want |
+| Locally, on commit | the pre-commit hook, calling `make check` | `git commit` |
+| CI | `make lint types build test smoke` | push to `main`, every PR |
+
+`make ci` reproduces the full CI sequence locally.

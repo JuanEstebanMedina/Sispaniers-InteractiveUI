@@ -29,19 +29,16 @@ jobs:
         run: uv sync --all-groups --locked
 
       - name: Lint
-        run: uv run ruff check .
-
-      - name: Format check
-        run: uv run ruff format --check .
+        run: make lint
 
       - name: Type check
-        run: uv run mypy
+        run: make types
 
-      - name: Build (importable package)
-        run: uv build
+      - name: Build
+        run: make build
 
       - name: Test
-        run: uv run pytest
+        run: make test
 
       - name: Smoke run
-        run: uv run python -m scripts.smoke
+        run: make smoke

@@ -22,10 +22,11 @@ commit the result in the same change.
 | Layer | Runs when | Triggered by |
 |---|---|---|
 | `Makefile` | you type `make <target>` | a human, locally |
+| `.githooks/pre-commit` | `git commit` touching `backend/` | git, locally |
 | `.github/workflows/ci.yml` | every push to `main`, every PR | GitHub |
-| git hooks (pre-commit) | `git commit` | git, locally |
 
-The Makefile does **not** run on commit. It is a catalogue of shortcuts, nothing more.
+The hook and CI do not define their own commands: both call the Makefile. Enabling the
+hook is a per-clone opt-in (`make hooks`), because `.git/hooks/` is never committed.
 
 ## Mandatory gates
 
@@ -46,17 +47,23 @@ and none of them may be skipped, weakened or excluded with a blanket ignore:
 A green import is not proof the app starts. The smoke run exists because it boots
 uvicorn for real and demands a `200`. Keep it that way.
 
-## Parity rule — this is the important one
+## Single source of truth — this is the important one
 
-**The Makefile and CI must run the same commands.** A pipeline that does something you
-cannot reproduce locally is a slot machine: push, wait, read logs, guess, repeat.
+**The Makefile owns the commands. Nothing else may restate them.** The pre-commit hook
+calls `make check`; CI calls `make lint`, `make types`, `make build`, `make test` and
+`make smoke`. Neither one spells out `uv run ruff ...` on its own.
 
-When you add a validation, you add it in **both** places, in the same change:
+A pipeline that does something you cannot reproduce locally is a slot machine: push,
+wait, read logs, guess, repeat. Three copies of the command list guarantee exactly that,
+because they drift.
 
-1. a target in `Makefile`
-2. a step in `.github/workflows/ci.yml`
+To add a validation:
 
-Adding it to only one is a defect, not a partial improvement.
+1. add a target to `Makefile`
+2. add it to the `check` and/or `ci` aggregate targets
+3. add a CI step that **calls that target**
+
+Copying the raw command into `ci.yml` or into a hook is a defect, not a shortcut.
 
 ## Architecture rule
 

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if git diff --cached --name-only --diff-filter=ACMR | grep -q '^backend/'; then
+    echo "pre-commit: running backend checks"
+    make -C backend check
+fi

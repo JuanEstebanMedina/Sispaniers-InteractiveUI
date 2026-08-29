@@ -16,7 +16,10 @@ types: ## Static type check
 test: ## Run the test suite
 	uv run pytest
 
-check: lint types test ## Everything CI runs, minus the smoke run
+build: ## Build the distributable package
+	uv build
+
+check: lint types test ## Everything CI runs, minus build and smoke
 
 dev: ## Run the API with autoreload
 	uv run uvicorn sispaniers.main:app --reload --port 8000
@@ -24,7 +27,13 @@ dev: ## Run the API with autoreload
 smoke: ## Boot the API and probe /health
 	uv run python -m scripts.smoke
 
+ci: install lint types build test smoke ## The exact sequence CI runs
+
+hooks: ## Enable the versioned git hooks in this clone
+	git -C .. config core.hooksPath .githooks
+	@echo "pre-commit hook enabled"
+
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-10s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: install format lint types test check dev smoke help
+.PHONY: install format lint types build test check ci dev smoke hooks help
