@@ -19,14 +19,18 @@
     "seed": "tsx --env-file-if-exists=../.env --env-file-if-exists=.env scripts/seed.ts"
   },
   "dependencies": {
+    "@fastify/cors": "^10.0.0",
     "@google/genai": "^2.19.0",
     "fastify": "^5.2.0",
-    "openai": "^7.8.0",
-    "@fastify/cors": "^10.0.0",
     "fastify-type-provider-zod": "^4.0.2",
+    "mammoth": "^1.12.2",
+    "mongodb": "^7.6.0",
     "nodemailer": "^6.9.16",
-    "zod": "^3.24.1",
-    "mongodb": "^7.6.0"
+    "officeparser": "^7.8.0",
+    "openai": "^7.8.0",
+    "pdf-parse": "^2.4.5",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

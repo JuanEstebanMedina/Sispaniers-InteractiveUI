@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createSendEmailUseCase } from "../../src/application/use-cases/send-email.use-case.js";
+import { createSendEmailUseCase } from "../../src/application/use-cases/email/send-email.use-case.js";
 import { EmailSendError } from "../../src/domain/model/errors.js";
 import { FakeEmailSender } from "../support/fakes.js";
 
