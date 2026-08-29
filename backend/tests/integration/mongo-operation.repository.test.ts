@@ -3,6 +3,11 @@ import { type Db, MongoClient } from "mongodb";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import type { Operation } from "../../src/domain/logistics/operation.js";
 import { MongoOperationRepository } from "../../src/infrastructure/adapters/outbound/mongo/operation.repository.js";
+import {
+  anOperation,
+  withAllContainersDelivered,
+  withoutContainers,
+} from "../support/operation-fixtures.js";
 
 const uri = process.env.MONGODB_URI ?? "mongodb://localhost:27017";
 const databaseName = `sispaniers_test_${randomUUID().replaceAll("-", "")}`;
@@ -26,66 +31,6 @@ afterAll(async () => {
 beforeEach(async () => {
   await db.collection("operations").deleteMany({});
 });
-
-function anOperation(overrides: Partial<Operation> = {}): Operation {
-  return {
-    id: randomUUID(),
-    clientId: randomUUID(),
-    bookings: [
-      {
-        id: randomUUID(),
-        carrier: "Maersk",
-        vessel: "Ever Given",
-        originPort: "CNSHA",
-        destinationPort: "COCTG",
-        schedule: {
-          etdOriginal: new Date("2026-01-05T00:00:00.000Z"),
-          etaOriginal: new Date("2026-02-10T00:00:00.000Z"),
-          etaCurrent: new Date("2026-02-14T00:00:00.000Z"),
-          changes: [
-            {
-              previousEta: new Date("2026-02-10T00:00:00.000Z"),
-              newEta: new Date("2026-02-14T00:00:00.000Z"),
-              reason: "port congestion",
-              occurredAt: new Date("2026-01-20T09:30:00.000Z"),
-            },
-          ],
-        },
-        vesselPosition: {
-          lat: 12.5,
-          lng: -74.2,
-          updatedAt: new Date("2026-01-25T12:00:00.000Z"),
-        },
-        containers: [{ id: randomUUID(), containerNumber: "MSKU1234567", state: "in_transit" }],
-      },
-    ],
-    documents: [
-      {
-        id: randomUUID(),
-        type: "BillOfLading",
-        bookingId: randomUUID(),
-        sourceEmailId: "email-1",
-        extractedData: { weightKg: 18500 },
-        receivedAt: new Date("2026-01-06T08:00:00.000Z"),
-      },
-    ],
-    createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    ...overrides,
-  };
-}
-
-function withAllContainersDelivered(operation: Operation): Operation {
-  return {
-    ...operation,
-    bookings: operation.bookings.map((booking) => ({
-      ...booking,
-      containers: booking.containers.map((container) => ({
-        ...container,
-        state: "delivered" as const,
-      })),
-    })),
-  };
-}
 
 test("a saved operation is returned whole by its id", async () => {
   const operation = anOperation();
@@ -166,13 +111,6 @@ test("optional booking and document fields stay absent when the domain leaves th
   expect(found?.documents[0]).not.toHaveProperty("sourceEmailId");
 });
 
-function withoutContainers(operation: Operation): Operation {
-  return {
-    ...operation,
-    bookings: operation.bookings.map((booking) => ({ ...booking, containers: [] })),
-  };
-}
-
 test("an operation whose containers are not loaded yet still counts as active", async () => {
   const clientId = randomUUID();
   const justCreated = withoutContainers(anOperation({ clientId }));
@@ -195,4 +133,21 @@ test("a client only sees operations that still have undelivered containers", asy
   const active = await repository.findActiveByClient(clientId);
 
   expect(active).toEqual([partiallyDelivered]);
+});
+
+test("findAll returns every stored operation regardless of client or delivery state", async () => {
+  const first = anOperation();
+  const second = withAllContainersDelivered(anOperation());
+
+  await repository.save(first);
+  await repository.save(second);
+
+  const all = await repository.findAll();
+
+  expect(all).toHaveLength(2);
+  expect(all).toEqual(expect.arrayContaining([first, second]));
+});
+
+test("findAll on an empty collection returns an empty list", async () => {
+  expect(await repository.findAll()).toEqual([]);
 });
