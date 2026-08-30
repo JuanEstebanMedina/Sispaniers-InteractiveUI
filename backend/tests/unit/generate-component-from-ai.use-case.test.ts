@@ -126,8 +126,8 @@ test("chat includes prior conversation on later messages", async () => {
       deleteById: async () => {},
     },
     aiCompletionPort: {
-      complete: async ({ prompt }) => {
-        prompts.push(prompt);
+      complete: async ({ systemPrompt }) => {
+        prompts.push(systemPrompt ?? "");
         return { kind: "text", text: "Hola, ¿qué quieres revisar?" };
       },
     },

@@ -48,7 +48,12 @@ export class OpenAiCompletionAdapter implements AiCompletionPort {
 
     const response = await this.getClient().chat.completions.create({
       model: this.model,
-      messages: [{ role: "user", content: request.prompt }],
+      messages: [
+        ...(request.systemPrompt === undefined
+          ? []
+          : [{ role: "developer" as const, content: request.systemPrompt }]),
+        { role: "user", content: request.prompt },
+      ],
       ...(hasTools ? { tools: toOpenAiTools(request.tools as AiToolDefinition[]) } : {}),
     });
 

@@ -63,14 +63,19 @@ Componentes existentes de esta operación (usa update_component SOLO si el mensa
 ${JSON.stringify(existingComponents)}`;
 }
 
-function buildPrompt(
+function buildSystemPrompt(
   template: string,
   trigger: AiTrigger,
-  currentInput: string,
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
   context?: PromptContext,
 ): string {
-  const base = buildBasePrompt(template, trigger, currentInput, GRID_COLUMNS, context);
+  const base = buildBasePrompt(
+    template,
+    trigger,
+    "The user's current message is supplied separately.",
+    GRID_COLUMNS,
+    context,
+  );
 
   return `${base}\n\n${buildExistingComponentsHint(trigger, existingComponents)}`;
 }
@@ -88,7 +93,8 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
   } = deps;
 
   async function completeAndDispatch(
-    prompt: string,
+    systemPrompt: string,
+    input: string,
     operationId: string,
     trigger: AiTrigger,
   ): Promise<{ component: Component | null; reply: string }> {
@@ -101,7 +107,11 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         inputSchema: command.inputSchema,
       }));
 
-    const result = await aiCompletionPort.complete({ prompt, tools });
+    const result = await aiCompletionPort.complete({
+      prompt: input,
+      systemPrompt,
+      tools,
+    });
 
     if (result.kind === "text") {
       if (trigger === "chat") {
@@ -169,10 +179,9 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
             componentCatalog: [],
           }
         : undefined;
-    const prompt = buildPrompt(
+    const prompt = buildSystemPrompt(
       promptTemplate,
       input.trigger,
-      input.input,
       existingComponents,
       promptContext,
     );
@@ -187,7 +196,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
 
     let result: { component: Component | null; reply: string };
     try {
-      result = await completeAndDispatch(prompt, input.operationId, input.trigger);
+      result = await completeAndDispatch(prompt, input.input, input.operationId, input.trigger);
     } catch (error) {
       if (!(error instanceof InvalidAiComponentError)) {
         throw error;
@@ -195,7 +204,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       console.warn(
         `generateComponentFromAi: retrying after invalid AI response for operation ${input.operationId}: ${error.message}`,
       );
-      result = await completeAndDispatch(prompt, input.operationId, input.trigger);
+      result = await completeAndDispatch(prompt, input.input, input.operationId, input.trigger);
     }
 
     if (input.trigger === "chat" && chatHistoryPort !== undefined) {
