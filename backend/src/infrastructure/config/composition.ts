@@ -11,6 +11,7 @@ import { createGetDocumentPreviewUrlUseCase } from "../../application/use-cases/
 import { createGetOperationComponentsUseCase } from "../../application/use-cases/dashboard/get-operation-components.use-case.js";
 import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
+import { createRespondToChatUseCase } from "../../application/use-cases/dashboard/respond-to-chat.use-case.js";
 import { createRunSimulationTickUseCase } from "../../application/use-cases/dashboard/run-simulation-tick.use-case.js";
 import { createUpdateComponentContentUseCase } from "../../application/use-cases/dashboard/update-component-content.use-case.js";
 import { createUpdateComponentPlacementUseCase } from "../../application/use-cases/dashboard/update-component-placement.use-case.js";
@@ -220,6 +221,11 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     updateComponentContent,
     promptTemplate: ARI_SYSTEM_PROMPT,
   });
+  const respondToChat = createRespondToChatUseCase({
+    operationRepository,
+    aiCompletionPort,
+    promptTemplate: ARI_SYSTEM_PROMPT,
+  });
 
   const app = buildApp({
     receiveEmail,
@@ -236,6 +242,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     updateComponentPlacement,
     updateComponentContent,
     generateComponentFromAi,
+    respondToChat,
     createComponent,
     deleteComponent,
     componentEventPublisher,

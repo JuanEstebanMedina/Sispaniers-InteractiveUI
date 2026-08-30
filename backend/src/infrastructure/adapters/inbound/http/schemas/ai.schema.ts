@@ -6,7 +6,7 @@ export const chatBodySchema = z.object({
   message: z.string().min(1),
 });
 
-export const chatResponseSchema = componentResponseSchema.extend({ reply: z.string() });
+export const chatResponseSchema = z.object({ reply: z.string() });
 
 export const webhookBodySchema = z.object({
   event: z.string().min(1),

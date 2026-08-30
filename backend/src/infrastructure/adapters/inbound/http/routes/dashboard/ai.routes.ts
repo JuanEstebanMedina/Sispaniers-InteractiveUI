@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncZod, ZodTypeProvider } from "fastify-type-provid
 import { z } from "zod";
 
 import type { GenerateComponentFromAiInput } from "../../../../../../application/use-cases/dashboard/generate-component-from-ai.use-case.js";
+import type { RespondToChatInput } from "../../../../../../application/use-cases/dashboard/respond-to-chat.use-case.js";
 import type { Component } from "../../../../../../domain/components/component.js";
 import {
   AiCompletionError,
@@ -23,6 +24,7 @@ export interface AiRouteDeps {
   generateComponentFromAi: (
     input: GenerateComponentFromAiInput,
   ) => Promise<{ component: Component; reply: string }>;
+  respondToChat: (input: RespondToChatInput) => Promise<{ reply: string }>;
 }
 
 export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps) => {
@@ -46,12 +48,8 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
       const { message } = request.body;
 
       try {
-        const { component, reply: aiReply } = await deps.generateComponentFromAi({
-          operationId: id,
-          trigger: "chat",
-          input: message,
-        });
-        reply.code(201).send({ ...toComponentWireShape(component), reply: aiReply });
+        const result = await deps.respondToChat({ operationId: id, message });
+        reply.code(201).send({ reply: result.reply });
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
           reply.code(404).send({ error: "operation_not_found", message: error.message });

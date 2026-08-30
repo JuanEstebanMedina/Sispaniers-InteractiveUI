@@ -2,7 +2,6 @@ import { validateComponentTree } from "../../../domain/components/component-node
 import type { Component, ComponentNode } from "../../../domain/components/component.js";
 import { WIDGET_SIZES, type WidgetSizeName } from "../../../domain/components/widget-size.js";
 import {
-  AiCompletionError,
   InvalidAiComponentError,
   InvalidComponentTreeError,
   OperationNotFoundError,
@@ -10,6 +9,12 @@ import {
 import type { AiCompletionPort } from "../../../domain/ports/ai-completion-port.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
+import {
+  buildBasePrompt,
+  completeOrThrow,
+  stripMarkdownCodeFence,
+  truncateForDebugging,
+} from "./ai-response.helpers.js";
 import type { CreateComponentInput } from "./create-component.use-case.js";
 import type { UpdateComponentContentInput } from "./update-component-content.use-case.js";
 
@@ -31,7 +36,6 @@ export interface GenerateComponentFromAiDeps {
 }
 
 const GRID_COLUMNS = 4;
-const NOT_AVAILABLE = "N/A (no disponible en esta versión)";
 
 function buildOutputContractOverride(
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
@@ -59,36 +63,9 @@ function buildPrompt(
   currentInput: string,
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
 ): string {
-  const base = template
-    .replaceAll("{{company_knowledge}}", NOT_AVAILABLE)
-    .replaceAll("{{client_memory}}", NOT_AVAILABLE)
-    .replaceAll("{{trigger}}", trigger)
-    .replaceAll("{{current_input}}", currentInput)
-    .replaceAll("{{grid_columns}}", String(GRID_COLUMNS));
+  const base = buildBasePrompt(template, trigger, currentInput, GRID_COLUMNS);
 
   return `${base}\n\n${buildOutputContractOverride(existingComponents)}`;
-}
-
-async function completeOrThrow(
-  aiCompletionPort: AiCompletionPort,
-  prompt: string,
-): Promise<{ text: string }> {
-  try {
-    return await aiCompletionPort.complete({ prompt });
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new AiCompletionError(reason);
-  }
-}
-
-function stripMarkdownCodeFence(text: string): string {
-  const match = text.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
-  return match ? (match[1] ?? "") : text.trim();
-}
-
-function truncateForDebugging(text: string): string {
-  const MAX_LENGTH = 200;
-  return text.length > MAX_LENGTH ? `${text.slice(0, MAX_LENGTH)}...` : text;
 }
 
 interface ParsedAiComponent {
