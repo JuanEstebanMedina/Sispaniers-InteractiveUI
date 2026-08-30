@@ -1,15 +1,15 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
+import type {
+  GetOperationInput,
+  GetOperationResult,
+} from "../../../../../../application/use-cases/dashboard/get-operation.use-case.js";
 import { deriveOperationStatus } from "../../../../../../domain/logistics/operation-status.js";
 import { OperationNotFoundError } from "../../../../../../domain/model/errors.js";
 import type { ComponentEventPublisher } from "../../../../../../domain/ports/component-event-publisher.port.js";
 import type { OperationEventPublisher } from "../../../../../../domain/ports/operation-event-publisher.port.js";
 import { toComponentWireShape } from "../../mappers/component.mapper.js";
 import { toOperationResponse } from "./operations.routes.js";
-import type {
-  GetOperationInput,
-  GetOperationResult,
-} from "../../../../../../application/use-cases/dashboard/get-operation.use-case.js";
 
 const operationParamsSchema = z.object({ id: z.string().min(1) });
 

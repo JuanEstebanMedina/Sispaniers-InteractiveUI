@@ -4,8 +4,8 @@ import type { Operation } from "../../../domain/logistics/operation.js";
 import type { NormalizedEmail } from "../../../domain/model/email.js";
 import type { ExtractedContent } from "../../../domain/model/extracted-content.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
-import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 import type { OperationEventPublisher } from "../../../domain/ports/operation-event-publisher.port.js";
+import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 import type { ResolveCompany } from "../shared/resolve-company.use-case.js";
 
 const OPERATION_ID_PATTERN = /orden de compra\s*#\s*([\w-]+)/i;
@@ -170,7 +170,11 @@ export function createUpsertOperationFromEmailUseCase(deps: UpsertOperationFromE
     };
 
     await operationRepository.save(updated);
-    operationEventPublisher.publish(updated.id, created ? "operation-created" : "operation-updated", updated);
+    operationEventPublisher.publish(
+      updated.id,
+      created ? "operation-created" : "operation-updated",
+      updated,
+    );
 
     return {
       operationId: updated.id,

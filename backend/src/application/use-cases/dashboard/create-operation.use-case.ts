@@ -4,8 +4,8 @@ import { deriveOperationStatus } from "../../../domain/logistics/operation-statu
 import type { Operation } from "../../../domain/logistics/operation.js";
 import { CompanyReferenceRequiredError } from "../../../domain/model/errors.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
-import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 import type { OperationEventPublisher } from "../../../domain/ports/operation-event-publisher.port.js";
+import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 import type { ResolveCompany } from "../shared/resolve-company.use-case.js";
 
 export interface CreateOperationInput {
