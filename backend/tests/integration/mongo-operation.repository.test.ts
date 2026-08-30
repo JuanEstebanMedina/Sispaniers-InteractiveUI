@@ -4,11 +4,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import type { Operation } from "../../src/domain/logistics/operation.js";
 import { MongoOperationRepository } from "../../src/infrastructure/adapters/outbound/mongo/operation.repository.js";
 import { resolveMongoUri } from "../../src/infrastructure/config/mongo.js";
-import {
-  anOperation,
-  withAllContainersDelivered,
-  withoutContainers,
-} from "../support/operation-fixtures.js";
+import { anOperation, withAllContainersDelivered } from "../support/operation-fixtures.js";
 
 const uri = resolveMongoUri();
 const databaseName = `sispaniers_test_${randomUUID().replaceAll("-", "")}`;
@@ -84,13 +80,14 @@ test("dates survive the round trip as dates and not as strings", async () => {
   expect(booking?.schedule.etaCurrent).toBeInstanceOf(Date);
   expect(booking?.schedule.changes[0]?.occurredAt).toBeInstanceOf(Date);
   expect(booking?.vesselPosition?.updatedAt).toBeInstanceOf(Date);
-  expect(found?.documents[0]?.receivedAt).toBeInstanceOf(Date);
+  expect(found?.context.documents[0]?.receivedAt).toBeInstanceOf(Date);
+  expect(found?.context.emails[0]?.receivedAt).toBeInstanceOf(Date);
 });
 
 test("optional booking and document fields stay absent when the domain leaves them out", async () => {
   const operation = anOperation();
   const [booking] = operation.bookings;
-  const [document] = operation.documents;
+  const [document] = operation.context.documents;
   if (!booking || !document) {
     throw new Error("fixture must carry one booking and one document");
   }
@@ -99,7 +96,7 @@ test("optional booking and document fields stay absent when the domain leaves th
   const sparse: Operation = {
     ...operation,
     bookings: [bookingWithoutPosition],
-    documents: [bareDocument],
+    context: { ...operation.context, documents: [bareDocument] },
   };
 
   await repository.save(sparse);
@@ -108,35 +105,27 @@ test("optional booking and document fields stay absent when the domain leaves th
 
   expect(found).toEqual(sparse);
   expect(found?.bookings[0]).not.toHaveProperty("vesselPosition");
-  expect(found?.documents[0]).not.toHaveProperty("bookingId");
-  expect(found?.documents[0]).not.toHaveProperty("sourceEmailId");
+  expect(found?.context.documents[0]).not.toHaveProperty("bookingId");
+  expect(found?.context.documents[0]).not.toHaveProperty("sourceEmailId");
 });
 
-test("an operation whose containers are not loaded yet still counts as active", async () => {
-  const clientId = randomUUID();
-  const justCreated = withoutContainers(anOperation({ clientId }));
+test("findAll narrows to the ids a company owns", async () => {
+  const owned = anOperation();
+  const other = anOperation();
 
-  await repository.save(justCreated);
+  await repository.save(owned);
+  await repository.save(other);
 
-  expect(await repository.findActiveByClient(clientId)).toEqual([justCreated]);
+  expect(await repository.findAll({ ids: [owned.id] })).toEqual([owned]);
 });
 
-test("a client only sees operations that still have undelivered containers", async () => {
-  const clientId = randomUUID();
-  const partiallyDelivered = anOperation({ clientId });
-  const fullyDelivered = withAllContainersDelivered(anOperation({ clientId }));
-  const anotherClientsOperation = anOperation();
+test("findAll with an empty id list returns nothing rather than everything", async () => {
+  await repository.save(anOperation());
 
-  await repository.save(partiallyDelivered);
-  await repository.save(fullyDelivered);
-  await repository.save(anotherClientsOperation);
-
-  const active = await repository.findActiveByClient(clientId);
-
-  expect(active).toEqual([partiallyDelivered]);
+  expect(await repository.findAll({ ids: [] })).toEqual([]);
 });
 
-test("findAll returns every stored operation regardless of client or delivery state", async () => {
+test("findAll returns every stored operation regardless of owner or delivery state", async () => {
   const first = anOperation();
   const second = withAllContainersDelivered(anOperation());
 

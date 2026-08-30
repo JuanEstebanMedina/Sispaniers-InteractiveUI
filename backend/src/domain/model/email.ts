@@ -1,6 +1,6 @@
 export type EmailSource = "make" | "gmail" | "outlook" | "manual";
 
-export interface EmailAttachment {
+export interface IncomingAttachment {
   filename?: string;
   mimetype?: string;
   data?: string;
@@ -15,5 +15,5 @@ export interface NormalizedEmail {
   receivedAt: string;
   bodyText?: string;
   bodyHtml?: string;
-  attachments?: EmailAttachment[];
+  attachments?: IncomingAttachment[];
 }

@@ -25,15 +25,15 @@ function attachmentLogSummary(attachments: ReceiveEmailResult["attachments"]) {
   return attachments.map((attachment) => ({
     filename: attachment.filename,
     mimetype: attachment.mimetype,
-    kind: attachment.kind,
+    format: attachment.format,
     ...(attachment.error !== undefined ? { error: attachment.error } : {}),
-    ...(attachment.kind === "text" && attachment.content !== undefined
+    ...(attachment.format !== "image" && attachment.content !== undefined
       ? {
           content_length: attachment.content.length,
           content_preview: attachment.content.slice(0, ATTACHMENT_PREVIEW_LENGTH),
         }
       : {}),
-    ...(attachment.kind === "image" && attachment.content !== undefined
+    ...(attachment.format === "image" && attachment.content !== undefined
       ? { base64_length: attachment.content.length }
       : {}),
   }));

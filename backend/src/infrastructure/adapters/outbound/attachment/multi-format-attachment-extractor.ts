@@ -2,8 +2,9 @@ import mammoth from "mammoth";
 import { parseOffice } from "officeparser";
 import { PDFParse } from "pdf-parse";
 import { read as readWorkbook, utils as sheetUtils } from "xlsx";
-import type { ExtractedAttachment } from "../../../../domain/model/attachment-content.js";
-import type { EmailAttachment } from "../../../../domain/model/email.js";
+import type { DocumentFormat } from "../../../../domain/enums/document-format.js";
+import type { IncomingAttachment } from "../../../../domain/model/email.js";
+import type { ExtractedContent } from "../../../../domain/model/extracted-content.js";
 import type { AttachmentExtractor } from "../../../../domain/ports/attachment-extractor.port.js";
 
 const DOCX_MIMETYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -13,6 +14,22 @@ const XLSX_MIMETYPES = new Set([
   "application/vnd.ms-excel",
 ]);
 const CSV_MIMETYPES = new Set(["text/csv", "application/csv"]);
+
+function formatOf(mimetype: string): DocumentFormat {
+  if (mimetype.startsWith("image/")) {
+    return "image";
+  }
+  if (mimetype === "application/pdf") {
+    return "pdf";
+  }
+  if (XLSX_MIMETYPES.has(mimetype) || CSV_MIMETYPES.has(mimetype)) {
+    return "spreadsheet";
+  }
+  if (mimetype === DOCX_MIMETYPE || mimetype === PPTX_MIMETYPE) {
+    return "document";
+  }
+  return "other";
+}
 
 async function extractSpreadsheet(buffer: Buffer): Promise<string> {
   const workbook = readWorkbook(buffer, { type: "buffer" });
@@ -24,9 +41,6 @@ async function extractSpreadsheet(buffer: Buffer): Promise<string> {
 }
 
 async function extractByMimetype(mimetype: string, buffer: Buffer): Promise<string | undefined> {
-  if (mimetype.startsWith("image/")) {
-    return undefined;
-  }
   if (mimetype === "application/pdf") {
     const parser = new PDFParse({ data: buffer });
     try {
@@ -54,18 +68,20 @@ async function extractByMimetype(mimetype: string, buffer: Buffer): Promise<stri
 }
 
 export class MultiFormatAttachmentExtractor implements AttachmentExtractor {
-  async extract(attachment: EmailAttachment): Promise<ExtractedAttachment> {
+  async extract(attachment: IncomingAttachment): Promise<ExtractedContent> {
     const base = {
       ...(attachment.filename !== undefined ? { filename: attachment.filename } : {}),
       ...(attachment.mimetype !== undefined ? { mimetype: attachment.mimetype } : {}),
     };
 
     if (attachment.mimetype === undefined || attachment.data === undefined) {
-      return { ...base, kind: "unsupported", error: "missing mimetype or data" };
+      return { ...base, format: "other", error: "missing mimetype or data" };
     }
 
-    if (attachment.mimetype.startsWith("image/")) {
-      return { ...base, kind: "image", content: attachment.data };
+    const format = formatOf(attachment.mimetype);
+
+    if (format === "image") {
+      return { ...base, format, content: attachment.data };
     }
 
     const buffer = Buffer.from(attachment.data, "base64");
@@ -73,19 +89,15 @@ export class MultiFormatAttachmentExtractor implements AttachmentExtractor {
     try {
       const content = await extractByMimetype(attachment.mimetype, buffer);
       if (content === undefined) {
-        return {
-          ...base,
-          kind: "unsupported",
-          error: `unsupported mimetype: ${attachment.mimetype}`,
-        };
+        return { ...base, format, error: `unsupported mimetype: ${attachment.mimetype}` };
       }
-      return { ...base, kind: "text", content };
+      return { ...base, format, content };
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       const magicBytes = buffer.subarray(0, 8).toString("hex");
       return {
         ...base,
-        kind: "unsupported",
+        format,
         error: `${reason} (decoded ${buffer.length} bytes, starts with hex ${magicBytes})`,
       };
     }

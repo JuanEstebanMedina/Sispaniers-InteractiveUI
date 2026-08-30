@@ -1,6 +1,6 @@
 import type { ContainerState } from "../enums/container-state.js";
-import type { DocumentType } from "../enums/document-type.js";
 import type { OperationHealth } from "../enums/operation-health.js";
+import type { OperationContext } from "./operation-context.js";
 
 export type { ContainerState } from "../enums/container-state.js";
 
@@ -32,6 +32,7 @@ export interface VesselPosition {
 
 export interface Booking {
   id: string;
+  companyIds: string[];
   carrier: string;
   vessel: string;
   originPort: string;
@@ -41,20 +42,10 @@ export interface Booking {
   containers: Container[];
 }
 
-export interface LogisticsDocument {
-  id: string;
-  type: DocumentType;
-  bookingId?: string;
-  sourceEmailId?: string;
-  extractedData: Record<string, unknown>;
-  receivedAt: Date;
-}
-
 export interface Operation {
   id: string;
-  clientId: string;
   bookings: Booking[];
-  documents: LogisticsDocument[];
+  context: OperationContext;
   createdAt: Date;
   health?: OperationHealth;
 }

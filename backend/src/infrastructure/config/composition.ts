@@ -5,12 +5,14 @@ import { createListOperationsUseCase } from "../../application/use-cases/dashboa
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
+import type { CompanyRepository } from "../../domain/ports/company.repository.js";
 import type { EmailSender } from "../../domain/ports/email-sender.port.js";
 import type { OperationRepository } from "../../domain/ports/operation.repository.js";
 import { buildApp } from "../adapters/inbound/http/app.js";
 import { MultiFormatAttachmentExtractor } from "../adapters/outbound/attachment/multi-format-attachment-extractor.js";
 import { NodemailerEmailSender } from "../adapters/outbound/email/nodemailer-email-sender.js";
 import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.js";
+import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repository.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
 import { connectMongo } from "./mongo.js";
 
@@ -22,6 +24,7 @@ export interface CreateAppOverrides {
   emailSender?: EmailSender;
   attachmentExtractor?: AttachmentExtractor;
   operationRepository?: OperationRepository;
+  companyRepository?: CompanyRepository;
 }
 
 function buildEmailSender(override: EmailSender | undefined): EmailSender {
@@ -34,34 +37,43 @@ function buildEmailSender(override: EmailSender | undefined): EmailSender {
   );
 }
 
-interface OperationRepositorySource {
-  repository: OperationRepository;
+interface Repositories {
+  operationRepository: OperationRepository;
+  companyRepository: CompanyRepository;
   close?: () => Promise<void>;
 }
 
-async function buildOperationRepository(
-  override: OperationRepository | undefined,
-): Promise<OperationRepositorySource> {
-  if (override !== undefined) {
-    return { repository: override };
+async function buildRepositories(overrides: CreateAppOverrides): Promise<Repositories> {
+  const { operationRepository, companyRepository } = overrides;
+
+  if (operationRepository !== undefined && companyRepository !== undefined) {
+    return { operationRepository, companyRepository };
   }
+
   const mongo = await connectMongo();
-  return { repository: new MongoOperationRepository(mongo.db), close: mongo.close };
+
+  return {
+    operationRepository: operationRepository ?? new MongoOperationRepository(mongo.db),
+    companyRepository: companyRepository ?? new MongoCompanyRepository(mongo.db),
+    close: mongo.close,
+  };
 }
 
 export async function createApp(overrides: CreateAppOverrides = {}): Promise<FastifyInstance> {
   const idGenerator = new CryptoIdGenerator();
   const emailSender = buildEmailSender(overrides.emailSender);
   const attachmentExtractor = overrides.attachmentExtractor ?? new MultiFormatAttachmentExtractor();
-  const { repository: operationRepository, close } = await buildOperationRepository(
-    overrides.operationRepository,
-  );
+  const { operationRepository, companyRepository, close } = await buildRepositories(overrides);
 
   const receiveEmail = createReceiveEmailUseCase({ idGenerator, attachmentExtractor });
   const sendEmail = createSendEmailUseCase({ emailSender, idGenerator });
-  const createOperation = createCreateOperationUseCase({ operationRepository, idGenerator });
+  const createOperation = createCreateOperationUseCase({
+    operationRepository,
+    companyRepository,
+    idGenerator,
+  });
   const getOperation = createGetOperationUseCase({ operationRepository });
-  const listOperations = createListOperationsUseCase({ operationRepository });
+  const listOperations = createListOperationsUseCase({ operationRepository, companyRepository });
 
   const app = buildApp({
     receiveEmail,

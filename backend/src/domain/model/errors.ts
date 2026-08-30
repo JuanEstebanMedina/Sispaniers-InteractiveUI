@@ -18,3 +18,10 @@ export class InvalidFilterCombinationError extends Error {
     this.name = "InvalidFilterCombinationError";
   }
 }
+
+export class CompanyNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Company not found: ${id}`);
+    this.name = "CompanyNotFoundError";
+  }
+}
