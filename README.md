@@ -126,12 +126,12 @@ not have it.
 make -C backend hooks
 ```
 
-**4. Load the seed data.** The database starts empty; this loads four synthetic
-operations covering every container state:
+**4. Load the seed data.** The database starts empty; this loads three companies and
+four synthetic operations covering every container state:
 
 ```bash
 make -C backend seed
-curl http://127.0.0.1:8000/api/flows
+curl http://127.0.0.1:8000/api/operations
 ```
 
 The full environment-variable table, the API reference, the data model and

@@ -21,21 +21,21 @@ import {
 } from "../../../../../../domain/model/errors.js";
 import { errorResponseSchema } from "../../schemas/error.schema.js";
 import {
-  createFlowBodySchema,
-  flowResponseSchema,
-  listFlowsQuerySchema,
-  listFlowsResponseSchema,
-} from "../../schemas/flow.schema.js";
+  createOperationBodySchema,
+  listOperationsQuerySchema,
+  listOperationsResponseSchema,
+  operationResponseSchema,
+} from "../../schemas/operation.schema.js";
 
-const flowParamsSchema = z.object({ id: z.string().min(1) });
+const operationParamsSchema = z.object({ id: z.string().min(1) });
 
-export interface FlowsRouteDeps {
+export interface OperationsRouteDeps {
   createOperation: (input: CreateOperationInput) => Promise<CreateOperationResult>;
   getOperation: (input: GetOperationInput) => Promise<GetOperationResult>;
   listOperations: (input: ListOperationsInput) => Promise<ListOperationsResultItem[]>;
 }
 
-function toFlowResponse(operation: Operation, status: ContainerState) {
+function toOperationResponse(operation: Operation, status: ContainerState) {
   return {
     id: operation.id,
     company_ids: [...new Set(operation.bookings.flatMap((booking) => booking.companyIds))],
@@ -47,15 +47,18 @@ function toFlowResponse(operation: Operation, status: ContainerState) {
   };
 }
 
-export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify, deps) => {
+export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = async (
+  fastify,
+  deps,
+) => {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
   app.post(
-    "/flows",
+    "/operations",
     {
       schema: {
-        body: createFlowBodySchema,
-        response: { 201: flowResponseSchema, 404: errorResponseSchema },
+        body: createOperationBodySchema,
+        response: { 201: operationResponseSchema, 404: errorResponseSchema },
       },
     },
     async (request, reply) => {
@@ -67,7 +70,7 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
           ...(dto.health !== undefined ? { health: dto.health } : {}),
         });
 
-        reply.code(201).send(toFlowResponse(result.operation, result.status));
+        reply.code(201).send(toOperationResponse(result.operation, result.status));
       } catch (error) {
         if (error instanceof CompanyNotFoundError) {
           reply.code(404).send({ error: "company_not_found", message: error.message });
@@ -79,11 +82,11 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
   );
 
   app.get(
-    "/flows/:id",
+    "/operations/:id",
     {
       schema: {
-        params: flowParamsSchema,
-        response: { 200: flowResponseSchema, 404: errorResponseSchema },
+        params: operationParamsSchema,
+        response: { 200: operationResponseSchema, 404: errorResponseSchema },
       },
     },
     async (request, reply) => {
@@ -91,10 +94,10 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
 
       try {
         const result = await deps.getOperation({ id });
-        reply.code(200).send(toFlowResponse(result.operation, result.status));
+        reply.code(200).send(toOperationResponse(result.operation, result.status));
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
-          reply.code(404).send({ error: "flow_not_found", message: error.message });
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
           return;
         }
         throw error;
@@ -103,12 +106,12 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
   );
 
   app.get(
-    "/flows",
+    "/operations",
     {
       schema: {
-        querystring: listFlowsQuerySchema,
+        querystring: listOperationsQuerySchema,
         response: {
-          200: listFlowsResponseSchema,
+          200: listOperationsResponseSchema,
           400: errorResponseSchema,
           404: errorResponseSchema,
         },
@@ -128,7 +131,9 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
         });
 
         reply.code(200).send({
-          flows: results.map(({ operation, status }) => toFlowResponse(operation, status)),
+          operations: results.map(({ operation, status }) =>
+            toOperationResponse(operation, status),
+          ),
         });
       } catch (error) {
         if (error instanceof InvalidFilterCombinationError) {

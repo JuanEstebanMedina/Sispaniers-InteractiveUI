@@ -1,8 +1,9 @@
 # Sispaniers InteractiveUI — Backend
 
 Fastify + TypeScript API behind a hexagonal (ports & adapters) layout. It owns the
-logistics domain (operations, bookings, containers, documents), persists it in MongoDB
-and exposes it to the runtime-generated UI.
+logistics domain (companies, operations, bookings, containers and the context of emails
+and documents an agent reads), persists it in MongoDB and exposes it to the
+runtime-generated UI.
 
 Node.js >= 22 and pnpm 8.15 (`corepack enable`). Setup, git hooks and the validation
 pipeline live in the [root README](../README.md); `make help` lists every command.
@@ -11,8 +12,10 @@ pipeline live in the [root README](../README.md); `make help` lists every comman
 `application` imports only `domain`. `infrastructure/config/composition.ts` is the only
 place that wires concretes.
 
-`Operation` is the single aggregate root: bookings, containers and documents live
-embedded in one Mongo document, so a whole shipment is read and written atomically.
+`Operation` is the aggregate root of a shipment: bookings, containers and the agent's
+`context` live embedded in one Mongo document, so a whole shipment is read and written
+atomically. `Company` is a second, small root in its own collection; it owns the ids of
+the operations it is responsible for.
 
 ## Environment
 
@@ -58,25 +61,29 @@ Dates are ISO-8601 strings.
 
 Liveness probe used by the compose healthcheck and `make smoke`. Returns `{"status":"ok"}`.
 
-### `POST /api/flows`
+> These endpoints are `/api/operations`, not `/api/flows`. A *flow* is the sequence of
+> steps an agent executes (see the glossary in the root README); an *operation* is the
+> shipment the agent works on. They are different things.
 
-Creates an operation. Bookings and documents start empty, so the derived status is
-always `booking_confirmed`.
+### `POST /api/operations`
+
+Creates an operation and appends its id to the owning company. Bookings and context
+start empty, so the derived status is always `booking_confirmed`.
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/flows \
+curl -X POST http://127.0.0.1:8000/api/operations \
   -H "Content-Type: application/json" \
-  -d '{ "client_id": "client-andes-textiles", "health": "ok" }'
+  -d '{ "company_id": "company-andes-textiles", "health": "ok" }'
 ```
 
 | Field | Type | Required |
 |---|---|---|
-| `client_id` | string, non-empty | yes |
+| `company_id` | string, non-empty | yes; `404` if the company does not exist |
 | `health` | `ok` \| `warning` \| `error` | no, defaults to `ok` |
 
-`201` returns the flow object.
+`201` returns the operation object.
 
-### `GET /api/flows`
+### `GET /api/operations`
 
 Lists operations. All query parameters are optional.
 
@@ -84,26 +91,27 @@ Lists operations. All query parameters are optional.
 |---|---|---|
 | `status` | container state | filters on the **derived** status, in memory |
 | `health` | `ok` \| `warning` \| `error` | filters in Mongo |
-| `search` | string | case-insensitive substring match on `client_id` |
+| `company_id` | string | reads `Company.operationIds` and narrows to those ids |
 | `from` / `to` | ISO date | `created_at` range |
 | `date` | ISO date | that whole UTC day; **cannot be combined** with `from`/`to` |
 
 ```bash
-curl "http://127.0.0.1:8000/api/flows?status=in_transit&search=andes"
+curl "http://127.0.0.1:8000/api/operations?status=in_transit&company_id=company-andes-textiles"
 ```
 
-`200` → `{ "flows": [ ... ] }`
+`200` → `{ "operations": [ ... ] }`
 
-### `GET /api/flows/:id`
+### `GET /api/operations/:id`
 
 ```bash
-curl http://127.0.0.1:8000/api/flows/op-andes-textiles-001
+curl http://127.0.0.1:8000/api/operations/op-andes-textiles-001
 ```
 
-`200` → a flow object. `404` → `flow_not_found`.
+`200` → an operation object. `404` → `operation_not_found`.
 
-A flow object is `id`, `client_id`, `status`, `health`, `created_at`, `bookings[]` and
-`documents[]`. Run the curl above against a seeded database for the full shape.
+An operation object is `id`, `company_ids`, `status`, `health`, `created_at`,
+`bookings[]` and `context`. Run the curl above against a seeded database for the full
+shape.
 
 ### `POST /api/emails/receive`
 
@@ -173,10 +181,22 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 |---|---|---|
 | `400` | `validation_error` | body, params or querystring failed the zod schema; adds a `details` array |
 | `400` | `invalid_filter_combination` | `date` sent together with `from`/`to` |
-| `404` | `flow_not_found` | no operation with that id |
+| `404` | `operation_not_found` | no operation with that id |
+| `404` | `company_not_found` | no company with that id |
 | `502` | `email_send_failed` | SMTP rejected the message |
 
 ## Things the code will not tell you at a glance
+
+**`company_ids` on an operation is derived, never stored.** It is the union of
+`bookings[].companyIds`, computed when the response is built. Ownership itself lives in
+one place only: `Company.operationIds`. An operation with no bookings answers with an
+empty list, which is the truth.
+
+**Documents are pointers, not payloads.** A `Document` carries a `bucketKey` into S3
+plus a `format` (`pdf`, `spreadsheet`, `document`, `image`, `other`) and whatever the
+extractor could scrape into `extractedData`. The bytes never reach Mongo, and neither do
+email attachments: `NormalizedEmail` is a transport DTO, and only the lightweight
+`ContextEmail` projection is persisted.
 
 **`status` is derived, never stored.** Container states run
 `booking_confirmed` → `in_transit` → `arrived_port` → `customs` → `delivered`. A booking's

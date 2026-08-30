@@ -20,24 +20,24 @@ afterEach(async () => {
 });
 
 test("an empty database answers with an empty operations list", async () => {
-  const response = await app.inject({ method: "GET", url: "/api/flows" });
+  const response = await app.inject({ method: "GET", url: "/api/operations" });
 
   expect(response.statusCode).toBe(200);
-  expect(response.json()).toEqual({ flows: [] });
+  expect(response.json()).toEqual({ operations: [] });
 });
 
 test("the endpoint exposes the whole aggregate with its derived status", async () => {
   const operation = anOperation();
   await operationRepository.save(operation);
 
-  const response = await app.inject({ method: "GET", url: "/api/flows" });
+  const response = await app.inject({ method: "GET", url: "/api/operations" });
 
   expect(response.statusCode).toBe(200);
 
   const body = response.json();
-  const [listed] = body.flows;
+  const [listed] = body.operations;
 
-  expect(body.flows).toHaveLength(1);
+  expect(body.operations).toHaveLength(1);
   expect(listed.id).toBe(operation.id);
   expect(listed.company_ids).toEqual(operation.bookings[0]?.companyIds);
   expect(listed.status).toBe("in_transit");

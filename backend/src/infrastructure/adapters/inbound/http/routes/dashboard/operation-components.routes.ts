@@ -24,7 +24,7 @@ import {
   updateComponentContentResponseSchema,
   updateLayoutBodySchema,
   updateLayoutResponseSchema,
-} from "../../schemas/flow-component.schema.js";
+} from "../../schemas/operation-component.schema.js";
 
 const operationParamsSchema = z.object({ id: z.string().min(1) });
 const operationComponentParamsSchema = z.object({
@@ -32,7 +32,7 @@ const operationComponentParamsSchema = z.object({
   componentId: z.string().min(1),
 });
 
-export interface FlowComponentsRouteDeps {
+export interface OperationComponentsRouteDeps {
   getOperationComponents: (
     input: GetOperationComponentsInput,
   ) => Promise<GetOperationComponentsResult>;
@@ -65,10 +65,9 @@ function toComponentResponse(component: Component) {
   } as const;
 }
 
-export const flowComponentsRoutes: FastifyPluginAsyncZod<FlowComponentsRouteDeps> = async (
-  fastify,
-  deps,
-) => {
+export const operationComponentsRoutes: FastifyPluginAsyncZod<
+  OperationComponentsRouteDeps
+> = async (fastify, deps) => {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
   app.get(
@@ -92,7 +91,7 @@ export const flowComponentsRoutes: FastifyPluginAsyncZod<FlowComponentsRouteDeps
         });
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
-          reply.code(404).send({ error: "flow_not_found", message: error.message });
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
           return;
         }
         throw error;
@@ -124,7 +123,7 @@ export const flowComponentsRoutes: FastifyPluginAsyncZod<FlowComponentsRouteDeps
           .send({ cols: result.cols, layout: result.layout.map(toLayoutEntryResponse) });
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
-          reply.code(404).send({ error: "flow_not_found", message: error.message });
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
           return;
         }
         if (error instanceof InvalidLayoutError) {
@@ -162,7 +161,7 @@ export const flowComponentsRoutes: FastifyPluginAsyncZod<FlowComponentsRouteDeps
         reply.code(200).send(toComponentResponse(component));
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
-          reply.code(404).send({ error: "flow_not_found", message: error.message });
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
           return;
         }
         if (error instanceof ComponentNotFoundError) {

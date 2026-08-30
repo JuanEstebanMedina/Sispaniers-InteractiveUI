@@ -1,12 +1,14 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import {
-  type FlowComponentsRouteDeps,
-  flowComponentsRoutes,
-} from "./dashboard/flow-components.routes.js";
-import { type FlowsRouteDeps, flowsRoutes } from "./dashboard/flows.routes.js";
+  type OperationComponentsRouteDeps,
+  operationComponentsRoutes,
+} from "./dashboard/operation-components.routes.js";
+import { type OperationsRouteDeps, operationsRoutes } from "./dashboard/operations.routes.js";
 import { type EmailsRouteDeps, emailsRoutes } from "./emails.routes.js";
 
-export type RouteDependencies = EmailsRouteDeps & FlowsRouteDeps & FlowComponentsRouteDeps;
+export type RouteDependencies = EmailsRouteDeps &
+  OperationsRouteDeps &
+  OperationComponentsRouteDeps;
 
 export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastify, deps) => {
   const {
@@ -21,8 +23,8 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
   } = deps;
 
   await fastify.register(emailsRoutes, { receiveEmail, sendEmail });
-  await fastify.register(flowsRoutes, { createOperation, getOperation, listOperations });
-  await fastify.register(flowComponentsRoutes, {
+  await fastify.register(operationsRoutes, { createOperation, getOperation, listOperations });
+  await fastify.register(operationComponentsRoutes, {
     getOperationComponents,
     updateOperationLayout,
     updateComponentContent,
