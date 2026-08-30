@@ -49,6 +49,17 @@ services:
       retries: 5
       start_period: 10s
 
+  seed:
+    build:
+      context: ./backend
+      target: seed
+    restart: "no"
+    environment:
+      MONGODB_URI: mongodb://${MONGO_USER:-sispaniers}:${MONGO_PASSWORD:?set MONGO_PASSWORD in .env, see .env.example}@mongo:27017/${MONGO_DB:-sispaniers}?authSource=admin
+    depends_on:
+      mongo:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./frontend
