@@ -43,22 +43,20 @@ export default function OperationsPage() {
   const search = resolveOperationsSearch(raw)
   const navigate = useNavigate()
 
-  // El backend filtra Y ordena: la web ya no lo hace en memoria, porque el
-  // cliente sólo podría ordenar dentro de lo que alcanzó a descargar.
+  const body = useMemo(
+    () => ({
+      ...(search.q ? { search: search.q } : {}),
+      ...(search.status !== 'all' ? { status: search.status } : {}),
+      ...(search.health !== 'all' ? { health: HEALTH_TO_BACKEND[search.health] } : {}),
+      ...(search.sort !== 'updatedAt' ? { sort_by: SORT_TO_BACKEND[search.sort] } : {}),
+      ...(search.order !== 'desc' ? { sort_dir: search.order } : {}),
+    }),
+    [search.q, search.status, search.health, search.sort, search.order],
+  )
+
   const list = useQuery({
-    queryKey: queryKeys.operations.list(search),
-    queryFn: () =>
-      api$.post(
-        endpoints.operations.search,
-        operationListSchema,
-        {
-          ...(search.q ? { search: search.q } : {}),
-          ...(search.status !== 'all' ? { status: search.status } : {}),
-          ...(search.health !== 'all' ? { health: HEALTH_TO_BACKEND[search.health] } : {}),
-          sort_by: SORT_TO_BACKEND[search.sort] ?? 'updatedAt',
-          sort_dir: search.order,
-        },
-      ),
+    queryKey: queryKeys.operations.list(body),
+    queryFn: () => api$.post(endpoints.operations.search, operationListSchema, body),
     refetchInterval: 15_000,
   })
 
