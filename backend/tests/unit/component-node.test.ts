@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import type { ComponentNode } from "../../src/domain/components/component-node.js";
 import {
   setComponentTreePath,
+  validateComponentSize,
   validateComponentTree,
 } from "../../src/domain/components/component-node.js";
 import {
@@ -16,17 +17,17 @@ function statNode(order: number): ComponentNode {
 test("accepts a container tree nested exactly 4 levels deep", () => {
   const tree = [
     {
-      kind: "button-group",
+      kind: "layout",
       order: 0,
       props: {},
       children: [
         {
-          kind: "button-group",
+          kind: "layout",
           order: 0,
           props: {},
           children: [
             {
-              kind: "button-group",
+              kind: "layout",
               order: 0,
               props: {},
               children: [{ kind: "button", order: 0, props: {}, action: "confirm" }],
@@ -43,22 +44,22 @@ test("accepts a container tree nested exactly 4 levels deep", () => {
 test("rejects a tree nested 5 levels deep", () => {
   const tree = [
     {
-      kind: "button-group",
+      kind: "layout",
       order: 0,
       props: {},
       children: [
         {
-          kind: "button-group",
+          kind: "layout",
           order: 0,
           props: {},
           children: [
             {
-              kind: "button-group",
+              kind: "layout",
               order: 0,
               props: {},
               children: [
                 {
-                  kind: "button-group",
+                  kind: "layout",
                   order: 0,
                   props: {},
                   children: [{ kind: "button", order: 0, props: {}, action: "confirm" }],
@@ -119,4 +120,64 @@ test("rejects a path pointing at an out-of-range index", () => {
   expect(() => setComponentTreePath(tree, "children.9.props.name", "new")).toThrow(
     InvalidComponentPathError,
   );
+});
+
+test("layout accepts children of any kind, not only buttons", () => {
+  const tree = [
+    {
+      kind: "layout",
+      order: 0,
+      props: { direction: "row" },
+      children: [
+        { kind: "title", order: 0, props: { text: "A" } },
+        { kind: "trend-chart", order: 1, props: { dataKey: "sales" } },
+        { kind: "button", order: 2, props: {}, action: "refresh" },
+      ],
+    },
+  ];
+
+  expect(() => validateComponentTree(tree)).not.toThrow();
+});
+
+test("layout direction may be omitted", () => {
+  const tree = [{ kind: "layout", order: 0, props: {}, children: [statNode(0)] }];
+
+  expect(() => validateComponentTree(tree)).not.toThrow();
+});
+
+test("rejects a layout direction that is neither row nor column", () => {
+  const tree = [{ kind: "layout", order: 0, props: { direction: "diagonal" }, children: [] }];
+
+  expect(() => validateComponentTree(tree)).toThrow(InvalidComponentTreeError);
+});
+
+test("rejects children on a kind that does not nest", () => {
+  const tree = [{ kind: "stat", order: 0, props: {}, children: [statNode(0)] }];
+
+  expect(() => validateComponentTree(tree)).toThrow(InvalidComponentTreeError);
+});
+
+test("rejects a chart in a container too small to render it legibly", () => {
+  const children: ComponentNode[] = [{ kind: "trend-chart", order: 0, props: {} }];
+
+  expect(() => validateComponentSize("tile", children)).toThrow(InvalidComponentTreeError);
+  expect(() => validateComponentSize("banner", children)).toThrow(InvalidComponentTreeError);
+  expect(() => validateComponentSize("small", children)).not.toThrow();
+});
+
+test("finds a chart nested inside a layout when checking the size", () => {
+  const children: ComponentNode[] = [
+    {
+      kind: "layout",
+      order: 0,
+      props: {},
+      children: [{ kind: "category-chart", order: 0, props: {} }],
+    },
+  ];
+
+  expect(() => validateComponentSize("tile", children)).toThrow(InvalidComponentTreeError);
+});
+
+test("a container with no chart fits any size", () => {
+  expect(() => validateComponentSize("tile", [statNode(0)])).not.toThrow();
 });
