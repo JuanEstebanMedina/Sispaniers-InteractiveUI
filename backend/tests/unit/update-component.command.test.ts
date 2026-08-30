@@ -52,7 +52,15 @@ test("update_component leaves the component's size untouched", async () => {
 test("update_component resizes and moves one component while reordering siblings", async () => {
   const componentRepository = new InMemoryComponentRepository();
   const first = aComponent({ id: "first", operationId: "op-1", order: 0 });
-  const second = aComponent({ id: "second", operationId: "op-1", order: 1 });
+  const second = aComponent({
+    id: "second",
+    operationId: "op-1",
+    order: 1,
+    children: [
+      { kind: "title", order: 0, props: { text: "Vessel ETA" } },
+      { kind: "stat", order: 1, props: { value: "5", label: "days late" } },
+    ],
+  });
   await componentRepository.save(first);
   await componentRepository.save(second);
   const operationRepository = {
