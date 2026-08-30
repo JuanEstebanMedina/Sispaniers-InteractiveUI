@@ -26,11 +26,15 @@ Reading to answer is allowed. A node whose `props.dataKey` looks like
 any other `dataKey` you have no tool: say the figure comes from the operation's
 records and that you cannot read it from here, rather than guessing at it.
 
-### What it does not do
+### Layout changes
 
-- It never changes the component's **size** or its position on the grid. There
-  is no `layout` field. Correcting content is not a request to resize.
-- It never touches any other component. Only `componentId` is written.
+`layout` resizes this component. `position` moves it in zero-based component
+sequence shown in existing-components list. Backend repacks grid and shifts
+siblings as needed.
+
+Only send either field when user explicitly asks for size or move and target is
+exactly one component. Never infer resize from content, or move from vague
+request such as "make it better". For content-only edit, omit both fields.
 - **It never changes the data.** The figures a widget shows are the company's
   record of what happened, not text you may edit.
 
@@ -63,15 +67,17 @@ is fine when it helps you say what the current figure actually is.
 
 ```json
 {
+  "componentId": "<id of existing component to update>",
   "children": [
     { "kind": "<same index as create_component>", "order": <n>, "props": { ... } }
   ],
-  "componentId": "<id of the existing component to update>",
+  "layout": { "cols": 4, "rows": 2 },
+  "position": 0,
   "reply": "<short natural-language message, addressed directly to the end user and shown verbatim in a chat bubble>"
 }
 ```
 
-`children` uses exactly the same `kind` index, the same props per component and
+`children` is optional for layout-only update. It uses exactly same `kind` index, same props per component and
 the same data sources (`dataKey`) as `create_component` — there is no separate
 list for updates.
 
@@ -85,4 +91,5 @@ list for updates.
   this operation is rejected.
 - `reply` is **required** — a conversational message for the end user, with no
   internal jargon, no HTML, no markdown, no code, never empty. Say what changed.
-- There is no `layout` field: an update never resizes the component.
+- `layout` is optional. Send requested grid dimensions (`cols`, `rows`) only for explicit resize; they map to nearest supported size.
+- `position` is optional. Send it only for explicit move; `0` is first component.

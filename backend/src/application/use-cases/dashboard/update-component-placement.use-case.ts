@@ -1,4 +1,6 @@
 import { type Component, bySequence } from "../../../domain/components/component.js";
+import { validateComponentSize } from "../../../domain/components/component-node.js";
+import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
 import { ComponentNotFoundError, OperationNotFoundError } from "../../../domain/model/errors.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
@@ -8,6 +10,7 @@ export interface UpdateComponentPlacementInput {
   operationId: string;
   componentId: string;
   position?: number;
+  size?: WidgetSizeName;
   title?: string;
 }
 
@@ -43,14 +46,16 @@ export function createUpdateComponentPlacementUseCase(deps: UpdateComponentPlace
 
     const renamed =
       input.title === undefined ? existing : renameComponent(existing, input.title.trim());
+    const resized = input.size === undefined ? renamed : { ...renamed, size: input.size };
+    validateComponentSize(resized.size, resized.children);
 
     if (input.position === undefined) {
-      await componentRepository.save(renamed);
-      return renamed;
+      await componentRepository.save(resized);
+      return resized;
     }
 
     const siblings = await componentRepository.findByOperationId(input.operationId);
-    const sequence = reorder(siblings, renamed, input.position);
+    const sequence = reorder(siblings, resized, input.position);
 
     await Promise.all(
       sequence.map((component, order) =>
