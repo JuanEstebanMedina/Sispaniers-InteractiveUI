@@ -44,6 +44,12 @@ export interface Booking {
 
 export interface Operation {
   id: string;
+  /**
+   * The company the operation was opened for. Absent when the operation was
+   * created from an inbound email, where no company is known yet. Distinct from
+   * `Booking.companyIds`, which are the parties on a given booking.
+   */
+  companyId?: string;
   bookings: Booking[];
   context: OperationContext;
   createdAt: Date;

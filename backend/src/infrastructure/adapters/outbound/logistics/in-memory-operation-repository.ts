@@ -4,6 +4,13 @@ import type {
   OperationRepository,
 } from "../../../../domain/ports/operation.repository.js";
 
+function companyMatches(operation: Operation, companyId: string): boolean {
+  return (
+    operation.companyId === companyId ||
+    operation.bookings.some((booking) => booking.companyIds.includes(companyId))
+  );
+}
+
 export class InMemoryOperationRepository implements OperationRepository {
   private readonly operations = new Map<string, Operation>();
 
@@ -14,6 +21,9 @@ export class InMemoryOperationRepository implements OperationRepository {
   async findAll(filter: OperationQueryFilter = {}): Promise<Operation[]> {
     return [...this.operations.values()].filter((operation) => {
       if (filter.ids !== undefined && !filter.ids.includes(operation.id)) {
+        return false;
+      }
+      if (filter.companyId !== undefined && !companyMatches(operation, filter.companyId)) {
         return false;
       }
       if (filter.health !== undefined && operation.health !== filter.health) {

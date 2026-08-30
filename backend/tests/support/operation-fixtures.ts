@@ -7,7 +7,6 @@ export function aCompany(overrides: Partial<Company> = {}): Company {
     id: randomUUID(),
     name: "Andes Textiles",
     contactEmails: ["logistics@andestextiles.co"],
-    operationIds: [],
     preferredNotificationChannel: "email",
     ...overrides,
   };

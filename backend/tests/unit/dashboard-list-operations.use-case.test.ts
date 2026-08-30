@@ -49,10 +49,10 @@ test("the status filter keeps only the operations that derive to it", async () =
   ]);
 });
 
-test("companyId narrows the listing to the operation ids the company owns", async () => {
-  const andes = anOperation();
-  const cafe = anOperation();
-  const company = aCompany({ id: "company-andes", operationIds: [andes.id] });
+test("companyId narrows the listing to the operations that company owns", async () => {
+  const andes = anOperation({ companyId: "company-andes" });
+  const cafe = anOperation({ companyId: "company-cafe" });
+  const company = aCompany({ id: "company-andes" });
 
   const listOperations = await listOver([andes, cafe], [company]);
 
@@ -61,11 +61,30 @@ test("companyId narrows the listing to the operation ids the company owns", asyn
   ]);
 });
 
+test("companyId also matches an operation where the company is a party on a booking", async () => {
+  const base = anOperation();
+  const asParty = anOperation({
+    bookings: base.bookings.map((booking) => ({ ...booking, companyIds: ["company-andes"] })),
+  });
+  const unrelated = anOperation();
+
+  const listOperations = await listOver([asParty, unrelated], [aCompany({ id: "company-andes" })]);
+
+  expect(await listOperations({ companyId: "company-andes" })).toEqual([
+    { operation: asParty, status: "in_transit" },
+  ]);
+});
+
+test("a bookingless operation still lists under the company that owns it", async () => {
+  const fresh = anOperation({ companyId: "company-andes", bookings: [] });
+
+  const listOperations = await listOver([fresh], [aCompany({ id: "company-andes" })]);
+
+  expect(await listOperations({ companyId: "company-andes" })).toHaveLength(1);
+});
+
 test("a company without operations lists nothing instead of everything", async () => {
-  const listOperations = await listOver(
-    [anOperation()],
-    [aCompany({ id: "company-empty", operationIds: [] })],
-  );
+  const listOperations = await listOver([anOperation()], [aCompany({ id: "company-empty" })]);
 
   expect(await listOperations({ companyId: "company-empty" })).toEqual([]);
 });

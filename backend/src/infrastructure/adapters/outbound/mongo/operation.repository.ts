@@ -27,6 +27,9 @@ export class MongoOperationRepository implements OperationRepository {
     if (filter.ids !== undefined) {
       query._id = { $in: filter.ids };
     }
+    if (filter.companyId !== undefined) {
+      query.$or = [{ companyId: filter.companyId }, { "bookings.companyIds": filter.companyId }];
+    }
     if (filter.health !== undefined) {
       query.health = filter.health;
     }

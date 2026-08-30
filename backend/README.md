@@ -93,7 +93,7 @@ Lists operations. All query parameters are optional.
 |---|---|---|
 | `status` | container state | filters on the **derived** status, in memory |
 | `health` | `ok` \| `warning` \| `error` | filters in Mongo |
-| `company_id` | string | reads `Company.operationIds` and narrows to those ids |
+| `company_id` | string | matches the owning company or any booking party, in Mongo |
 | `from` / `to` | ISO date | `created_at` range |
 | `date` | ISO date | that whole UTC day; **cannot be combined** with `from`/`to` |
 
@@ -208,10 +208,12 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 
 ## Things the code will not tell you at a glance
 
-**`company_ids` on an operation is derived, never stored.** It is the union of
-`bookings[].companyIds`, computed when the response is built. Ownership itself lives in
-one place only: `Company.operationIds`. An operation with no bookings answers with an
-empty list, which is the truth.
+**Two different company links, on purpose.** `Operation.companyId` is the company the
+operation was opened *for* — absent when the operation came from an inbound email, where
+no company is known yet. `bookings[].companyIds` are the parties on each booking, which
+may differ per booking. The `company_ids` field in the response is the union of both,
+computed when the response is built and never stored, and `?company_id=` matches either.
+A company holds no list of its operations: that duplicate could only drift.
 
 **Documents are pointers, not payloads.** A `Document` carries a `bucketKey` into an
 S3-compatible bucket (Supabase Storage, not AWS) plus a `format` (`pdf`, `spreadsheet`,

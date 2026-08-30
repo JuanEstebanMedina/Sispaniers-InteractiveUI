@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { createCreateComponentUseCase } from "../../application/use-cases/dashboard/create-component.use-case.js";
 import { createCreateOperationUseCase } from "../../application/use-cases/dashboard/create-operation.use-case.js";
+import { createDeleteComponentUseCase } from "../../application/use-cases/dashboard/delete-component.use-case.js";
 import { createGetOperationComponentsUseCase } from "../../application/use-cases/dashboard/get-operation-components.use-case.js";
 import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
@@ -137,9 +138,14 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   });
   const updateOperationLayout = createUpdateOperationLayoutUseCase({
     operationRepository,
+    componentRepository,
     operationLayoutRepository,
   });
   const updateComponentContent = createUpdateComponentContentUseCase({
+    operationRepository,
+    componentRepository,
+  });
+  const deleteComponent = createDeleteComponentUseCase({
     operationRepository,
     componentRepository,
   });
@@ -154,6 +160,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     getOperationComponents,
     updateOperationLayout,
     updateComponentContent,
+    deleteComponent,
   });
 
   app.decorate("createComponent", createComponent);
