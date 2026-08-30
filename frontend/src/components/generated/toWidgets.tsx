@@ -1,27 +1,58 @@
-import type { GeneratedComponent, LayoutEntry } from '@/schemas'
-import { ComponentNodeView, agentTitleOf } from './ComponentNodeView'
+import { byOrder, type ComponentNode, type GeneratedComponent, type LayoutEntry } from '@/schemas'
+import { createTree } from './nodeFactory'
 import type { Widget } from './WidgetGrid'
 
 /**
- * El backend devuelve dos listas: los componentes en el orden que eligió el
- * usuario y sus coordenadas ya empaquetadas. El grid quiere una sola cosa con
- * ambas, y respeta el orden del array — así que se recorre `components`, no
- * `layout`.
+ * The agent's tree, turned into what the grid draws.
+ *
+ * Rendering goes through `nodeFactory`, which is the only place that knows the
+ * whole contract: a kind missing from here would silently paint an empty
+ * widget, and on a supervision screen that is indistinguishable from good news.
  */
-export function toWidgets(
-  components: GeneratedComponent[],
-  layout: LayoutEntry[],
-): Widget[] {
+
+interface Heading {
+  title?: string
+  rest: ComponentNode[]
+}
+
+/**
+ * The widget frame already draws a header, so the first `title` of the tree
+ * moves up into it and leaves the body. It is pulled from wherever it sits:
+ * the agent is free to nest it inside a layout, and a header reading "—" over
+ * a title the reader can plainly see is the worse of the two failures.
+ */
+function liftTitle(nodes: ComponentNode[]): Heading {
+  const rest: ComponentNode[] = []
+  let title: string | undefined
+
+  for (const node of byOrder(nodes)) {
+    if (title === undefined && node.kind === 'title') {
+      const text = node.props.text
+      title = typeof text === 'string' ? text : ''
+      continue
+    }
+
+    if (title === undefined && node.children?.length) {
+      const inner = liftTitle(node.children)
+      title = inner.title
+      rest.push({ ...node, children: inner.rest })
+      continue
+    }
+
+    rest.push(node)
+  }
+
+  return { title, rest }
+}
+
+export function toWidgets(components: GeneratedComponent[], layout: LayoutEntry[]): Widget[] {
   const placement = new Map(layout.map((entry) => [entry.id, entry]))
 
   return components.flatMap((component) => {
     const at = placement.get(component.id)
     if (!at) return []
 
-    const agentTitle = agentTitleOf(component.content)
-    // El título va en la cabecera del widget; dejarlo también en el cuerpo lo
-    // pintaría dos veces.
-    const body = component.content.filter((node) => node.kind !== 'title')
+    const { title, rest } = liftTitle(component.content)
 
     return [
       {
@@ -30,10 +61,10 @@ export function toWidgets(
         row: at.row,
         w: at.w,
         h: at.h,
-        title: component.title ?? agentTitle ?? '—',
+        title: component.title ?? title ?? '—',
         priority: component.priority,
         fromAgent: component.title === undefined,
-        body: <ComponentNodeView nodes={body} />,
+        body: <>{createTree(rest, component.id)}</>,
       },
     ]
   })
