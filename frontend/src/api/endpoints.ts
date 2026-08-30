@@ -19,12 +19,15 @@ export const endpoints = {
   },
 
   operations: {
-    list: '/flows',
-    detail: (id: string) => `/flows/${id}`,
-    /** ⚠️ El backend todavía NO implementa esto: la posición de los widgets
-     *  no se persiste. El PATCH sale y devuelve 404, que la mutación ignora
-     *  a propósito (fire-and-forget). */
-    layout: (id: string) => `/flows/${id}/layout`,
+    list: '/operations',
+    /** El listado con filtros. Es POST porque texto libre + estado + salud +
+     *  rango de fechas + orden ya no caben en una query string legible. */
+    search: '/operations/search',
+    detail: (id: string) => `/operations/${id}`,
+    components: (id: string) => `/operations/${id}/components`,
+    layout: (id: string) => `/operations/${id}/layout`,
+    componentContent: (id: string, componentId: string) =>
+      `/operations/${id}/components/${componentId}`,
   },
 
   notifications: {
@@ -55,6 +58,7 @@ export const queryKeys = {
     all: ['operations'] as const,
     list: (filters?: unknown) => ['operations', 'list', filters ?? {}] as const,
     detail: (id: string) => ['operations', 'detail', id] as const,
+    components: (id: string, cols: number) => ['operations', 'components', id, cols] as const,
   },
   notifications: {
     all: ['notifications'] as const,

@@ -128,3 +128,107 @@ test("date cannot be combined with to", async () => {
     listOperations({ date: new Date("2026-03-10T00:00:00.000Z"), to: new Date() }),
   ).rejects.toThrow(InvalidFilterCombinationError);
 });
+
+/* ---------------------------------------------------------------------------
+ * Búsqueda libre y ordenamiento
+ *
+ * Los dos existen porque la web los necesita y hasta ahora los resolvía en el
+ * navegador: con cientos de operaciones eso deja de servir, porque el cliente
+ * sólo puede ordenar y buscar dentro de lo que ya descargó.
+ * ------------------------------------------------------------------------ */
+
+test("the search filter matches the operation id", async () => {
+  const wanted = anOperation({ id: "op-andes-textiles-001" });
+  const other = anOperation({ id: "op-cafe-del-valle-001" });
+
+  const listOperations = await listOver([wanted, other]);
+  const found = await listOperations({ search: "andes" });
+
+  expect(found.map(({ operation }) => operation.id)).toEqual(["op-andes-textiles-001"]);
+});
+
+test("the search filter matches a company id", async () => {
+  const withCompany = (id: string, companyId: string) => {
+    const operation = anOperation({ id });
+    return {
+      ...operation,
+      bookings: operation.bookings.map((booking) => ({ ...booking, companyIds: [companyId] })),
+    };
+  };
+  const wanted = withCompany("op-1", "company-andes-textiles");
+  const other = withCompany("op-2", "company-cafe-del-valle");
+
+  const listOperations = await listOver([wanted, other]);
+  const found = await listOperations({ search: "cafe" });
+
+  expect(found.map(({ operation }) => operation.id)).toEqual(["op-2"]);
+});
+
+test("the search filter is case-insensitive", async () => {
+  const operation = anOperation({ id: "op-andes-001" });
+
+  const listOperations = await listOver([operation]);
+
+  expect(await listOperations({ search: "ANDES" })).toHaveLength(1);
+});
+
+test("sorting by id ascending orders the results", async () => {
+  const second = anOperation({ id: "op-b" });
+  const first = anOperation({ id: "op-a" });
+
+  const listOperations = await listOver([second, first]);
+  const found = await listOperations({ sortBy: "id", sortDir: "asc" });
+
+  expect(found.map(({ operation }) => operation.id)).toEqual(["op-a", "op-b"]);
+});
+
+test("sorting by id descending reverses it", async () => {
+  const first = anOperation({ id: "op-a" });
+  const second = anOperation({ id: "op-b" });
+
+  const listOperations = await listOver([first, second]);
+  const found = await listOperations({ sortBy: "id", sortDir: "desc" });
+
+  expect(found.map(({ operation }) => operation.id)).toEqual(["op-b", "op-a"]);
+});
+
+test("sorting by updatedAt uses the newest schedule change, not the creation date", async () => {
+  // La creada primero movió su ETA ayer; la creada después nunca se movió.
+  // Ordenando por "lo último que pasó", la vieja va primero.
+  const template = anOperation();
+  const [templateBooking] = template.bookings;
+  if (templateBooking === undefined) throw new Error("the fixture must have a booking");
+
+  const moved = anOperation({
+    id: "op-moved",
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    bookings: [
+      {
+        ...templateBooking,
+        schedule: {
+          etdOriginal: new Date("2026-01-02T00:00:00Z"),
+          etaOriginal: new Date("2026-02-01T00:00:00Z"),
+          etaCurrent: new Date("2026-02-10T00:00:00Z"),
+          changes: [
+            {
+              previousEta: new Date("2026-02-01T00:00:00Z"),
+              newEta: new Date("2026-02-10T00:00:00Z"),
+              reason: "port congestion",
+              occurredAt: new Date("2026-06-01T00:00:00Z"),
+            },
+          ],
+        },
+      },
+    ],
+  });
+  const untouched = anOperation({
+    id: "op-untouched",
+    createdAt: new Date("2026-03-01T00:00:00Z"),
+    bookings: [],
+  });
+
+  const listOperations = await listOver([untouched, moved]);
+  const found = await listOperations({ sortBy: "updatedAt", sortDir: "desc" });
+
+  expect(found.map(({ operation }) => operation.id)).toEqual(["op-moved", "op-untouched"]);
+});

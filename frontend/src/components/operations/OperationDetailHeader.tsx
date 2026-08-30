@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, ArrowRight, Check, Container, Copy, PanelRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Container, Copy, MessageSquare } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -149,7 +149,7 @@ export function OperationDetailHeader({ operation, waiting = 0 }: OperationDetai
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         )}
       >
-        <PanelRight className="size-4" aria-hidden />
+        <MessageSquare className="size-4" aria-hidden />
         {/* With the panel closed this button is the only sign that something is
             waiting on a person, so it has to carry the mark. */}
         {!railOpen && waiting > 0 && (

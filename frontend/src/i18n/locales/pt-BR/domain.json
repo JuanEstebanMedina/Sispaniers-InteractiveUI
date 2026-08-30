@@ -50,7 +50,9 @@
       "title": "Operações ativas",
       "backToGrid": "Ver todas",
       "show": "Ver as outras operações",
-      "hide": "Ocultar o painel"
+      "hide": "Ocultar o painel",
+      "resize": "Ajustar a largura do painel",
+      "panel": "Painel lateral"
     },
     "generated": {
       "label": "Interface gerada",
@@ -63,9 +65,12 @@
     },
     "chat": {
       "title": "Falar com o agente",
-      "empty": "Peça algo que a interface não cobre: enviar um e-mail, segurar o despacho, solicitar um documento.",
+      "empty": "Escreva como escreveria a um colega: «avise o cliente do atraso», «segure o despacho até eu revisar o BL», «peça o certificado de origem ao fornecedor».",
       "placeholder": "Escreva o que precisa…",
-      "send": "Enviar"
+      "send": "Enviar",
+      "attach": "Anexar arquivo",
+      "removeFile": "Remover {{name}}",
+      "emptyTitle": "Algo para fazer na mão?"
     }
   }
 }

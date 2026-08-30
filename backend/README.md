@@ -101,6 +101,34 @@ curl "http://127.0.0.1:8000/api/operations?status=in_transit&company_id=company-
 
 `200` → `{ "operations": [ ... ] }`
 
+### `POST /api/operations/search`
+
+El listado con filtros en el cuerpo. Existe además del `GET` porque los filtros
+de la web —texto libre, estado, salud, empresa, rango de fechas y orden— no
+caben en una query string legible, y porque ordenar en el cliente sólo ordena
+lo que ya se descargó.
+
+Todos los campos son opcionales; un body vacío lista todo.
+
+| Campo | Tipo | Comportamiento |
+|---|---|---|
+| `search` | string | subcadena sin distinguir mayúsculas sobre el id de la operación, los ids de empresa y los puertos |
+| `status` | container state | filtra sobre el status **derivado**, en memoria |
+| `health` | `ok` \| `warning` \| `error` | filtra en Mongo |
+| `company_id` | string | operaciones de esa empresa |
+| `from` / `to` | fecha ISO | rango sobre `created_at` |
+| `date` | fecha ISO | ese día UTC; **no se combina** con `from`/`to` |
+| `sort_by` | `updatedAt` \| `company` \| `id` | `updatedAt` es derivado: el cambio de ETA más reciente, o la creación |
+| `sort_dir` | `asc` \| `desc` | por defecto `desc` |
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/operations/search \
+  -H "Content-Type: application/json" \
+  -d '{ "search": "andes", "sort_by": "id", "sort_dir": "asc" }'
+```
+
+`200` → `{ "operations": [ ... ] }` · `400` → `invalid_filter_combination` · `404` → `company_not_found`
+
 ### `GET /api/operations/:id`
 
 ```bash

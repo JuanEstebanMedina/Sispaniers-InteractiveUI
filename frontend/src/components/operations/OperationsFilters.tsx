@@ -2,7 +2,8 @@ import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { SearchInput, Select } from '@/components/ui/Input'
+import { FilterSelect } from '@/components/ui/FilterSelect'
+import { SearchInput } from '@/components/ui/Input'
 import { useDebouncedValue } from '@/hooks'
 import { CONTAINER_STATES, OPERATION_HEALTH, type OperationsSearch } from '@/schemas'
 
@@ -53,11 +54,10 @@ export function OperationsFilters({ search, total }: OperationsFiltersProps) {
         className="col-span-2 sm:order-last sm:ml-auto sm:w-64"
       />
 
-      <Select
-        size="sm"
-        aria-label={t('domain:operation.filters.status')}
+      <FilterSelect
+        label={t('domain:operation.filters.status')}
         value={search.status}
-        onChange={(event) => update({ status: event.target.value })}
+        onChange={(status) => update({ status })}
         options={[
           { value: 'all', label: t('domain:operation.filters.allStatuses') },
           ...CONTAINER_STATES.map((status) => ({
@@ -65,14 +65,13 @@ export function OperationsFilters({ search, total }: OperationsFiltersProps) {
             label: t(`domain:operation.status.${status}` as never),
           })),
         ]}
-        className="sm:w-auto sm:min-w-44"
+        className="sm:w-44"
       />
 
-      <Select
-        size="sm"
-        aria-label={t('domain:operation.filters.health')}
+      <FilterSelect
+        label={t('domain:operation.filters.health')}
         value={search.health}
-        onChange={(event) => update({ health: event.target.value })}
+        onChange={(health) => update({ health })}
         options={[
           { value: 'all', label: t('domain:operation.filters.allHealth') },
           ...OPERATION_HEALTH.map((health) => ({
@@ -80,15 +79,14 @@ export function OperationsFilters({ search, total }: OperationsFiltersProps) {
             label: t(`domain:operation.health.${health}` as never),
           })),
         ]}
-        className="sm:w-auto sm:min-w-40"
+        className="sm:w-40"
       />
 
-      <Select
-        size="sm"
-        aria-label={t('domain:operation.filters.sort')}
+      <FilterSelect
+        label={t('domain:operation.filters.sort')}
         value={`${search.sort}:${search.order}`}
-        onChange={(event) => {
-          const [sort, order] = event.target.value.split(':')
+        onChange={(picked) => {
+          const [sort, order] = picked.split(':')
           update({ sort, order: order as 'asc' | 'desc' })
         }}
         options={[
@@ -97,7 +95,7 @@ export function OperationsFilters({ search, total }: OperationsFiltersProps) {
           { value: 'shipper:asc', label: t('domain:operation.filters.byShipper') },
           { value: 'trackId:asc', label: t('domain:operation.filters.byTrackId') },
         ]}
-        className="col-span-2 sm:w-auto sm:min-w-48"
+        className="col-span-2 sm:col-span-1 sm:w-48"
       />
 
       {total !== undefined && (

@@ -22,7 +22,10 @@ interface RailItemProps {
 }
 
 export function RailItem({ operation, active, onNavigate }: RailItemProps) {
-  const waiting = operation.status === 'needs_decision'
+  // El backend no expone todavía "esperando a un humano": el status se deriva
+  // del estado de los contenedores. Hasta entonces, lo que reclama atención es
+  // la salud crítica.
+  const waiting = operation.health === 'critical'
 
   return (
     <Link

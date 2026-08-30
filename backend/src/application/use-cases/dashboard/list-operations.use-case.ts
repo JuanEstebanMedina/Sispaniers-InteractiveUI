@@ -14,13 +14,55 @@ import type {
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Por qué campo se ordena.
+ *
+ * `updatedAt` no es un campo del documento: es lo ÚLTIMO que le pasó a la
+ * operación — el cambio de ETA más reciente, o su creación si nunca se movió.
+ * Por eso el orden se aplica acá y no en Mongo: es un valor derivado, igual
+ * que el status.
+ */
+export const OPERATION_SORT_FIELDS = ["updatedAt", "company", "id"] as const;
+export type OperationSortField = (typeof OPERATION_SORT_FIELDS)[number];
+
+export const SORT_DIRECTIONS = ["asc", "desc"] as const;
+export type SortDirection = (typeof SORT_DIRECTIONS)[number];
+
 export interface ListOperationsInput {
   status?: ContainerState;
   health?: OperationHealth;
   companyId?: string;
+  /** Texto libre sobre id, empresas y puertos. */
+  search?: string;
   from?: Date;
   to?: Date;
   date?: Date;
+  sortBy?: OperationSortField;
+  sortDir?: SortDirection;
+}
+
+/** Lo último que le pasó a la operación, en milisegundos. */
+function lastActivityOf(operation: Operation): number {
+  const changes = operation.bookings.flatMap((booking) => booking.schedule.changes);
+
+  return changes.reduce(
+    (latest, change) => Math.max(latest, change.occurredAt.getTime()),
+    operation.createdAt.getTime(),
+  );
+}
+
+function firstCompanyOf(operation: Operation): string | undefined {
+  return operation.bookings.flatMap((booking) => booking.companyIds)[0];
+}
+
+function compareBy(field: OperationSortField, a: Operation, b: Operation): number {
+  if (field === "id") {
+    return a.id.localeCompare(b.id);
+  }
+  if (field === "company") {
+    return (firstCompanyOf(a) ?? "").localeCompare(firstCompanyOf(b) ?? "");
+  }
+  return lastActivityOf(a) - lastActivityOf(b);
 }
 
 export interface ListOperationsResultItem {
@@ -45,6 +87,7 @@ function toQueryFilter(
   return {
     ...(ids !== undefined ? { ids } : {}),
     ...(input.health !== undefined ? { health: input.health } : {}),
+    ...(input.search !== undefined ? { search: input.search } : {}),
     ...(createdFrom !== undefined ? { createdFrom } : {}),
     ...(createdTo !== undefined ? { createdTo } : {}),
   };
@@ -73,8 +116,18 @@ export function createListOperationsUseCase(deps: ListOperationsDeps) {
     const ids = input.companyId === undefined ? undefined : await operationIdsOf(input.companyId);
     const operations = await operationRepository.findAll(toQueryFilter(input, ids));
 
-    return operations
+    const results = operations
       .map((operation) => ({ operation, status: deriveOperationStatus(operation) }))
       .filter(({ status }) => input.status === undefined || status === input.status);
+
+    if (input.sortBy === undefined) {
+      return results;
+    }
+
+    const direction = input.sortDir === "asc" ? 1 : -1;
+
+    return [...results].sort(
+      (a, b) => compareBy(input.sortBy as OperationSortField, a.operation, b.operation) * direction,
+    );
   };
 }

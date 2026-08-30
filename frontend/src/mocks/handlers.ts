@@ -99,22 +99,13 @@ export const handlers = [
    *   · auth — el backend no tiene autenticación ("No authentication yet")
    *   · layout de widgets — no hay endpoint que lo persista
    */
-  http.patch(url('/flows/:id/layout'), async ({ request }) => {
-    await latency()
-    if (!userFromRequest(request)) return unauthorized()
-
-    const body = (await request.json()) as { layout?: unknown }
-    if (!Array.isArray(body.layout)) {
-      return HttpResponse.json(
-        { message: 'Invalid layout', errors: { layout: ['Expected an array of widgets'] } },
-        { status: 422 },
-      )
-    }
-
-    // No se guarda en ningún lado a propósito: es un 200 honesto para que la
-    // grilla no acumule errores en consola mientras el backend no lo soporte.
-    return HttpResponse.json({ layout: body.layout })
-  }),
-
+  /**
+   * MODO HÍBRIDO — lo único que sigue simulado.
+   *
+   * Todo el dominio (`/api/operations`, sus componentes y su layout) lo sirve
+   * el backend real; MSW no lo intercepta y `onUnhandledRequest: 'bypass'` lo
+   * deja pasar al proxy de Vite. Acá sólo queda la autenticación, porque el
+   * backend todavía no la tiene. El día que exista, este archivo desaparece.
+   */
   http.get(url('/health'), () => HttpResponse.json({ status: 'ok', mocked: true })),
 ]
