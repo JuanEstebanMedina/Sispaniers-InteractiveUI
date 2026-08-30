@@ -465,8 +465,16 @@
           "etd": "2026-07-28",
           "eta": "2026-08-20",
           "delays": [
-            { "eta": "2026-08-24", "reason": "typhoon congestion in Yantian", "occurredAt": "2026-08-02" },
-            { "eta": "2026-08-27", "reason": "terminal berth omission in Los Angeles", "occurredAt": "2026-08-16" }
+            {
+              "eta": "2026-08-24",
+              "reason": "typhoon congestion in Yantian",
+              "occurredAt": "2026-08-02"
+            },
+            {
+              "eta": "2026-08-27",
+              "reason": "terminal berth omission in Los Angeles",
+              "occurredAt": "2026-08-16"
+            }
           ],
           "containers": [
             ["ONEU4819203", "arrived_port"],
@@ -486,7 +494,11 @@
           "etd": "2026-08-04",
           "eta": "2026-08-30",
           "delays": [
-            { "eta": "2026-09-03", "reason": "Singapore transshipment connection missed", "occurredAt": "2026-08-15" }
+            {
+              "eta": "2026-09-03",
+              "reason": "Singapore transshipment connection missed",
+              "occurredAt": "2026-08-15"
+            }
           ],
           "containers": [
             ["EITU7724101", "in_transit"],
@@ -563,7 +575,15 @@
             "format": "pdf",
             "bucketKey": "operations/op-pacific-home-001/po-45821.pdf",
             "sourceEmailId": "email-pacific-001",
-            "extractedData": { "poNumber": "45821", "supplier": "Yantian Ceramics Ltd.", "incoterm": "FOB Yantian", "currency": "USD", "total": 78420, "requestedDelivery": "2026-09-08", "priority": "launch assortment" },
+            "extractedData": {
+              "poNumber": "45821",
+              "supplier": "Yantian Ceramics Ltd.",
+              "incoterm": "FOB Yantian",
+              "currency": "USD",
+              "total": 78420,
+              "requestedDelivery": "2026-09-08",
+              "priority": "launch assortment"
+            },
             "receivedAt": "2026-07-22"
           },
           {
@@ -572,7 +592,13 @@
             "format": "pdf",
             "bucketKey": "operations/op-pacific-home-001/booking-one-001.pdf",
             "bookingId": "bkg-pacific-001",
-            "extractedData": { "booking": "bkg-pacific-001", "carrier": "ONE", "vessel": "ONE Harmony", "cutoff": "2026-07-25", "commodity": "ceramic dinnerware" },
+            "extractedData": {
+              "booking": "bkg-pacific-001",
+              "carrier": "ONE",
+              "vessel": "ONE Harmony",
+              "cutoff": "2026-07-25",
+              "commodity": "ceramic dinnerware"
+            },
             "receivedAt": "2026-07-24"
           },
           {
@@ -582,7 +608,14 @@
             "bucketKey": "operations/op-pacific-home-001/invoice-45821.xlsx",
             "bookingId": "bkg-pacific-001",
             "sourceEmailId": "email-pacific-019",
-            "extractedData": { "invoiceNumber": "YC-2026-771", "currency": "USD", "total": 78420, "countryOfOrigin": "China", "hsCodes": ["6912.00", "6911.10"], "correctionRequired": true },
+            "extractedData": {
+              "invoiceNumber": "YC-2026-771",
+              "currency": "USD",
+              "total": 78420,
+              "countryOfOrigin": "China",
+              "hsCodes": ["6912.00", "6911.10"],
+              "correctionRequired": true
+            },
             "receivedAt": "2026-08-26"
           },
           {
@@ -591,7 +624,13 @@
             "format": "spreadsheet",
             "bucketKey": "operations/op-pacific-home-001/packing-list-45834.xlsx",
             "bookingId": "bkg-pacific-002",
-            "extractedData": { "poNumber": "45834", "cartons": 1260, "grossWeightKg": 18950, "pallets": 28, "commodity": "bamboo storage furniture" },
+            "extractedData": {
+              "poNumber": "45834",
+              "cartons": 1260,
+              "grossWeightKg": 18950,
+              "pallets": 28,
+              "commodity": "bamboo storage furniture"
+            },
             "receivedAt": "2026-08-03"
           },
           {
@@ -600,7 +639,12 @@
             "format": "pdf",
             "bucketKey": "operations/op-pacific-home-001/bl-one-001.pdf",
             "bookingId": "bkg-pacific-001",
-            "extractedData": { "blNumber": "ONEYTN6A12345", "freightTerms": "collect", "consignee": "Pacific Home Retail LLC", "originalsReleased": false },
+            "extractedData": {
+              "blNumber": "ONEYTN6A12345",
+              "freightTerms": "collect",
+              "consignee": "Pacific Home Retail LLC",
+              "originalsReleased": false
+            },
             "receivedAt": "2026-08-10"
           },
           {
@@ -609,18 +653,47 @@
             "format": "pdf",
             "bucketKey": "operations/op-pacific-home-001/arrival-one-001.pdf",
             "bookingId": "bkg-pacific-001",
-            "extractedData": { "port": "Los Angeles", "freeTimeExpires": "2026-09-01", "demurragePerDayUsd": 265, "lastFreeDay": "2026-08-31" },
+            "extractedData": {
+              "port": "Los Angeles",
+              "freeTimeExpires": "2026-09-01",
+              "demurragePerDayUsd": 265,
+              "lastFreeDay": "2026-08-31"
+            },
             "receivedAt": "2026-08-27"
           }
         ]
       },
       "narrative": [
-        { "text": "Fall replenishment plan received for three purchase orders and a September retail launch.", "at": "2026-07-22", "status": "brand" },
-        { "text": "ONE booking confirmed from Yantian with four containers of launch dinnerware.", "at": "2026-07-24", "status": "neutral" },
-        { "text": "Typhoon congestion moved ONE Harmony arrival four days, to August 24.", "at": "2026-08-02", "status": "warning" },
-        { "text": "Evergreen shipment missed its Singapore connection and moved to September 3.", "at": "2026-08-15", "status": "warning" },
-        { "text": "Two ONE containers entered customs hold pending country-of-origin invoice correction.", "at": "2026-08-26", "status": "danger" },
-        { "text": "Merchandising prioritized ONEU4819204 for partial release before the September 10 launch.", "at": "2026-08-27", "status": "info" }
+        {
+          "text": "Fall replenishment plan received for three purchase orders and a September retail launch.",
+          "at": "2026-07-22",
+          "status": "brand"
+        },
+        {
+          "text": "ONE booking confirmed from Yantian with four containers of launch dinnerware.",
+          "at": "2026-07-24",
+          "status": "neutral"
+        },
+        {
+          "text": "Typhoon congestion moved ONE Harmony arrival four days, to August 24.",
+          "at": "2026-08-02",
+          "status": "warning"
+        },
+        {
+          "text": "Evergreen shipment missed its Singapore connection and moved to September 3.",
+          "at": "2026-08-15",
+          "status": "warning"
+        },
+        {
+          "text": "Two ONE containers entered customs hold pending country-of-origin invoice correction.",
+          "at": "2026-08-26",
+          "status": "danger"
+        },
+        {
+          "text": "Merchandising prioritized ONEU4819204 for partial release before the September 10 launch.",
+          "at": "2026-08-27",
+          "status": "info"
+        }
       ]
     }
   ],

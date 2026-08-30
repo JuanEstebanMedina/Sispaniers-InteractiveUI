@@ -479,7 +479,11 @@ function buildAndesClosedComponents(
           fill: true,
         },
         children: [
-          { kind: "stat", order: 0, props: { value: String(containers), label: "containers delivered" } },
+          {
+            kind: "stat",
+            order: 0,
+            props: { value: String(containers), label: "containers delivered" },
+          },
           {
             kind: "label",
             order: 1,
@@ -536,7 +540,11 @@ function buildCafeComponents(operation: Operation, narrative: NarrativeEventSeed
             order: 0,
             props: { value: String(containerCount(operation)), label: "containers in progress" },
           },
-          { kind: "label", order: 1, props: { text: "One shared booking requires consignee review." } },
+          {
+            kind: "label",
+            order: 1,
+            props: { text: "One shared booking requires consignee review." },
+          },
         ],
       },
     ]),
@@ -613,7 +621,11 @@ function buildFloresComponents(operation: Operation, narrative: NarrativeEventSe
         props: { direction: "column", justify: "between", fill: true },
         children: [
           { kind: "badge", order: 0, props: { text: "Booking pending", status: "warning" } },
-          { kind: "label", order: 1, props: { text: "Carrier confirmation is required before cutoff." } },
+          {
+            kind: "label",
+            order: 1,
+            props: { text: "Carrier confirmation is required before cutoff." },
+          },
         ],
       },
     ]),
@@ -656,7 +668,10 @@ function buildFloresComponents(operation: Operation, narrative: NarrativeEventSe
 }
 
 /** `op-pacific-home-001` — a multi-carrier import with customs and document risk. */
-function buildPacificComponents(operation: Operation, narrative: NarrativeEventSeed[]): Component[] {
+function buildPacificComponents(
+  operation: Operation,
+  narrative: NarrativeEventSeed[],
+): Component[] {
   const containers = containerCount(operation);
 
   return [
@@ -675,12 +690,20 @@ function buildPacificComponents(operation: Operation, narrative: NarrativeEventS
           {
             kind: "stat",
             order: 0,
-            props: { value: String(containers), label: "containers tracked", emphasis: true, center: true },
+            props: {
+              value: String(containers),
+              label: "containers tracked",
+              emphasis: true,
+              center: true,
+            },
           },
           {
             kind: "label",
             order: 1,
-            props: { text: `${operation.bookings.length} bookings with active follow-up`, center: true },
+            props: {
+              text: `${operation.bookings.length} bookings with active follow-up`,
+              center: true,
+            },
           },
         ],
       },

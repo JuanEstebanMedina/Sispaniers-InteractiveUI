@@ -225,7 +225,13 @@ test("requires a visible illustrative flag for inline chart rows", () => {
       {
         kind: "trend-chart",
         order: 0,
-        props: { illustrative: true, rows: [{ x: "Week 1", value: 4 }, { x: "Week 2", value: 6 }] },
+        props: {
+          illustrative: true,
+          rows: [
+            { x: "Week 1", value: 4 },
+            { x: "Week 2", value: 6 },
+          ],
+        },
       },
     ]),
   ).not.toThrow();

@@ -31,9 +31,9 @@ const inputSchema: JsonSchema = {
 };
 
 export function nearestSize(cols: number, rows: number): WidgetSizeName {
-  const fitting = (Object.entries(WIDGET_SIZES) as Array<
-    [WidgetSizeName, { w: number; h: number }]
-  >).filter(([name, size]) => name !== "tile" && size.w >= cols && size.h >= rows);
+  const fitting = (
+    Object.entries(WIDGET_SIZES) as Array<[WidgetSizeName, { w: number; h: number }]>
+  ).filter(([name, size]) => name !== "tile" && size.w >= cols && size.h >= rows);
 
   if (fitting.length === 0) return "large";
 

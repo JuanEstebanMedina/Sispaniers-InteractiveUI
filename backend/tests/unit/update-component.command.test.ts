@@ -1,8 +1,6 @@
 import { expect, test } from "vitest";
-import {
-  createUpdateComponentCommand,
-} from "../../src/application/commands/update-component.command.js";
 import { nearestSize } from "../../src/application/commands/create-component.command.js";
+import { createUpdateComponentCommand } from "../../src/application/commands/update-component.command.js";
 import { createUpdateComponentContentUseCase } from "../../src/application/use-cases/dashboard/update-component-content.use-case.js";
 import { createUpdateComponentPlacementUseCase } from "../../src/application/use-cases/dashboard/update-component-placement.use-case.js";
 import type { Operation } from "../../src/domain/logistics/operation.js";
