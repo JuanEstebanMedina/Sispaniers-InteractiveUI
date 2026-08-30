@@ -21,7 +21,7 @@ beforeEach(async () => {
           toolName: "create_component",
           input: {
             children: [{ kind: "title", order: 0, props: { text: "Inbound email" } }],
-            layout: { cols: 1, rows: 1 },
+            layout: { cols: 2, rows: 2 },
             reply: "Email procesado.",
           },
         };
