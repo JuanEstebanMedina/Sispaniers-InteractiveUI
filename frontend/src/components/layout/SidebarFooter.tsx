@@ -64,12 +64,12 @@ export function SidebarFooter({
 
   const MODES: ThemeMode[] = ['light', 'dark', 'system']
 
-  const iconOnly = cn('hidden md:flex', !collapsed && 'lg:hidden')
+  const iconOnly = cn('hidden md:flex', !collapsed && 'md:hidden')
 
   return (
     <div className="shrink-0 border-t border-line p-3">
       {(env.VITE_USE_MOCKS || !isOnline) && (
-        <div className={cn('mb-3 flex flex-wrap gap-1', collapsed && 'lg:justify-center')}>
+        <div className={cn('mb-3 flex flex-wrap gap-1', collapsed && 'md:justify-center')}>
           {!isOnline && (
             <Badge tone="danger" size="sm" dot pulse icon={<WifiOff className="size-3" />}>
               <span className={labelVisibility}>{t('states.offline')}</span>
@@ -88,7 +88,7 @@ export function SidebarFooter({
         className={cn(
           'flex items-center gap-3 px-1.5 py-1',
           'md:justify-center',
-          !collapsed && 'lg:justify-start',
+          !collapsed && 'md:justify-start',
         )}
       >
         <Avatar name={user?.name} src={user?.avatarUrl} size="sm" />
@@ -184,7 +184,9 @@ export function SidebarFooter({
 
       <div
         className={cn(
-          'mt-2 hidden border-t border-line pt-2 lg:flex',
+          // From md up, not lg: between the two the sidebar is icons-only, and
+          // that is exactly where a way to expand it is most needed.
+          'mt-2 hidden border-t border-line pt-2 md:flex',
           collapsed ? 'justify-center' : 'justify-end',
         )}
       >

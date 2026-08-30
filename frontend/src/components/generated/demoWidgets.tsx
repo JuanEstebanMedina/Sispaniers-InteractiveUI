@@ -1,4 +1,4 @@
-import { formatDate } from '@/lib/format'
+import { formatCalendarDate } from '@/lib/format'
 import { WIDGET_SIZES } from '@/lib/grid'
 import type { Operation } from '@/schemas'
 import type { Widget } from './WidgetGrid'
@@ -33,7 +33,7 @@ export function demoWidgets(operation: Operation): Widget[] {
       row: 2,
       title: 'ETA',
       fromAgent: true,
-      body: <Stat value={operation.eta ? formatDate(operation.eta) : '—'} label="estimado" />,
+      body: <Stat value={operation.eta ? formatCalendarDate(operation.eta) : '—'} label="estimado" />,
     },
     {
       id: 'lastEvent',

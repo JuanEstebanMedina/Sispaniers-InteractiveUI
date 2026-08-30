@@ -39,9 +39,9 @@ import { errorResponseSchema } from "../../schemas/error.schema.js";
 import {
   createOperationBodySchema,
   documentPreviewUrlResponseSchema,
-  listOperationsQuerySchema,
   listOperationsResponseSchema,
   operationResponseSchema,
+  searchOperationsBodySchema,
   trackingEventBodySchema,
   uploadDocumentBodySchema,
   uploadDocumentResponseSchema,
@@ -155,11 +155,22 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
     },
   );
 
-  app.get(
-    "/operations",
+  /**
+   * `POST /operations/search` — el ÚNICO listado.
+   *
+   * Había también un `GET /operations` y se eliminó: dos rutas para lo mismo
+   * significan dos contratos que mantener y dos sitios donde arreglar un bug
+   * de filtrado. Los filtros de la web —texto libre, estado, salud, empresa,
+   * rango de fechas y orden— no caben en una query string legible, así que la
+   * que sobrevive es la que puede con todo.
+   *
+   * Un body vacío lista todo, que es lo que el GET hacía.
+   */
+  app.post(
+    "/operations/search",
     {
       schema: {
-        querystring: listOperationsQuerySchema,
+        body: searchOperationsBodySchema,
         response: {
           200: listOperationsResponseSchema,
           400: errorResponseSchema,
@@ -168,16 +179,19 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
       },
     },
     async (request, reply) => {
-      const query = request.query;
+      const body = request.body;
 
       try {
         const results = await deps.listOperations({
-          ...(query.status !== undefined ? { status: query.status } : {}),
-          ...(query.health !== undefined ? { health: query.health } : {}),
-          ...(query.company_id !== undefined ? { companyId: query.company_id } : {}),
-          ...(query.from !== undefined ? { from: new Date(query.from) } : {}),
-          ...(query.to !== undefined ? { to: new Date(query.to) } : {}),
-          ...(query.date !== undefined ? { date: new Date(query.date) } : {}),
+          ...(body.status !== undefined ? { status: body.status } : {}),
+          ...(body.health !== undefined ? { health: body.health } : {}),
+          ...(body.company_id !== undefined ? { companyId: body.company_id } : {}),
+          ...(body.search !== undefined ? { search: body.search } : {}),
+          ...(body.from !== undefined ? { from: new Date(body.from) } : {}),
+          ...(body.to !== undefined ? { to: new Date(body.to) } : {}),
+          ...(body.date !== undefined ? { date: new Date(body.date) } : {}),
+          ...(body.sort_by !== undefined ? { sortBy: body.sort_by } : {}),
+          ...(body.sort_dir !== undefined ? { sortDir: body.sort_dir } : {}),
         });
 
         reply.code(200).send({

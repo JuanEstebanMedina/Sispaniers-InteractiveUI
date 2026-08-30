@@ -4,7 +4,7 @@ import { Outlet, useParams } from '@tanstack/react-router'
 import { api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
 import { OperationsRail } from '@/components/operations/OperationsRail'
-import { flowListSchema } from '@/schemas'
+import { operationListSchema } from '@/schemas'
 import { useRailStore } from '@/stores/railStore'
 
 /**
@@ -25,11 +25,15 @@ import { useRailStore } from '@/stores/railStore'
  * del detalle, así que el estado está en `railStore` — cabecera y layout son
  * hermanos de ruta y no hay props entre ellos.
  *
- * Una sola consulta alimenta las dos vistas: `queryKeys.operations.list()` es
- * la misma clave que usa la grilla, así al abrir una operación el riel sale de
- * caché sin refetch ni parpadeo. Y pide SIEMPRE la lista sin filtrar aunque la
- * grilla esté filtrada: los filtros responden "qué busco" y el riel "qué más
- * está pasando" — filtrar por "entregado" escondería justo la que se rompió.
+ * EL RIEL PIDE SIEMPRE LA LISTA SIN FILTRAR, y por eso usa `GET /operations`
+ * mientras la grilla usa `POST /operations/search` con los filtros de la URL.
+ * Son dos claves de caché distintas a propósito: los filtros responden "qué
+ * busco" y el riel "qué más está pasando". Si el riel heredara el filtro,
+ * buscar "entregado" escondería justo la operación que se acaba de romper.
+ *
+ * El costo es una petición extra al abrir un detalle con la grilla filtrada.
+ * Vale la pena: la alternativa es un panel de vigilancia que deja de vigilar
+ * en cuanto alguien escribe en el buscador.
  */
 
 export default function OperationsLayout() {
@@ -39,19 +43,23 @@ export default function OperationsLayout() {
   const hasDetail = Boolean(trackId)
 
   const railOpen = useRailStore((state) => state.open)
-  const setOpen = useRailStore((state) => state.setOpen)
 
   const list = useQuery({
     queryKey: queryKeys.operations.list(),
     queryFn: () =>
-      api$.get(endpoints.operations.list, flowListSchema),
+      api$.post(endpoints.operations.search, operationListSchema, {}),
+    // Sólo cuando hay un detalle abierto. En la grilla este layout igual se
+    // monta, pero `hasDetail` es false y el riel no se renderiza: sin esto se
+    // descargaba la lista entera para no mostrarla, EN PARALELO con el POST
+    // /operations/search que sí alimenta la grilla.
+    enabled: hasDetail,
     // Lo que hace cierto el "ver si hay cambios en las otras". Sin esto el riel
     // es una foto del momento en que se hizo clic.
     refetchInterval: 15_000,
     refetchOnWindowFocus: true,
   })
 
-  const operations = list.data?.flows ?? []
+  const operations = list.data?.operations ?? []
 
   return (
     <div className="flex min-h-dvh">
@@ -67,7 +75,6 @@ export default function OperationsLayout() {
           activeTrackId={trackId}
           loading={list.isPending}
           open={railOpen}
-          onClose={() => setOpen(false)}
         />
       )}
     </div>

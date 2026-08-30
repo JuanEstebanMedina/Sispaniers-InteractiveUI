@@ -8,6 +8,10 @@ import { type OperationDocument, toOperation, toOperationDocument } from "./oper
 
 const COLLECTION_NAME = "operations";
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export class MongoOperationRepository implements OperationRepository {
   private readonly operations: Collection<OperationDocument>;
 
@@ -29,6 +33,18 @@ export class MongoOperationRepository implements OperationRepository {
     }
     if (filter.health !== undefined) {
       query.health = filter.health;
+    }
+    if (filter.search !== undefined) {
+      // Mismo criterio que el repositorio en memoria: id, empresas y puertos.
+      // `escapeRegex` existe porque un buscador es entrada del usuario y un
+      // paréntesis suelto rompería la consulta.
+      const needle = new RegExp(escapeRegex(filter.search), "i");
+      query.$or = [
+        { _id: { $regex: needle } },
+        { "bookings.companyIds": { $regex: needle } },
+        { "bookings.originPort": { $regex: needle } },
+        { "bookings.destinationPort": { $regex: needle } },
+      ];
     }
     if (filter.createdFrom !== undefined || filter.createdTo !== undefined) {
       query.createdAt = {

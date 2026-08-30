@@ -40,6 +40,13 @@ export class ComponentNotFoundError extends Error {
   }
 }
 
+export class InvalidAiComponentError extends Error {
+  constructor(reason: string) {
+    super(`Invalid AI component output: ${reason}`);
+    this.name = "InvalidAiComponentError";
+  }
+}
+
 export class DocumentNotFoundError extends Error {
   constructor(id: string) {
     super(`Document not found: ${id}`);
