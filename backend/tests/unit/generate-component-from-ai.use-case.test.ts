@@ -12,7 +12,11 @@ import type { OperationRepository } from "../../src/domain/ports/operation.repos
 
 const OPERATION_ID = "op-1";
 
-function buildUseCase() {
+function buildUseCase(
+  aiCompletionPort: AiCompletionPort = {
+    complete: async () => ({ kind: "tool_call", toolName: "create_component", input: {} }),
+  },
+) {
   const commandRegistry = new CommandRegistry();
   commandRegistry.register({
     name: "create_component",
@@ -35,10 +39,6 @@ function buildUseCase() {
     save: async () => {},
     setField: async () => {},
     deleteById: async () => {},
-  };
-
-  const aiCompletionPort: AiCompletionPort = {
-    complete: async () => ({ kind: "tool_call", toolName: "create_component", input: {} }),
   };
 
   return createGenerateComponentFromAiUseCase({
