@@ -1,5 +1,9 @@
 import { validateComponentTree } from "../../../domain/components/component-node.js";
-import type { Component, ComponentNode } from "../../../domain/components/component.js";
+import {
+  type Component,
+  type ComponentNode,
+  nextOrderAfter,
+} from "../../../domain/components/component.js";
 import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
 import type { GridComponentKind } from "../../../domain/enums/widget-kind.js";
 import type { ComponentEventPublisher } from "../../../domain/ports/component-event-publisher.port.js";
@@ -30,7 +34,7 @@ export function createCreateComponentUseCase(deps: CreateComponentDeps) {
     const component: Component = {
       id: idGenerator.newId(),
       operationId: input.operationId,
-      order: siblings.reduce((next, sibling) => Math.max(next, sibling.order + 1), 0),
+      order: nextOrderAfter(siblings),
       size: input.size,
       kind: input.kind,
       children: input.children,

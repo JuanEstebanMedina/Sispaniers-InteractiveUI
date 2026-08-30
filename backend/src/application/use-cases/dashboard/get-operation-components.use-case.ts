@@ -1,4 +1,4 @@
-import type { Component } from "../../../domain/components/component.js";
+import { type Component, bySequence } from "../../../domain/components/component.js";
 import { packDefaultLayout } from "../../../domain/components/layout-packer.js";
 import type { LayoutEntry } from "../../../domain/components/layout.js";
 import { type GridCols, WIDGET_SIZES } from "../../../domain/components/widget-size.js";
@@ -32,7 +32,7 @@ export function createGetOperationComponentsUseCase(deps: GetOperationComponents
     }
 
     const components = [...(await componentRepository.findByOperationId(input.operationId))].sort(
-      (a, b) => a.order - b.order,
+      bySequence,
     );
     const layout = packDefaultLayout(
       components.map((component) => ({ id: component.id, ...WIDGET_SIZES[component.size] })),

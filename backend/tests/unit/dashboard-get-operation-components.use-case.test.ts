@@ -87,3 +87,27 @@ test("a component wider than the grid is narrowed instead of disappearing", asyn
   expect(result.components).toHaveLength(1);
   expect(result.layout).toEqual([{ id: "wide", col: 0, row: 0, w: 2, h: 2 }]);
 });
+
+test("components sharing an order fall back to when they were created", async () => {
+  const { operation, componentRepository, getOperationComponents } = await buildUseCase();
+  await componentRepository.save(
+    aComponent({
+      id: "later",
+      operationId: operation.id,
+      order: 0,
+      createdAt: new Date("2026-02-01T00:00:00.000Z"),
+    }),
+  );
+  await componentRepository.save(
+    aComponent({
+      id: "earlier",
+      operationId: operation.id,
+      order: 0,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    }),
+  );
+
+  const result = await getOperationComponents({ operationId: operation.id, cols: 4 });
+
+  expect(result.components.map((component) => component.id)).toEqual(["earlier", "later"]);
+});
