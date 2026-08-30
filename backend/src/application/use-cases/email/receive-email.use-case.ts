@@ -39,10 +39,11 @@ async function storeAttachment(
   }
 }
 
-// TODO: conecta el agente real aquí — por ahora se extrae el contenido de los
-// adjuntos (texto/imagen según el tipo), se sube el archivo original a Supabase
-// Storage, y se registra la recepción, sin persistencia en base de datos todavía
-// (ver domain/ports para el contrato de un futuro RunRepository).
+// TODO: wire up the real agent here — for now this only extracts each
+// attachment's content (text/image depending on type), uploads the original
+// file to Supabase Storage, and logs the receipt, with no database
+// persistence yet (see domain/ports for the contract of a future
+// RunRepository).
 export function createReceiveEmailUseCase(deps: ReceiveEmailDeps) {
   const { idGenerator, attachmentExtractor, attachmentStorage } = deps;
 

@@ -115,6 +115,51 @@ An operation object is `id`, `company_ids`, `status`, `health`, `created_at`,
 `bookings[]` and `context`. Run the curl above against a seeded database for the full
 shape.
 
+### `POST /api/operations/:id/documents`
+
+Uploads a document straight onto an operation — the manual counterpart to what
+`POST /api/emails/receive` does automatically per attachment. Same three steps: upload
+the original bytes to Supabase Storage, extract text via the same `mimetype` table as
+the email flow, append a `Document` to `context.documents` in Mongo. Unlike the email
+flow, a failed Storage upload here **fails the request** (`502`) instead of degrading
+gracefully — a direct upload has no point if the file never lands anywhere.
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/operations/op-andes-textiles-001/documents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filename": "invoice.pdf",
+    "mimetype": "application/pdf",
+    "data": "<base64>",
+    "type": "Invoice"
+  }'
+```
+
+Required: `filename`, `mimetype`, `data` (base64). Optional: `type` (`PO` \|
+`BookingConfirmation` \| `BillOfLading` \| `Invoice` \| `PackingList` \| `ArrivalNotice`,
+defaults to `PO`) — unlike the email flow, a human uploading a file usually knows what
+it is, so it's not hardcoded here.
+
+`201` → `{ "document": { ...same shape as a context.documents[] entry, snake_case... },
+"url": "...", "expires_in_seconds": 300 }`. `404` → `operation_not_found`. `502` →
+`document_upload_failed`.
+
+**TODO**: no auth yet — see the comment in `operations.routes.ts`.
+
+### `GET /api/operations/:id/documents/:documentId/preview-url`
+
+A signed, time-limited URL for downloading or previewing one document's bytes straight
+from Supabase Storage — works for documents from either upload path above.
+
+```bash
+curl http://127.0.0.1:8000/api/operations/op-andes-textiles-001/documents/doc-1/preview-url
+```
+
+`200` → `{ "url": "...", "expires_in_seconds": 300 }`. `404` → `operation_not_found` or
+`document_not_found`. Opening the URL in a browser previews it inline when the type is
+renderable (image, PDF); otherwise the browser downloads it or shows it as plain text —
+there's no separate "preview" vs "download" URL, it's the same signed URL either way.
+
 ### `POST /api/emails/receive`
 
 Entry point for an inbound email. Make.com polls Gmail and posts here — this is not a
@@ -160,8 +205,9 @@ The original attachment bytes are also uploaded to Supabase Storage (private buc
 `email-attachments`, keyed by `message_id/filename`) — see
 `infrastructure/adapters/outbound/storage/supabase-attachment-storage.ts`. A successful
 upload adds `storagePath` to that attachment's entry; a failed one adds `storageError`
-instead, without failing the whole request. Nothing generates a signed download/preview
-URL yet, and nothing is handed to an AI — but the operation link below does persist.
+instead, without failing the whole request. Nothing is handed to an AI yet — but the
+operation link below does persist, and `GET /api/operations/:id/documents/:documentId/preview-url`
+(below) gets a signed URL for any uploaded document, from this flow or the manual one.
 
 **Subject links the email to an operation.** If the subject matches
 `Orden de compra #<id>` (case-insensitive), `<id>` is used as the operation id: an
@@ -204,7 +250,9 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 | `400` | `invalid_filter_combination` | `date` sent together with `from`/`to` |
 | `404` | `operation_not_found` | no operation with that id |
 | `404` | `company_not_found` | no company with that id |
+| `404` | `document_not_found` | no document with that id on that operation |
 | `502` | `email_send_failed` | SMTP rejected the message |
+| `502` | `document_upload_failed` | Supabase Storage rejected the upload |
 
 ## Things the code will not tell you at a glance
 

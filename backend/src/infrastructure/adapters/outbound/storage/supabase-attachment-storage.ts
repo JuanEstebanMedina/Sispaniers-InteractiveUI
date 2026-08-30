@@ -14,9 +14,9 @@ export class SupabaseAttachmentStorage implements AttachmentStorage {
     private readonly serviceRoleKey: string,
   ) {}
 
-  // Construido al primer uso, no en el constructor: así booteaar la app (y
-  // `make smoke`) no exige tener SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY —
-  // solo falla si de verdad se intenta subir/firmar un archivo sin ellas.
+  // Built on first use, not in the constructor: this way booting the app
+  // (and `make smoke`) doesn't require SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY
+  // — it only fails if something actually tries to upload/sign without them.
   private getClient(): SupabaseClient {
     if (this.client === undefined) {
       this.client = createClient(this.url, this.serviceRoleKey);

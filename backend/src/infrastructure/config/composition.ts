@@ -1,11 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { createCreateComponentUseCase } from "../../application/use-cases/dashboard/create-component.use-case.js";
 import { createCreateOperationUseCase } from "../../application/use-cases/dashboard/create-operation.use-case.js";
+import { createGetDocumentPreviewUrlUseCase } from "../../application/use-cases/dashboard/get-document-preview-url.use-case.js";
 import { createGetOperationComponentsUseCase } from "../../application/use-cases/dashboard/get-operation-components.use-case.js";
 import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
 import { createUpdateComponentContentUseCase } from "../../application/use-cases/dashboard/update-component-content.use-case.js";
 import { createUpdateOperationLayoutUseCase } from "../../application/use-cases/dashboard/update-operation-layout.use-case.js";
+import { createUploadOperationDocumentUseCase } from "../../application/use-cases/dashboard/upload-operation-document.use-case.js";
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import { createUpsertOperationFromEmailUseCase } from "../../application/use-cases/email/upsert-operation-from-email.use-case.js";
@@ -28,9 +30,10 @@ import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.r
 import { SupabaseAttachmentStorage } from "../adapters/outbound/storage/supabase-attachment-storage.js";
 import { connectMongo } from "./mongo.js";
 
-// TODO: recibir/enviar correo todavía no persiste nada — solo se registra vía
-// logs (request.log.warn en las routes). Cuando se retome el guardado, agregar
-// RunRepository/EmailRepository en domain/ports/ y wirearlos únicamente aquí.
+// TODO: sending an email still doesn't persist anything — it's only logged
+// (request.log.warn in the routes). Receiving an email now persists via
+// upsertOperationFromEmail when the subject links to an operation; add an
+// EmailRepository in domain/ports/ if a raw send-log is ever needed too.
 
 export interface CreateAppOverrides {
   emailSender?: EmailSender;
@@ -135,6 +138,16 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     eventPublisher: componentEventPublisher,
   });
   const getOperation = createGetOperationUseCase({ operationRepository });
+  const getDocumentPreviewUrl = createGetDocumentPreviewUrlUseCase({
+    operationRepository,
+    attachmentStorage,
+  });
+  const uploadOperationDocument = createUploadOperationDocumentUseCase({
+    operationRepository,
+    attachmentExtractor,
+    attachmentStorage,
+    idGenerator,
+  });
   const listOperations = createListOperationsUseCase({ operationRepository, companyRepository });
   const getOperationComponents = createGetOperationComponentsUseCase({
     operationRepository,
@@ -158,6 +171,8 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     createOperation,
     getOperation,
     listOperations,
+    getDocumentPreviewUrl,
+    uploadOperationDocument,
     getOperationComponents,
     updateOperationLayout,
     updateComponentContent,

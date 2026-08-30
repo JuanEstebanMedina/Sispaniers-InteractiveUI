@@ -40,6 +40,20 @@ export class ComponentNotFoundError extends Error {
   }
 }
 
+export class DocumentNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Document not found: ${id}`);
+    this.name = "DocumentNotFoundError";
+  }
+}
+
+export class DocumentUploadError extends Error {
+  constructor(reason: string) {
+    super(`Failed to upload document: ${reason}`);
+    this.name = "DocumentUploadError";
+  }
+}
+
 export class InvalidComponentTreeError extends Error {
   constructor(reason: string) {
     super(`Invalid component tree: ${reason}`);
