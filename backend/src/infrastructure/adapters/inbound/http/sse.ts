@@ -5,6 +5,9 @@ const STREAM_HEADERS: OutgoingHttpHeaders = {
   "Content-Type": "text/event-stream",
   "Cache-Control": "no-cache",
   Connection: "keep-alive",
+  // nginx convention, honoured by the frontend image's proxy: without it the
+  // stream is buffered and events arrive in bursts or not at all.
+  "X-Accel-Buffering": "no",
 };
 
 const STREAM_HEADER_NAMES = new Set(Object.keys(STREAM_HEADERS).map((name) => name.toLowerCase()));
