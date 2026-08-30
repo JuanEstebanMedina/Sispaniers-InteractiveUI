@@ -84,6 +84,7 @@ export function Layout({ children }: { children?: ReactNode }) {
         ALIGN_CLASS[props.oneOf('align', ALIGNS, 'stretch')],
         JUSTIFY_CLASS[props.oneOf('justify', JUSTIFIES, 'start')],
         props.bool('wrap') && 'flex-wrap',
+        props.bool('fill') && 'h-full',
       )}
     >
       {children}
@@ -97,6 +98,7 @@ export function Title() {
     <h4
       className={cn(
         'truncate font-display text-sm font-semibold tracking-tight',
+        props.bool('center') && 'text-center',
         TEXT_COLOR[colorOf(props, 'default')],
       )}
     >
@@ -108,7 +110,7 @@ export function Title() {
 export function Label() {
   const props = useProps()
   return (
-    <div className={cn('text-pretty text-xs', TEXT_COLOR[colorOf(props, 'muted')])}>
+    <div className={cn('text-pretty text-xs', props.bool('center') && 'text-center', TEXT_COLOR[colorOf(props, 'muted')])}>
       <Markdown body={props.str('text')} />
     </div>
   )
@@ -119,10 +121,11 @@ export function Stat() {
   const label = props.text('label')
 
   return (
-    <div className="min-w-0">
+    <div className={cn('min-w-0', props.bool('center') && 'text-center')}>
       <p
         className={cn(
-          'truncate font-mono text-lg font-semibold tabular',
+          'truncate font-mono font-semibold tabular',
+          props.bool('emphasis') ? 'text-6xl' : 'text-lg',
           TEXT_COLOR[colorOf(props, 'default')],
         )}
       >
@@ -147,7 +150,7 @@ export function Button() {
         'cursor-not-allowed opacity-60',
       )}
     >
-      {props.str('label', 'Acción')}
+      {props.str('label', 'Action')}
     </button>
   )
 }
@@ -309,7 +312,9 @@ const asSeries = (item: Record<string, unknown>, index: number): Series | null =
 
 export function Trend() {
   const props = useProps()
-  const data = useDataset(props.text('dataKey'))
+  const named = useDataset(props.text('dataKey'))
+  const inline = props.list('rows', (row) => row)
+  const data = inline.length > 0 ? inline : named
 
   return (
     <div className="min-h-40 flex-1">
@@ -322,13 +327,16 @@ export function Trend() {
         xKey={props.str('xKey', 'x')}
         series={props.list('series', asSeries)}
       />
+      {props.bool('illustrative') && <p className="mt-1 text-2xs text-fg-subtle">Illustrative data</p>}
     </div>
   )
 }
 
 export function Category() {
   const props = useProps()
-  const data = useDataset(props.text('dataKey'))
+  const named = useDataset(props.text('dataKey'))
+  const inline = props.list('rows', (row) => row)
+  const data = inline.length > 0 ? inline : named
 
   return (
     <div className="min-h-40 flex-1">
@@ -341,13 +349,16 @@ export function Category() {
         xKey={props.str('xKey', 'x')}
         series={props.list('series', asSeries)}
       />
+      {props.bool('illustrative') && <p className="mt-1 text-2xs text-fg-subtle">Illustrative data</p>}
     </div>
   )
 }
 
 export function Breakdown() {
   const props = useProps()
-  const rows = (useDataset(props.text('dataKey')) ?? []) as { name: string; value: number }[]
+  const named = (useDataset(props.text('dataKey')) ?? []) as { name: string; value: number }[]
+  const inline = props.list('rows', (row) => row) as { name: string; value: number }[]
+  const rows = inline.length > 0 ? inline : named
   const sorted = [...rows].sort((a, b) => b.value - a.value)
   const total = sorted.reduce((sum, item) => sum + (Number(item.value) || 0), 0)
 
@@ -362,6 +373,7 @@ export function Breakdown() {
         centerLabel={props.str('centerLabel', 'Total')}
         centerValue={total}
       />
+      {props.bool('illustrative') && <p className="mt-1 text-2xs text-fg-subtle">Illustrative data</p>}
     </div>
   )
 }
@@ -630,7 +642,7 @@ function fileKindOf(explicit: string, name: string): FileKind {
 
 export function FileCard() {
   const props = useProps()
-  const name = props.str('name', 'Archivo')
+  const name = props.str('name', 'File')
   const kind = fileKindOf(props.str('type').toLowerCase(), name)
   const { icon: Icon, tone, label } = FILE_KINDS[kind]
   const meta = [props.text('size'), props.text('at')].filter(Boolean).join(' · ')

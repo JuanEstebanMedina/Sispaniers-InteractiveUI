@@ -195,6 +195,11 @@ export default function OperationDetailPage() {
             }
           },
         )
+        // A move renumbers every sibling and a resize changes grid footprints.
+        // The event only carries one component, so fetch packed layout again.
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.operations.componentsAll(trackId),
+        })
         return
       }
 

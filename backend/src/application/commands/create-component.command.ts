@@ -31,20 +31,15 @@ const inputSchema: JsonSchema = {
 };
 
 export function nearestSize(cols: number, rows: number): WidgetSizeName {
-  let bestName: WidgetSizeName = "small";
-  let bestDistance = Number.POSITIVE_INFINITY;
+  const fitting = (
+    Object.entries(WIDGET_SIZES) as Array<[WidgetSizeName, { w: number; h: number }]>
+  ).filter(([name, size]) => name !== "tile" && size.w >= cols && size.h >= rows);
 
-  for (const [name, dimensions] of Object.entries(WIDGET_SIZES) as Array<
-    [WidgetSizeName, { w: number; h: number }]
-  >) {
-    const distance = (dimensions.w - cols) ** 2 + (dimensions.h - rows) ** 2;
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestName = name;
-    }
-  }
+  if (fitting.length === 0) return "large";
 
-  return bestName;
+  return fitting.reduce((best, candidate) =>
+    candidate[1].w * candidate[1].h < best[1].w * best[1].h ? candidate : best,
+  )[0];
 }
 
 export function createCreateComponentCommand(deps: CreateComponentCommandDeps): Command {

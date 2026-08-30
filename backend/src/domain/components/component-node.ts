@@ -93,6 +93,14 @@ function validateComponentNode(node: unknown, remainingDepth: number): void {
     );
   }
 
+  const chartKinds = new Set(["trend-chart", "category-chart", "breakdown-chart"]);
+  if (Array.isArray(props.rows) && chartKinds.has(kind) && props.illustrative !== true) {
+    throw new InvalidComponentTreeError("inline chart rows require illustrative: true");
+  }
+  if (props.illustrative === true && (!chartKinds.has(kind) || !Array.isArray(props.rows))) {
+    throw new InvalidComponentTreeError("illustrative: true requires inline chart rows");
+  }
+
   if (!NESTABLE_ATOMIC_NODE_KINDS.has(kind as AtomicNodeKind)) {
     if (Array.isArray(children) && children.length > 0) {
       throw new InvalidComponentTreeError(`kind ${kind} cannot carry children`);
@@ -147,7 +155,16 @@ export function validateComponentSize(size: WidgetSizeName, children: ComponentN
   if (size === "tile") {
     throw new InvalidComponentTreeError("size tile (1x1) is not allowed");
   }
-  const offender = collectKinds(children).find((kind) => !fitsKind(size, kind));
+  const kinds = collectKinds(children);
+  if (
+    (size === "wide" || size === "large") &&
+    kinds.every((kind) => ["layout", "title", "label", "divider"].includes(kind))
+  ) {
+    throw new InvalidComponentTreeError(
+      `size ${size} is too large for text-only content; use small or banner`,
+    );
+  }
+  const offender = kinds.find((kind) => !fitsKind(size, kind));
   if (offender === undefined) {
     return;
   }
