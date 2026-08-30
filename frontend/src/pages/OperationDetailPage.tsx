@@ -10,8 +10,6 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { ComponentDataProvider } from '@/components/generated/ComponentData'
 import type { Widget } from '@/components/generated/WidgetGrid'
 import { WidgetGrid } from '@/components/generated/WidgetGrid'
-import { demoWidgets } from '@/components/generated/demoWidgets'
-import { sampleDatasets } from '@/components/generated/sampleComponents'
 import { toWidgets } from '@/components/generated/toWidgets'
 import { GeneratedSurface } from '@/components/operations/GeneratedSurface'
 import { OperationDetailHeader } from '@/components/operations/OperationDetailHeader'
@@ -177,21 +175,10 @@ export default function OperationDetailPage() {
     [pending, t],
   )
 
-  // Los bloques de demostración son para una operación que el agente todavía no
-  // ha tocado, NO para una que no se pudo leer: son datos fabricados y en una
-  // pantalla logística se leen igual que los de verdad. Por eso hacen falta los
-  // `generated`: sin respuesta buena no se pinta nada y la página muestra el
-  // error o el esqueleto.
   const widgets = useMemo(() => {
-    const base = !generated
-      ? []
-      : generated.components.length > 0
-        ? toWidgets(generated.components, generated.layout)
-        : operation
-          ? demoWidgets(operation)
-          : []
+    const base = generated ? toWidgets(generated.components, generated.layout) : []
     return [...base, ...pendingWidgets]
-  }, [generated, operation, pendingWidgets])
+  }, [generated, pendingWidgets])
 
   const persist = savePlacement.mutate
   const persistable = (generated?.components.length ?? 0) > 0
@@ -231,7 +218,7 @@ export default function OperationDetailPage() {
       {detail.isSuccess && !components.isError && (
         <GeneratedSurface className="flex-1">
           <SectionBoundary name="generated-ui">
-            <ComponentDataProvider operation={operation} datasets={sampleDatasets}>
+            <ComponentDataProvider operation={operation}>
               <WidgetGrid
                 widgets={widgets}
                 onMove={handleMove}

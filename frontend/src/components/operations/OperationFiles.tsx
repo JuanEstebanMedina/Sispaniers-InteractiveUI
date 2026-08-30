@@ -13,9 +13,7 @@ import { useTranslation } from 'react-i18next'
 
 import { api$ } from '@/api/client'
 import { endpoints } from '@/api/endpoints'
-import { env } from '@/config/env'
 import { cn } from '@/lib/cn'
-import { buildDocumentPreview } from '@/lib/documentPreview'
 import { formatCalendarDate } from '@/lib/format'
 import { toast } from '@/lib/toast'
 import {
@@ -41,7 +39,7 @@ const FORMAT_ICONS: Record<DocumentFormat, typeof File> = {
 }
 
 interface OperationFilesProps {
-  /** La operación entera, no sólo su id: la hoja de demostración se arma con ella. */
+  /** La operación entera, necesaria para obtener la URL firmada. */
   operation: Operation | undefined
   documents: LogisticsDocument[]
   className?: string
@@ -111,15 +109,8 @@ function FileRow({
       if (tab) tab.location.href = preview.url
       else window.location.href = preview.url
     } catch {
-      // El archivo no está en el bucket. En demo se pinta la hoja con lo que hay.
-      if (env.VITE_DEMO_MODE && tab) {
-        const { html } = buildDocumentPreview(operation, document)
-        tab.document.write(html)
-        tab.document.close()
-      } else {
-        tab?.close()
-        toast.error(t('operation.files.openError'))
-      }
+      tab?.close()
+      toast.error(t('operation.files.openError'))
     } finally {
       setOpening(false)
     }
