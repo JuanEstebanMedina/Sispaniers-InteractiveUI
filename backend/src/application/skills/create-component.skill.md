@@ -8,41 +8,10 @@ data. Ask focused follow-up question when needed.
 When a component is warranted, use `create_component` unless user explicitly
 and unambiguously says they want to modify, update, change or replace an
 existing component (see `update_component`). Generic requests for a new view
-use `create_component`, even if other components already exist, only when they
-identify a useful view. If user asks for a generic dashboard or component but
-does not identify what it should show, ask one focused chat question first.
+use `create_component`, even if other components already exist.
 
 If user references a component ambiguously, ask which component they mean;
 never create one solely to avoid clarification.
-
-### Visualization-first choice
-
-When data supports visual comparison, lead with a chart. For chat, recommend
-the fitting chart before a plain component when user asks to understand an
-operation but has not chosen a presentation.
-
-| data question | first choice | do not use it when |
-|---|---|---|
-| how did an ETA or value change over time? | `trend-chart` | only one point exists |
-| which carrier, state, or category is larger? | `category-chart` | one category exists |
-| what share does each container state represent? | `breakdown-chart` | fewer than two parts exist |
-| where are vessels now? | `map` | no vessel positions exist |
-| what is one current value or risk? | `stat`, `badge`, or `progress` | comparison is available and matters |
-| what happened in sequence? | `timeline` | user needs comparison rather than chronology |
-| what fields came from a document? | `key-values` | repeated rows need side-by-side scanning |
-
-Never invent chart rows, labels, or trends except under the explicit
-illustrative-chart rule below. A chart is not better than a clear single fact,
-document detail, or event history.
-
-### Illustrative charts
-
-When user explicitly asks for a chart and real data is too sparse, you may add
-a small plausible illustrative series only to make the visual useful. Set
-`"illustrative": true` and provide at least two inline `rows` in that chart's
-`props`; the UI visibly labels it "Illustrative data". Never use illustrative
-rows for a table, stat, timeline, map, or any claimed operational fact. Do not
-mix illustrative rows with `dataKey` values or imply they came from records.
 
 ### Arguments
 
@@ -60,10 +29,7 @@ mix illustrative rows with `dataKey` values or imply they came from records.
 - `layout` is **required** — it declares how many cells the component
   occupies in the `{{grid_columns}}`-column grid (see "Size" below).
 - `reply` is **required** — a conversational message for the end user, no
-  internal jargon, no HTML, no markdown, no code, never empty. Write it in
-  English.
-- All user-visible strings in `children` — titles, labels, statuses, chart
-  titles, table headings, and timeline text — must be English.
+  internal jargon, no HTML, no markdown, no code, never empty.
 - Don't compute position (`x`, `y`) — the backend assigns that when it
   inserts the event; you only declare the size.
 - `priority` is optional. Omit it for routine information; use `high` for a
@@ -117,7 +83,7 @@ The only `kind` that can carry `children`.
 - **Props**: `direction?` (`row`|`column`), `gap?` (`none`|`xs`|`sm`|`md`|`lg`,
   default `sm`), `align?` (`start`|`center`|`end`|`stretch`, default
   `stretch`), `justify?` (`start`|`center`|`end`|`between`, default `start`),
-  `wrap?` (boolean), `fill?` (boolean; expands this layout to widget height).
+  `wrap?` (boolean).
 - **Returns**: `{ "kind": "layout", "order": n, "props": {...}, "children": [...] }`.
   Maximum 4 levels of nesting total, counting the root.
 
@@ -126,14 +92,13 @@ The only `kind` that can carry `children`.
 - **Decide**: the exact text to show; it is not the title of the whole
   widget (the operation's layout already handles that), it's an internal
   subheading.
-- **Props**: `text` (string), `tone?` (`default`|`muted`|`agent`|`accent`),
-  `center?` (boolean; center sparse compact content).
+- **Props**: `text` (string), `tone?` (`default`|`muted`|`agent`|`accent`).
 
 ### `label` — secondary text
 
 - **Decide**: a short, one-line clarification.
 - **Props**: `text` (string), `tone?` (`default`|`muted`|`agent`|`accent`,
-  default `muted`), `center?` (boolean).
+  default `muted`).
 
 ### `stat` — one figure
 
@@ -142,8 +107,7 @@ The only `kind` that can carry `children`.
   JSON number expecting the frontend to format it, because `value` is read
   as a string and the wrong type is silently dropped.
 - **Props**: `value` (string), `label?` (string), `tone?` (`default`|`muted`|
-  `agent`|`accent`), `emphasis?` (boolean; use a larger value only for a
-  sparse compact component), `center?` (boolean).
+  `agent`|`accent`).
 
 ### `trend-chart` / `category-chart` — charts with axes
 
@@ -236,7 +200,7 @@ Needs at least `small` (2×2) to be legible — **never** ends up in `tile` or
   otherwise it's inferred from the extension in `name`. If you have a real
   URL, the card becomes clickable — without `url` it stays static (never
   send a made-up URL).
-- **Props**: `name?` (string, default `"File"`), `type?` (one of:
+- **Props**: `name?` (string, default `"Archivo"`), `type?` (one of:
   `pdf`|`word`|`excel`|`csv`|`powerpoint`|`image`|`archive`|`code`|`file`, or
   inferred from the extension), `size?` (free string, e.g. `"2.4 MB"`),
   `at?` (free string, e.g. a date), `url?` (string).
@@ -251,7 +215,7 @@ Renders **disabled**: the action exists as vocabulary but isn't wired to
 anything yet. Use it sparingly and never say in the `reply` that the button
 "does" something — that would be false.
 
-- **Props**: `label?` (string, default `"Action"`).
+- **Props**: `label?` (string, default `"Acción"`).
 - **Separate field** (not inside `props`): `action`, one of `navigate`,
   `confirm`, `reject`, `export`, `refresh` — required on this `kind`.
 
@@ -305,8 +269,8 @@ check this table before naming a field.
 
 ## Size (the command's `layout`, not to be confused with `kind: "layout"`)
 
-You request `cols`/`rows` as numbers. The backend chooses the smallest
-supported size that covers requested dimensions:
+You request `cols`/`rows` as numbers; the backend snaps them to the nearest
+grid size on this list:
 
 | name | cols×rows |
 |---|---|
@@ -339,32 +303,6 @@ Use a `layout` node with `direction: "row"` for related counts beside each
 other, then place the chart or map below it. Do not split one operational
 question into tiny components merely because it has several node kinds.
 
-`small` (2×2) is a compact briefing, not an empty canvas: use one primary
-block plus at most one or two short, real context details that explain it
-(current status, next ETA, source, or short label). Do not invent filler. If
-the answer needs a table, timeline, map, or more than a few fields, choose
-`tall`, `wide`, or `large` instead.
-
-For a `small` component, wrap primary block and context in one column `layout`
-with `fill: true` and `justify: "between"`. This uses vertical space cleanly:
-primary fact at top, supporting real context at bottom. Good patterns:
-`stat` + `label`, `key-values` + `badge`, or `progress` + `label`.
-
-### Layout patterns
-
-Use these exact shapes as a starting point when data supports them:
-
-| goal | nodes | size |
-|---|---|---|
-| one current KPI | column `layout` with `stat` + short `label` | `small` |
-| two document facts | column `layout` with `key-values` + `badge` | `small` |
-| order history | `title` + `timeline` | `tall` |
-| status summary plus vessel location | `title`, row `layout` of `stat`/`badge`, then `map` | `large` |
-| compare container states | `title` + `category-chart` or `breakdown-chart` | `wide` |
-
-Never force these patterns when operation context lacks their data. Show less,
-ask one focused chat question, or choose another supported pattern instead.
-
 | `kind` | never fits |
 |---|---|
 | `trend-chart`, `category-chart`, `breakdown-chart`, `map` | `tile`, `banner` |
@@ -375,31 +313,3 @@ size is rejected outright, not shrunk or silently accepted — pick a size
 that fits every node in `children`, worst case first.
 
 Always use the smallest allowed size that communicates the full information.
-
-### Grid composition
-
-Every component starts at `small` (2×2); `tile` (1×1) is forbidden. Never
-request dimensions above `large` (4×4). Start compact, then grow only because
-content needs readable width or height.
-
-| size | use it for | avoid it for |
-|---|---|---|
-| `small` 2×2 | one KPI with supporting context, one status, compact document summary, sparkline | table, timeline, map, full chart |
-| `banner` 4×1 | one concise operation headline or alert | any chart, map, list, or editable content |
-| `wide` 4×2 | default full chart, map, comparison, booking table with few columns | long history or mixed overview |
-| `tall` 2×4 | timeline, document fields, long form, focused detail | wide comparisons or maps |
-| `large` 4×4 | creative operational story: title, summary stats, and chart/map; many rows or details | a single simple fact |
-
-Creative composition means combining related nodes, not filling space with
-invented data. For example: title, a row of two status stats, then an ETA
-trend; or title, customs-risk badge, key document facts, then vessel map.
-
-Never use `wide` or `large` for only a title, label, divider, or nested layouts
-containing only those text nodes. Two short text blocks belong in `small` with
-supporting context, or `banner` for one concise announcement. The backend
-rejects sparse text-only `wide` and `large` components.
-
-When data is too sparse to fill a compact component, do not add invented
-content. Use a `small` component with one `stat` using `emphasis: true`, wrapped
-in a column `layout` with `fill: true`, `align: "center"`, and
-`justify: "center"`. Add a short real label only when it helps explain value.

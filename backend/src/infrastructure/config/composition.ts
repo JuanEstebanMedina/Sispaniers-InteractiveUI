@@ -298,7 +298,6 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const updateComponentPlacement = createUpdateComponentPlacementUseCase({
     operationRepository,
     componentRepository,
-    eventPublisher: componentEventPublisher,
   });
   const updateComponentContent = createUpdateComponentContentUseCase({
     operationRepository,
