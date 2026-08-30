@@ -20,8 +20,12 @@ function repository(): CompanyConceptRepository & {
       definitions.filter(
         (concept) => concept.companyId === companyId && conceptIds.includes(concept.id),
       ),
-    saveDefinitions: async (next) => definitions.push(...next),
-    saveObservations: async (next) => observations.push(...next),
+    saveDefinitions: async (next) => {
+      definitions.push(...next);
+    },
+    saveObservations: async (next) => {
+      observations.push(...next);
+    },
   };
 }
 
@@ -29,7 +33,14 @@ test("stores inbound definitions before their observations", async () => {
   const companyConceptRepository = repository();
   const ingestCompanyConcepts = createIngestCompanyConceptsUseCase({
     operationRepository: {
-      findById: async () => ({ id: "op-1", companyId: "company-1" }),
+      findById: async () => ({
+        id: "op-1",
+        companyId: "company-1",
+        bookings: [],
+        context: { emails: [], documents: [] },
+        createdAt: new Date(),
+        health: "ok" as const,
+      }),
       findAll: async () => [],
       save: async () => {},
     },
