@@ -1,25 +1,116 @@
+import { readFileSync } from "node:fs";
+import { z } from "zod";
+import { CONTAINER_STATES } from "../src/domain/enums/container-state.js";
+import { DOCUMENT_FORMATS } from "../src/domain/enums/document-format.js";
 import type { Company } from "../src/domain/logistics/company.js";
+import type { Document } from "../src/domain/logistics/document.js";
+import type { ContextEmail } from "../src/domain/logistics/operation-context.js";
 import type { Booking, Operation } from "../src/domain/logistics/operation.js";
 import { MongoCompanyRepository } from "../src/infrastructure/adapters/outbound/mongo/company.repository.js";
 import { MongoOperationRepository } from "../src/infrastructure/adapters/outbound/mongo/operation.repository.js";
 import { connectMongo } from "../src/infrastructure/config/mongo.js";
 
-function at(isoDate: string): Date {
-  return new Date(`${isoDate}T00:00:00.000Z`);
+const DATA_FILE = new URL("./seed-data.json", import.meta.url);
+
+const daySchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "expected a YYYY-MM-DD day")
+  .transform((day) => new Date(`${day}T00:00:00.000Z`));
+
+const bookingSeedSchema = z
+  .object({
+    id: z.string().min(1),
+    companyIds: z.array(z.string().min(1)),
+    carrier: z.string().min(1),
+    vessel: z.string().min(1),
+    originPort: z.string().min(1),
+    destinationPort: z.string().min(1),
+    etd: daySchema,
+    eta: daySchema,
+    delayedTo: daySchema.optional(),
+    delayReason: z.string().min(1).optional(),
+    containers: z.array(z.tuple([z.string().min(1), z.enum(CONTAINER_STATES)])),
+  })
+  .refine(
+    (booking) => (booking.delayedTo === undefined) === (booking.delayReason === undefined),
+    "delayedTo and delayReason go together",
+  );
+
+const emailSeedSchema = z.object({
+  source: z.enum(["make", "gmail", "outlook", "manual"]),
+  messageId: z.string().min(1),
+  from: z.string().min(1),
+  to: z.string().min(1).optional(),
+  subject: z.string().min(1),
+  receivedAt: daySchema,
+  bodyText: z.string().optional(),
+});
+
+const documentSeedSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum([
+    "PO",
+    "BookingConfirmation",
+    "BillOfLading",
+    "Invoice",
+    "PackingList",
+    "ArrivalNotice",
+  ]),
+  format: z.enum(DOCUMENT_FORMATS),
+  bucketKey: z.string().min(1),
+  bookingId: z.string().min(1).optional(),
+  sourceEmailId: z.string().min(1).optional(),
+  extractedData: z.record(z.unknown()),
+  receivedAt: daySchema,
+});
+
+const operationSeedSchema = z.object({
+  id: z.string().min(1),
+  createdAt: daySchema,
+  bookings: z.array(bookingSeedSchema),
+  context: z.object({
+    emails: z.array(emailSeedSchema),
+    documents: z.array(documentSeedSchema),
+  }),
+});
+
+const companySeedSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  contactEmails: z.array(z.string().min(1)),
+  operationIds: z.array(z.string().min(1)),
+  preferredNotificationChannel: z.enum(["email", "slack"]),
+}) satisfies z.ZodType<Company, z.ZodTypeDef, unknown>;
+
+type EmailSeed = z.infer<typeof emailSeedSchema>;
+type DocumentSeed = z.infer<typeof documentSeedSchema>;
+
+const seedFileSchema = z.object({
+  operations: z.array(operationSeedSchema),
+  companies: z.array(companySeedSchema),
+});
+
+type BookingSeed = z.infer<typeof bookingSeedSchema>;
+type OperationSeed = z.infer<typeof operationSeedSchema>;
+
+function buildEmail(seed: EmailSeed): ContextEmail {
+  const { to, bodyText, ...rest } = seed;
+
+  return {
+    ...rest,
+    ...(to !== undefined ? { to } : {}),
+    ...(bodyText !== undefined ? { bodyText } : {}),
+  };
 }
 
-interface BookingSeed {
-  id: string;
-  companyIds: string[];
-  carrier: string;
-  vessel: string;
-  originPort: string;
-  destinationPort: string;
-  etd: string;
-  eta: string;
-  delayedTo?: string;
-  delayReason?: string;
-  containers: Array<[containerNumber: string, state: Booking["containers"][number]["state"]]>;
+function buildDocument(seed: DocumentSeed): Document {
+  const { bookingId, sourceEmailId, ...rest } = seed;
+
+  return {
+    ...rest,
+    ...(bookingId !== undefined ? { bookingId } : {}),
+    ...(sourceEmailId !== undefined ? { sourceEmailId } : {}),
+  };
 }
 
 function scheduleChanges(seed: BookingSeed): Booking["schedule"]["changes"] {
@@ -29,14 +120,7 @@ function scheduleChanges(seed: BookingSeed): Booking["schedule"]["changes"] {
     return [];
   }
 
-  return [
-    {
-      previousEta: at(seed.eta),
-      newEta: at(delayedTo),
-      reason: delayReason,
-      occurredAt: at(seed.etd),
-    },
-  ];
+  return [{ previousEta: seed.eta, newEta: delayedTo, reason: delayReason, occurredAt: seed.etd }];
 }
 
 function buildBooking(seed: BookingSeed): Booking {
@@ -48,9 +132,9 @@ function buildBooking(seed: BookingSeed): Booking {
     originPort: seed.originPort,
     destinationPort: seed.destinationPort,
     schedule: {
-      etdOriginal: at(seed.etd),
-      etaOriginal: at(seed.eta),
-      etaCurrent: at(seed.delayedTo ?? seed.eta),
+      etdOriginal: seed.etd,
+      etaOriginal: seed.eta,
+      etaCurrent: seed.delayedTo ?? seed.eta,
       changes: scheduleChanges(seed),
     },
     containers: seed.containers.map(([containerNumber, state], index) => ({
@@ -61,201 +145,19 @@ function buildBooking(seed: BookingSeed): Booking {
   };
 }
 
-const OPERATIONS: Operation[] = [
-  {
-    id: "op-andes-textiles-001",
-    bookings: [
-      buildBooking({
-        id: "bkg-andes-001",
-        companyIds: ["company-andes-textiles"],
-        carrier: "Maersk",
-        vessel: "Maersk Sentosa",
-        originPort: "CNSHA",
-        destinationPort: "COCTG",
-        etd: "2026-07-02",
-        eta: "2026-08-14",
-        delayedTo: "2026-08-21",
-        delayReason: "port congestion at origin",
-        containers: [
-          ["MSKU1029384", "in_transit"],
-          ["MSKU1029385", "in_transit"],
-        ],
-      }),
-    ],
+function buildOperation(seed: OperationSeed): Operation {
+  return {
+    id: seed.id,
+    bookings: seed.bookings.map(buildBooking),
     context: {
-      emails: [
-        {
-          source: "gmail",
-          messageId: "email-andes-014",
-          from: "docs@maersk.com",
-          to: "ops@andestextiles.co",
-          subject: "Bill of Lading — booking bkg-andes-001",
-          receivedAt: at("2026-07-04"),
-          bodyText: "Please find the signed BL attached.",
-        },
-      ],
-      documents: [
-        {
-          id: "doc-andes-bl-001",
-          type: "BillOfLading",
-          format: "pdf",
-          bucketKey: "operations/op-andes-textiles-001/bl-001.pdf",
-          bookingId: "bkg-andes-001",
-          sourceEmailId: "email-andes-014",
-          extractedData: { grossWeightKg: 21400, packages: 880 },
-          receivedAt: at("2026-07-04"),
-        },
-        {
-          id: "doc-andes-inv-001",
-          type: "Invoice",
-          format: "spreadsheet",
-          bucketKey: "operations/op-andes-textiles-001/invoice-001.xlsx",
-          bookingId: "bkg-andes-001",
-          extractedData: { currency: "USD", total: 48250 },
-          receivedAt: at("2026-07-05"),
-        },
-      ],
+      emails: seed.context.emails.map(buildEmail),
+      documents: seed.context.documents.map(buildDocument),
     },
-    createdAt: at("2026-07-01"),
-  },
-  {
-    id: "op-andes-textiles-002",
-    bookings: [
-      buildBooking({
-        id: "bkg-andes-002",
-        companyIds: ["company-andes-textiles"],
-        carrier: "Hapag-Lloyd",
-        vessel: "Bremen Express",
-        originPort: "DEHAM",
-        destinationPort: "COBAQ",
-        etd: "2026-06-10",
-        eta: "2026-07-08",
-        containers: [["HLXU8811223", "delivered"]],
-      }),
-    ],
-    context: {
-      emails: [],
-      documents: [
-        {
-          id: "doc-andes-an-002",
-          type: "ArrivalNotice",
-          format: "pdf",
-          bucketKey: "operations/op-andes-textiles-002/arrival-notice-002.pdf",
-          bookingId: "bkg-andes-002",
-          extractedData: { freeDaysRemaining: 0 },
-          receivedAt: at("2026-07-06"),
-        },
-      ],
-    },
-    createdAt: at("2026-06-09"),
-  },
-  {
-    id: "op-cafe-del-valle-001",
-    bookings: [
-      buildBooking({
-        id: "bkg-cafe-001",
-        companyIds: ["company-cafe-del-valle", "company-flores-tropicales"],
-        carrier: "MSC",
-        vessel: "MSC Ambra",
-        originPort: "COCTG",
-        destinationPort: "NLRTM",
-        etd: "2026-08-01",
-        eta: "2026-08-26",
-        containers: [
-          ["MSCU5566778", "arrived_port"],
-          ["MSCU5566779", "customs"],
-        ],
-      }),
-      buildBooking({
-        id: "bkg-cafe-002",
-        companyIds: ["company-cafe-del-valle"],
-        carrier: "MSC",
-        vessel: "MSC Bettina",
-        originPort: "COCTG",
-        destinationPort: "ESVLC",
-        etd: "2026-08-18",
-        eta: "2026-09-12",
-        containers: [["MSCU9900112", "booking_confirmed"]],
-      }),
-    ],
-    context: {
-      emails: [
-        {
-          source: "make",
-          messageId: "email-cafe-007",
-          from: "exports@cafedelvalle.co",
-          subject: "Packing list Huila lot",
-          receivedAt: at("2026-08-02"),
-        },
-      ],
-      documents: [
-        {
-          id: "doc-cafe-pl-001",
-          type: "PackingList",
-          format: "spreadsheet",
-          bucketKey: "operations/op-cafe-del-valle-001/packing-list-001.xlsx",
-          bookingId: "bkg-cafe-001",
-          sourceEmailId: "email-cafe-007",
-          extractedData: { bags: 640, originFarm: "Huila" },
-          receivedAt: at("2026-08-02"),
-        },
-      ],
-    },
-    createdAt: at("2026-07-28"),
-  },
-  {
-    id: "op-flores-tropicales-001",
-    bookings: [],
-    context: {
-      emails: [
-        {
-          source: "outlook",
-          messageId: "email-flores-003",
-          from: "compras@florestropicales.co",
-          subject: "PO for September shipment",
-          receivedAt: at("2026-08-25"),
-          bodyText: "Attaching the PO, we need it on the water before September 30.",
-        },
-      ],
-      documents: [
-        {
-          id: "doc-flores-po-001",
-          type: "PO",
-          format: "pdf",
-          bucketKey: "operations/op-flores-tropicales-001/po-001.pdf",
-          sourceEmailId: "email-flores-003",
-          extractedData: { incoterm: "FOB", requestedEta: "2026-09-30" },
-          receivedAt: at("2026-08-25"),
-        },
-      ],
-    },
-    createdAt: at("2026-08-25"),
-  },
-];
+    createdAt: seed.createdAt,
+  };
+}
 
-const COMPANIES: Company[] = [
-  {
-    id: "company-andes-textiles",
-    name: "Andes Textiles",
-    contactEmails: ["ops@andestextiles.co", "finanzas@andestextiles.co"],
-    operationIds: ["op-andes-textiles-001", "op-andes-textiles-002"],
-    preferredNotificationChannel: "email",
-  },
-  {
-    id: "company-cafe-del-valle",
-    name: "Café del Valle",
-    contactEmails: ["exports@cafedelvalle.co"],
-    operationIds: ["op-cafe-del-valle-001"],
-    preferredNotificationChannel: "email",
-  },
-  {
-    id: "company-flores-tropicales",
-    name: "Flores Tropicales",
-    contactEmails: ["compras@florestropicales.co"],
-    operationIds: ["op-flores-tropicales-001"],
-    preferredNotificationChannel: "slack",
-  },
-];
+const seedFile = seedFileSchema.parse(JSON.parse(readFileSync(DATA_FILE, "utf8")));
 
 const mongo = await connectMongo();
 
@@ -263,10 +165,10 @@ try {
   const operations = new MongoOperationRepository(mongo.db);
   const companies = new MongoCompanyRepository(mongo.db);
 
-  for (const operation of OPERATIONS) {
-    await operations.save(operation);
+  for (const seed of seedFile.operations) {
+    await operations.save(buildOperation(seed));
   }
-  for (const company of COMPANIES) {
+  for (const company of seedFile.companies) {
     await companies.save(company);
   }
 
