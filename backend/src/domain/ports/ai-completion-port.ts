@@ -8,6 +8,7 @@ export interface AiToolDefinition {
 
 export interface AiCompletionRequest {
   prompt: string;
+  systemPrompt?: string;
   tools?: AiToolDefinition[];
   /**
    * Whether the model must call one of `tools` rather than answer in prose.

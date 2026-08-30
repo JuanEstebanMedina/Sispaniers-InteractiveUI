@@ -12,11 +12,17 @@ import { Fragment, type ReactNode } from 'react'
 import { Area, AreaChart, ResponsiveContainer } from 'recharts'
 
 import { BreakdownChart, CategoryChart, TrendChart, type Series } from '@/components/charts/Charts'
-import { seriesColor } from '@/components/charts/chartTheme'
-import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/cn'
+import {
+  CHART_COLOR,
+  SOFT_COLOR,
+  SOLID_COLOR,
+  TEXT_COLOR,
+  isColorName,
+  type ColorName,
+} from './colors'
 import { useDataset } from './ComponentData'
-import { useNode, useProps } from './NodeContext'
+import { useNode, useProps, type PropReader } from './NodeContext'
 
 /**
  * THE PARTS
@@ -37,14 +43,10 @@ const DIRECTIONS = ['row', 'column'] as const
 const GAPS = ['none', 'xs', 'sm', 'md', 'lg'] as const
 const ALIGNS = ['start', 'center', 'end', 'stretch'] as const
 const JUSTIFIES = ['start', 'center', 'end', 'between'] as const
-const TONES = ['default', 'muted', 'agent', 'accent'] as const
-const STATUSES = ['neutral', 'brand', 'accent', 'success', 'warning', 'danger', 'info'] as const
 
 type Gap = (typeof GAPS)[number]
 type Align = (typeof ALIGNS)[number]
 type Justify = (typeof JUSTIFIES)[number]
-type Tone = (typeof TONES)[number]
-type Status = (typeof STATUSES)[number]
 
 /**
  * Design-system values only. The agent picks a name from a closed list, never a
@@ -73,21 +75,21 @@ const JUSTIFY_CLASS: Record<Justify, string> = {
   between: 'justify-between',
 }
 
-const TONE_CLASS: Record<Tone, string> = {
-  default: 'text-fg',
-  muted: 'text-fg-muted',
-  agent: 'text-agent',
-  accent: 'text-accent',
-}
-
-const STATUS_DOT: Record<Status, string> = {
-  neutral: 'bg-fg-subtle',
-  brand: 'bg-brand',
-  accent: 'bg-accent',
-  success: 'bg-success',
-  warning: 'bg-warning',
-  danger: 'bg-danger',
-  info: 'bg-info',
+/**
+ * The colour a node asked for.
+ *
+ * Reads `color` first, then `tone` and `status` — the two names the earlier
+ * parts used. Keeping the aliases costs one line and means a tree the agent
+ * wrote yesterday does not suddenly render grey.
+ */
+function colorOf(props: PropReader, fallback: ColorName): ColorName {
+  for (const key of ['color', 'tone', 'status'] as const) {
+    const value = props.str(key)
+    if (isColorName(value)) return value
+    // `neutral` was the old name for "no colour".
+    if (value === 'neutral') return 'muted'
+  }
+  return fallback
 }
 
 /** The only part that receives anything, and only the already-built subtree. */
@@ -116,7 +118,7 @@ export function Title() {
     <h4
       className={cn(
         'truncate font-display text-sm font-semibold tracking-tight',
-        TONE_CLASS[props.oneOf('tone', TONES, 'default')],
+        TEXT_COLOR[colorOf(props, 'default')],
       )}
     >
       {props.str('text')}
@@ -127,7 +129,7 @@ export function Title() {
 export function Label() {
   const props = useProps()
   return (
-    <p className={cn('text-pretty text-xs', TONE_CLASS[props.oneOf('tone', TONES, 'muted')])}>
+    <p className={cn('text-pretty text-xs', TEXT_COLOR[colorOf(props, 'muted')])}>
       {props.str('text')}
     </p>
   )
@@ -142,7 +144,7 @@ export function Stat() {
       <p
         className={cn(
           'truncate font-mono text-lg font-semibold tabular',
-          TONE_CLASS[props.oneOf('tone', TONES, 'default')],
+          TEXT_COLOR[colorOf(props, 'default')],
         )}
       >
         {props.str('value', '—')}
@@ -167,8 +169,9 @@ export function Button() {
       disabled
       title={`${props.action()} — sin conectar`}
       className={cn(
-        'inline-flex h-control-sm shrink-0 items-center rounded-md px-3',
-        'border border-line bg-surface text-xs font-medium text-fg-muted',
+        'inline-flex h-control-sm shrink-0 items-center rounded-md border px-3',
+        'text-xs font-medium',
+        SOFT_COLOR[colorOf(props, 'muted')],
         'cursor-not-allowed opacity-60',
       )}
     >
@@ -177,14 +180,24 @@ export function Button() {
   )
 }
 
-/** A series with no key would draw an axis off nothing, so it is dropped. */
-const asSeries = (item: Record<string, unknown>): Series | null => {
+/**
+ * A series with no key would draw an axis off nothing, so it is dropped.
+ *
+ * `color` names one from the vocabulary — `"danger"` for the delayed bar. With
+ * no name it falls back to the chart palette by position, which is what keeps
+ * three unnamed series from all coming out the same colour.
+ */
+const asSeries = (item: Record<string, unknown>, index: number): Series | null => {
   const key = typeof item.key === 'string' ? item.key : ''
   if (!key) return null
+
+  const named = isColorName(item.color) ? CHART_COLOR[item.color] : undefined
+
   return {
     key,
     label: typeof item.label === 'string' ? item.label : key,
-    colorIndex: Number(item.colorIndex) || 0,
+    colorIndex: Number(item.colorIndex) || index,
+    ...(named ? { color: named } : {}),
   }
 }
 
@@ -255,9 +268,15 @@ export function Breakdown() {
 export function StatusBadge() {
   const props = useProps()
   return (
-    <Badge tone={props.oneOf('status', STATUSES, 'neutral')} size="sm">
+    <span
+      className={cn(
+        'inline-flex h-5 shrink-0 items-center rounded-full border px-2',
+        'whitespace-nowrap text-2xs font-medium',
+        SOFT_COLOR[colorOf(props, 'muted')],
+      )}
+    >
       {props.str('text', '—')}
-    </Badge>
+    </span>
   )
 }
 
@@ -342,10 +361,12 @@ export function Timeline() {
   const inline = props.list('events', (item) => {
     const text = typeof item.text === 'string' ? item.text : ''
     if (!text) return null
-    const status = (STATUSES as readonly string[]).includes(item.status as string)
-      ? (item.status as Status)
-      : 'neutral'
-    return { text, at: typeof item.at === 'string' ? item.at : undefined, status }
+    const raw = item.color ?? item.status
+    return {
+      text,
+      at: typeof item.at === 'string' ? item.at : undefined,
+      status: isColorName(raw) ? raw : ('subtle' as ColorName),
+    }
   })
 
   const named = useDataset(props.text('dataKey'))
@@ -358,7 +379,7 @@ export function Timeline() {
                 {
                   text: row.text,
                   at: typeof row.at === 'string' ? row.at.slice(0, 10) : undefined,
-                  status: 'neutral' as Status,
+                  status: 'subtle' as ColorName,
                 },
               ]
             : [],
@@ -371,7 +392,7 @@ export function Timeline() {
       {events.map((event, index) => (
         <li key={index} className="flex gap-2">
           <span className="mt-1 flex flex-col items-center">
-            <span className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[event.status])} />
+            <span className={cn('size-1.5 shrink-0 rounded-full', SOLID_COLOR[event.status])} />
             {index < events.length - 1 && <span className="mt-0.5 w-px flex-1 bg-line" />}
           </span>
           <span className="min-w-0 pb-1">
@@ -410,7 +431,7 @@ export function Progress() {
         className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken"
       >
         <div
-          className={cn('h-full rounded-full', STATUS_DOT[props.oneOf('status', STATUSES, 'brand')])}
+          className={cn('h-full rounded-full', SOLID_COLOR[colorOf(props, 'brand')])}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -428,6 +449,7 @@ export function Sparkline() {
   const props = useProps()
   const rows = useDataset(props.text('dataKey')) ?? []
   const valueKey = props.str('valueKey', 'value')
+  const stroke = CHART_COLOR[colorOf(props, 'brand')]
 
   if (rows.length === 0) return null
 
@@ -438,8 +460,8 @@ export function Sparkline() {
           <Area
             type="monotone"
             dataKey={valueKey}
-            stroke={seriesColor(0)}
-            fill={seriesColor(0)}
+            stroke={stroke}
+            fill={stroke}
             fillOpacity={0.15}
             strokeWidth={1.5}
             isAnimationActive={false}

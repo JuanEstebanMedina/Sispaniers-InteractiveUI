@@ -69,26 +69,10 @@ void i18n
   .init({
     resources,
     defaultNS,
-    // Every screen calls shared strings like `actions.cancel` without
-    // prefixing the namespace — this is what makes that resolve even from a
-    // component whose own `useTranslation(...)` only lists its own namespace.
     fallbackNS: 'common',
     ns: ['common', 'auth', 'errors', 'validation', 'domain'],
     fallbackLng: DEFAULT_LOCALE,
     supportedLngs: [...SUPPORTED_LOCALES],
-
-    /**
-     * `nonExplicitSupportedLngs` estaba en true y rompía el portugués.
-     *
-     * La opción TRUNCA el código entrante antes de compararlo con
-     * supportedLngs: 'pt-BR' se convertía en 'pt', que no está en la lista, y
-     * el idioma caía a español sin decir nada. Sirve cuando en supportedLngs
-     * ponés la base ('pt') y querés aceptar las variantes; acá tenemos la
-     * variante concreta, así que sobra.
-     *
-     * Sin la opción, los cuatro casos que importan resuelven bien:
-     *   pt-BR → pt-BR    pt → pt-BR    es-CO → es    en-GB → en
-     */
 
     detection: {
       order: ['localStorage', 'navigator'],

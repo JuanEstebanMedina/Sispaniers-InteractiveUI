@@ -52,7 +52,12 @@ container state, a booking whose ETA slipped, a two-booking operation and one wi
 bookings at all. It runs on the host against `localhost`, so Mongo must already be up.
 
 The seed **upserts by id** and is safe to re-run; it does not wipe the collection. To
-start from scratch: `docker compose down -v && docker compose up -d mongo`.
+start from scratch, from the repo root (both `--env-file` flags are required):
+
+```bash
+docker compose --env-file backend/.env --env-file frontend/.env down -v
+docker compose --env-file backend/.env --env-file frontend/.env up -d mongo
+```
 
 ## API
 

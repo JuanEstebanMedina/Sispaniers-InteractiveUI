@@ -8,37 +8,14 @@ import { operationListSchema } from '@/schemas'
 import { useRailStore } from '@/stores/railStore'
 
 /**
- * LAYOUT DE OPERACIONES — el que sostiene el riel
+ * Holds the rail so opening an operation keeps the others in view.
  *
- *   /operations              la grilla, a todo el ancho
- *   /operations/$trackId     [ detalle | riel ]
- *
- * POR QUÉ EL RIEL VIVE ACÁ Y NO EN LA PÁGINA DE DETALLE
- *
- * Es el requisito entero de la pantalla: al abrir una operación, las demás
- * siguen visibles. Si el riel estuviera dentro de `OperationDetailPage`, cada
- * clic lo desmontaría y lo volvería a montar — perdería el scroll y
- * parpadearía. Siendo ruta de layout, el router sólo cambia el hijo.
- *
- * El panel es una COLUMNA y no un cajón flotante: comparte la fila con el
- * contenido y lo empuja, como el sidebar. Su interruptor vive en la cabecera
- * del detalle, así que el estado está en `railStore` — cabecera y layout son
- * hermanos de ruta y no hay props entre ellos.
- *
- * EL RIEL PIDE SIEMPRE LA LISTA SIN FILTRAR, y por eso usa `GET /operations`
- * mientras la grilla usa `POST /operations/search` con los filtros de la URL.
- * Son dos claves de caché distintas a propósito: los filtros responden "qué
- * busco" y el riel "qué más está pasando". Si el riel heredara el filtro,
- * buscar "entregado" escondería justo la operación que se acaba de romper.
- *
- * El costo es una petición extra al abrir un detalle con la grilla filtrada.
- * Vale la pena: la alternativa es un panel de vigilancia que deja de vigilar
- * en cuanto alguien escribe en el buscador.
+ * Inside `OperationDetailPage` the rail would unmount on every click and lose
+ * its scroll. As a layout route, the router only swaps the child.
  */
-
 export default function OperationsLayout() {
-  // `strict: false` porque este layout también se monta en la ruta índice,
-  // donde no hay `trackId`.
+  // `strict: false` because this layout also mounts on the index route, where
+  // there is no trackId.
   const { trackId } = useParams({ strict: false }) as { trackId?: string }
   const hasDetail = Boolean(trackId)
 
@@ -48,10 +25,9 @@ export default function OperationsLayout() {
     queryKey: queryKeys.operations.list(),
     queryFn: () =>
       api$.post(endpoints.operations.search, operationListSchema, {}),
-    // Sólo cuando hay un detalle abierto. En la grilla este layout igual se
-    // monta, pero `hasDetail` es false y el riel no se renderiza: sin esto se
-    // descargaba la lista entera para no mostrarla, EN PARALELO con el POST
-    // /operations/search que sí alimenta la grilla.
+    // Only with a detail open. This layout still mounts on the grid, where the
+    // rail is not rendered — without this the whole list downloads in parallel
+    // with the search that actually feeds the grid, to show nothing.
     enabled: hasDetail,
     refetchOnWindowFocus: true,
   })
@@ -60,8 +36,6 @@ export default function OperationsLayout() {
 
   return (
     <div className="flex min-h-dvh">
-      {/* min-w-0: sin esto una tabla ancha del detalle estira el flex y empuja
-          el riel fuera de pantalla. Es el bug clásico de flexbox. */}
       <div className="min-w-0 flex-1">
         <Outlet />
       </div>

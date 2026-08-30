@@ -10,20 +10,6 @@ import {
 } from '@/schemas/component.schema'
 import { useSse } from './useSse'
 
-/**
- * `GET /api/operations/:id/events` — todo lo que pasa en UNA operación: sus
- * componentes Y la operación misma. No habla de la lista, así que no
- * reemplaza el sondeo de la grilla ni del riel.
- *
- * El backend abre un `text/event-stream` y publica cinco eventos con nombre:
- * `component-pending` (antes de saber qué construirá el agente, con un
- * tamaño estimado), `component-created`/`component-updated` (el componente ya
- * serializado en `data`), y `operation-updated`/`simulation-completed` (la
- * operación completa, para que la cabecera se entere sin sondear).
- *
- * `useSse` usa fetch para poder enviar el JWT; `EventSource` no admite headers.
- */
-
 export type OperationEventName =
   | 'component-created'
   | 'component-updated'
@@ -45,9 +31,14 @@ export type OperationEventHandler = (
   payload: GeneratedComponent | ComponentPendingEvent | Operation | null,
 ) => void
 
-/** Estado de la conexión, para que un contenido viejo nunca pase por en vivo. */
 export type StreamStatus = 'connecting' | 'live' | 'offline' | 'ended'
 
+/**
+ * EventSource cannot send an Authorization header. That works today because the
+ * events route has no auth, and it is why this uses the browser's SSE client
+ * rather than the axios instance — protect that route and this has to become
+ * fetch with a ReadableStream.
+ */
 export function useOperationEvents(
   operationId: string,
   onEvent: OperationEventHandler,
@@ -78,7 +69,6 @@ function parsePayload(
   name: OperationEventName,
   data: string,
 ): GeneratedComponent | ComponentPendingEvent | Operation | null {
-  // Un evento ilegible no tumba el stream: el consumidor refresca por HTTP.
   try {
     if (name === 'component-pending-cleared') return null
     const json = JSON.parse(data)

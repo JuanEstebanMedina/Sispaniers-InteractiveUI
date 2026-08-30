@@ -7,7 +7,8 @@ import { useIsAtLeast, useRoleLabels } from '@/auth/useAuth'
 import { ROLES, type Role } from '@/auth/roles'
 import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
-import { Input, Select } from '@/components/ui/Input'
+import { FieldInput } from '@/components/ui/FieldInput'
+import { Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { useCompanyDirectory } from '@/hooks'
 import { toast } from '@/lib/toast'
@@ -25,13 +26,6 @@ interface UserFormModalProps {
   /** Present → edit that user (PATCH). Absent → create one (POST). */
   user?: ManagedUser
   onSaved?: (user: ManagedUser) => void
-}
-
-function errorText(error: unknown): string | undefined {
-  if (!error) return undefined
-  if (typeof error === 'string') return error
-  if (typeof error === 'object' && 'message' in error) return String(error.message)
-  return String(error)
 }
 
 export function UserFormModal({ open, onClose, user, onSaved }: UserFormModalProps) {
@@ -126,50 +120,32 @@ export function UserFormModal({ open, onClose, user, onSaved }: UserFormModalPro
       >
         <form.Field name="name">
           {(field) => (
-            <Field
-              label={t('user.fields.name')}
-              required
-              error={errorText(field.state.meta.errors[0])}
-            >
-              <Input
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                autoFocus
-              />
-            </Field>
+            <FieldInput field={field} required label={t('user.fields.name')} autoFocus />
           )}
         </form.Field>
 
         <form.Field name="email">
           {(field) => (
-            <Field label={t('user.fields.email')} required>
-              <Input
-                type="email"
-                value={field.state.value}
-                onChange={(event) => field.handleChange(event.target.value)}
-                disabled={isEdit}
-                readOnly={isEdit}
-              />
-            </Field>
+            <FieldInput
+              field={field}
+              required
+              label={t('user.fields.email')}
+              type="email"
+              disabled={isEdit}
+              readOnly={isEdit}
+            />
           )}
         </form.Field>
 
         <form.Field name="password">
           {(field) => (
-            <Field
-              label={t(isEdit ? 'user.fields.passwordEdit' : 'user.fields.password')}
+            <FieldInput
+              field={field}
               required={!isEdit}
-              error={errorText(field.state.meta.errors[0])}
-            >
-              <Input
-                type="password"
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                placeholder={isEdit ? t('user.fields.passwordPlaceholder') : '••••••••'}
-              />
-            </Field>
+              label={t(isEdit ? 'user.fields.passwordEdit' : 'user.fields.password')}
+              type="password"
+              placeholder={isEdit ? t('user.fields.passwordPlaceholder') : '••••••••'}
+            />
           )}
         </form.Field>
 

@@ -7,42 +7,39 @@ import { cn } from '@/lib/cn'
 import { toast } from '@/lib/toast'
 import type { LogisticsDocument } from '@/schemas'
 import { useChatAttachStore } from '@/stores/chatAttachStore'
+import { useChatStore } from '@/stores/chatStore'
 import { ChatComposer } from './ChatComposer'
-import { ChatHistory, type ChatMessage } from './ChatHistory'
+import { ChatHistory } from './ChatHistory'
 
 interface AgentChatProps {
   operationId: string
   className?: string
 }
 
-/**
- * Hablar con el agente para lo que la UI generada no tiene widget — «avisa al
- * cliente», «frena esto hasta que revise».
- *
- * El agente responde con un componente Y con un `reply` corto para leer.
- */
+const EMPTY_MESSAGES: never[] = []
+
 export function AgentChat({ operationId, className }: AgentChatProps) {
   const { t } = useTranslation('domain')
-  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const messages = useChatStore((state) => state.messagesByOperation[operationId] ?? EMPTY_MESSAGES)
+  const appendMessage = useChatStore((state) => state.append)
   const docs = useChatAttachStore((state) => state.documents)
   const detachDoc = useChatAttachStore((state) => state.detach)
   const clearDocs = useChatAttachStore((state) => state.clear)
 
-  function append(author: ChatMessage['author'], body: string, cited: string[] = []) {
-    setMessages((current) => [
-      ...current,
-      { id: `msg-${current.length}`, author, body, docs: cited },
-    ])
+  function append(author: 'agent' | 'human', body: string, cited: string[] = []) {
+    appendMessage(operationId, { author, body, docs: cited })
   }
 
   async function send() {
     const body = draft.trim()
-    if (!body && docs.length === 0) return
+    if (isSending || (!body && docs.length === 0)) return
 
     append('human', body, docs.map((document) => document.type))
     setDraft('')
     clearDocs()
+    setIsSending(true)
 
     try {
       const { reply, component_created: componentCreated } = await http.post<{
@@ -60,6 +57,8 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
       }
     } catch {
       toast.error(t('operation.chat.sendError'))
+    } finally {
+      setIsSending(false)
     }
   }
 
@@ -75,15 +74,16 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
         onSend={send}
         docs={docs}
         onDetach={detachDoc}
+        disabled={isSending}
       />
     </section>
   )
 }
 
 /**
- * `POST /operations/:id/chat` sólo acepta `message: string` — no tiene canal
- * para adjuntos, así que el documento se cita por tipo e id dentro del texto.
- * El agente ya tiene la operación en su contexto y con el id lo encuentra.
+ * `POST /operations/:id/chat` only accepts `message: string` — there is no
+ * channel for attachments, so a document is cited by type and id inside the
+ * text. The agent already holds the operation and resolves the id from there.
  */
 function withDocs(body: string, docs: LogisticsDocument[]): string {
   if (docs.length === 0) return body

@@ -1,9 +1,15 @@
 import { InvalidAiComponentError, OperationNotFoundError } from "../../../domain/model/errors.js";
 import type { AiCompletionPort } from "../../../domain/ports/ai-completion-port.js";
+import type { ChatHistoryPort } from "../../../domain/ports/chat-history.port.js";
+import type { ClientMemoryPort } from "../../../domain/ports/client-memory.port.js";
+import type { CompanyKnowledgePort } from "../../../domain/ports/company-knowledge.port.js";
+import type { EpisodicMemoryPort } from "../../../domain/ports/episodic-memory.port.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 import {
+  type PromptContext,
   buildBasePrompt,
-  completeOrThrow,
+  completeWithParseRetry,
+  fetchPromptContext,
   stripMarkdownCodeFence,
   truncateForDebugging,
 } from "./ai-response.helpers.js";
@@ -16,6 +22,10 @@ export interface RespondToChatInput {
 export interface RespondToChatDeps {
   operationRepository: OperationRepository;
   aiCompletionPort: AiCompletionPort;
+  chatHistoryPort: ChatHistoryPort;
+  companyKnowledgePort: CompanyKnowledgePort;
+  clientMemoryPort: ClientMemoryPort;
+  episodicMemoryPort: EpisodicMemoryPort;
   promptTemplate: string;
 }
 
@@ -32,8 +42,8 @@ TECHNICAL NOTE — for this call (trigger: "chat"), fully ignore section 7's out
 The rest of this document's rules (sections 0-6, 8) still apply the same way.`;
 }
 
-function buildChatPrompt(template: string, message: string): string {
-  const base = buildBasePrompt(template, "chat", message, GRID_COLUMNS);
+function buildChatPrompt(template: string, message: string, context: PromptContext): string {
+  const base = buildBasePrompt(template, "chat", message, GRID_COLUMNS, context);
   return `${base}\n\n${buildChatOutputContractOverride()}`;
 }
 
@@ -60,7 +70,15 @@ function parseChatResponse(rawText: string): { reply: string } {
 }
 
 export function createRespondToChatUseCase(deps: RespondToChatDeps) {
-  const { operationRepository, aiCompletionPort, promptTemplate } = deps;
+  const {
+    operationRepository,
+    aiCompletionPort,
+    chatHistoryPort,
+    companyKnowledgePort,
+    clientMemoryPort,
+    episodicMemoryPort,
+    promptTemplate,
+  } = deps;
 
   return async function respondToChat(input: RespondToChatInput): Promise<{ reply: string }> {
     const operation = await operationRepository.findById(input.operationId);
@@ -68,18 +86,32 @@ export function createRespondToChatUseCase(deps: RespondToChatDeps) {
       throw new OperationNotFoundError(input.operationId);
     }
 
-    const prompt = buildChatPrompt(promptTemplate, input.message);
-    const response = await completeOrThrow(aiCompletionPort, prompt);
+    const promptContext = await fetchPromptContext(
+      { chatHistoryPort, companyKnowledgePort, clientMemoryPort, episodicMemoryPort },
+      input.operationId,
+      operation.companyId,
+    );
 
-    try {
-      return parseChatResponse(response.text);
-    } catch (error) {
-      if (!(error instanceof InvalidAiComponentError)) {
-        throw error;
-      }
-      console.warn("respondToChat: retrying after invalid AI response");
-      const retryResponse = await completeOrThrow(aiCompletionPort, prompt);
-      return parseChatResponse(retryResponse.text);
-    }
+    const prompt = buildChatPrompt(promptTemplate, input.message, promptContext);
+    const { reply } = await completeWithParseRetry(
+      aiCompletionPort,
+      prompt,
+      parseChatResponse,
+      "respondToChat",
+    );
+
+    const now = new Date();
+    chatHistoryPort.append(input.operationId, {
+      role: "user",
+      content: input.message,
+      recordedAt: now,
+    });
+    chatHistoryPort.append(input.operationId, {
+      role: "assistant",
+      content: reply,
+      recordedAt: now,
+    });
+
+    return { reply };
   };
 }

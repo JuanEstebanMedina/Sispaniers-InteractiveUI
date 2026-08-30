@@ -49,7 +49,12 @@ export class OpenAiCompletionAdapter implements AiCompletionPort {
 
     const response = await this.getClient().chat.completions.create({
       model: this.model,
-      messages: [{ role: "user", content: request.prompt }],
+      messages: [
+        ...(request.systemPrompt === undefined
+          ? []
+          : [{ role: "developer" as const, content: request.systemPrompt }]),
+        { role: "user", content: request.prompt },
+      ],
       reasoning_effort: "none",
       // "required" forces an actual function call whenever tools are offered
       // — left on "auto", the model is free to answer in plain prose, which

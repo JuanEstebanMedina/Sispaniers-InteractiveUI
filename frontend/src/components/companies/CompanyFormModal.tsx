@@ -5,7 +5,8 @@ import { api$ } from '@/api/client'
 import { endpoints } from '@/api/endpoints'
 import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
-import { Input, Select } from '@/components/ui/Input'
+import { FieldInput } from '@/components/ui/FieldInput'
+import { Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/lib/toast'
 import {
@@ -27,13 +28,6 @@ interface CompanyFormModalProps {
   /** Present → edit that company (PATCH). Absent → create one (POST). */
   company?: Company
   onSaved?: (company: Company) => void
-}
-
-function errorText(error: unknown): string | undefined {
-  if (!error) return undefined
-  if (typeof error === 'string') return error
-  if (typeof error === 'object' && 'message' in error) return String(error.message)
-  return String(error)
 }
 
 export function CompanyFormModal({ open, onClose, company, onSaved }: CompanyFormModalProps) {
@@ -118,37 +112,25 @@ export function CompanyFormModal({ open, onClose, company, onSaved }: CompanyFor
       >
         <form.Field name="name">
           {(field) => (
-            <Field
-              label={t('company.fields.name')}
+            <FieldInput
+              field={field}
               required
-              error={errorText(field.state.meta.errors[0])}
-            >
-              <Input
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                placeholder={t('company.fields.namePlaceholder')}
-                autoFocus
-              />
-            </Field>
+              label={t('company.fields.name')}
+              placeholder={t('company.fields.namePlaceholder')}
+              autoFocus
+            />
           )}
         </form.Field>
 
         <form.Field name="contactEmail">
           {(field) => (
-            <Field
-              label={t('company.fields.contactEmail')}
+            <FieldInput
+              field={field}
               required
-              error={errorText(field.state.meta.errors[0])}
-            >
-              <Input
-                type="email"
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                placeholder={t('company.fields.contactEmailPlaceholder')}
-              />
-            </Field>
+              label={t('company.fields.contactEmail')}
+              type="email"
+              placeholder={t('company.fields.contactEmailPlaceholder')}
+            />
           )}
         </form.Field>
 
