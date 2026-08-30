@@ -5,6 +5,7 @@ import {
   validateComponentSize,
   validateComponentTree,
 } from "../../src/domain/components/component-node.js";
+import { DATA_SOURCE_NAMES } from "../../src/domain/enums/widget-kind.js";
 import {
   InvalidComponentPathError,
   InvalidComponentTreeError,
@@ -130,7 +131,7 @@ test("layout accepts children of any kind, not only buttons", () => {
       props: { direction: "row" },
       children: [
         { kind: "title", order: 0, props: { text: "A" } },
-        { kind: "trend-chart", order: 1, props: { dataKey: "sales" } },
+        { kind: "trend-chart", order: 1, props: { dataKey: "schedule-changes" } },
         { kind: "button", order: 2, props: {}, action: "refresh" },
       ],
     },
@@ -180,4 +181,22 @@ test("finds a chart nested inside a layout when checking the size", () => {
 
 test("a container with no chart fits any size", () => {
   expect(() => validateComponentSize("tile", [statNode(0)])).not.toThrow();
+});
+
+test("rejects a dataKey the frontend cannot resolve", () => {
+  const tree = [{ kind: "table", order: 0, props: { dataKey: "ventas-del-mes" } }];
+
+  expect(() => validateComponentTree(tree)).toThrow(InvalidComponentTreeError);
+});
+
+test("accepts every documented data source", () => {
+  for (const name of DATA_SOURCE_NAMES) {
+    expect(() =>
+      validateComponentTree([{ kind: "table", order: 0, props: { dataKey: name } }]),
+    ).not.toThrow();
+  }
+});
+
+test("a node with no dataKey is none of that rule's business", () => {
+  expect(() => validateComponentTree([statNode(0)])).not.toThrow();
 });

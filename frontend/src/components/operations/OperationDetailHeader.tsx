@@ -23,6 +23,8 @@ interface OperationDetailHeaderProps {
   operation: Operation
   /** Operations waiting on a person, for the mark on the panel toggle. */
   waiting?: number
+  /** Live-stream state, surfaced so stale content never passes for live. */
+  stream?: 'connecting' | 'live' | 'offline' | 'ended'
 }
 
 /**
@@ -32,7 +34,11 @@ interface OperationDetailHeaderProps {
  * Kept deliberately short — it is chrome, and every pixel it takes is a pixel
  * the generated grid below does not get.
  */
-export function OperationDetailHeader({ operation, waiting = 0 }: OperationDetailHeaderProps) {
+export function OperationDetailHeader({
+  operation,
+  waiting = 0,
+  stream,
+}: OperationDetailHeaderProps) {
   const { t } = useTranslation(['domain', 'common'])
   const { copy, copied } = useCopyToClipboard()
   const railOpen = useRailStore((state) => state.open)
@@ -65,6 +71,22 @@ export function OperationDetailHeader({ operation, waiting = 0 }: OperationDetai
       <Fact key="eta">
         <span className="text-fg-subtle">{t('domain:operation.fields.eta')}</span>
         {formatCalendarDate(operation.eta)}
+      </Fact>
+    ) : null,
+
+    stream ? (
+      <Fact key="stream">
+        <span
+          aria-hidden
+          className={cn(
+            'size-1.5 shrink-0 rounded-full',
+            stream === 'live' && 'animate-pulse bg-success',
+            stream === 'connecting' && 'bg-fg-subtle',
+            stream === 'offline' && 'bg-danger',
+            stream === 'ended' && 'bg-fg-subtle',
+          )}
+        />
+        <span className="text-fg-subtle">{t(`domain:operation.stream.${stream}`)}</span>
       </Fact>
     ) : null,
 

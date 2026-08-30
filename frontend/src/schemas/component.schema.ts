@@ -30,6 +30,10 @@ export type AtomicNodeKind = (typeof ATOMIC_NODE_KINDS)[number]
 export const ACTION_KINDS = ['navigate', 'confirm', 'reject', 'export', 'refresh'] as const
 export type ActionKind = (typeof ACTION_KINDS)[number]
 
+/** How badly a container wants to be looked at. Mirrors the backend. */
+export const COMPONENT_PRIORITIES = ['normal', 'high', 'critical'] as const
+export type ComponentPriority = (typeof COMPONENT_PRIORITIES)[number]
+
 export const WIDGET_SIZE_NAMES = [
   'tile',
   'small',
@@ -75,6 +79,8 @@ export const componentSchema = z.object({
   /** Wire key is `content`; its value is the node tree. */
   content: z.array(componentNodeSchema).catch([]),
   size: z.enum(WIDGET_SIZE_NAMES).catch('small'),
+  // Stored components predate the field, so an absent one reads as `normal`.
+  priority: z.enum(COMPONENT_PRIORITIES).catch('normal').default('normal'),
   created_at: z.string(),
 })
 
