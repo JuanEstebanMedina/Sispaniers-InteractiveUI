@@ -1,13 +1,14 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, ArrowRight, Check, Container, Copy, MessageSquare } from 'lucide-react'
+import { ArrowLeft, Check, Container, Copy, MessageSquare } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useCompanyDirectory, useCopyToClipboard } from '@/hooks'
+import { useCopyToClipboard, useShipperName } from '@/hooks'
 import { cn } from '@/lib/cn'
 import { formatCalendarDate, formatRelative } from '@/lib/format'
 import type { Operation } from '@/schemas'
 import { useRailStore } from '@/stores/railStore'
+import { OperationRoute } from './OperationRoute'
 import { HealthChip, OperationStatusBadge } from './OperationStatus'
 
 /** Vertical rule between facts. Collapses on its own when a fact is absent. */
@@ -43,8 +44,7 @@ export function OperationDetailHeader({
   const { copy, copied } = useCopyToClipboard()
   const railOpen = useRailStore((state) => state.open)
   const toggleRail = useRailStore((state) => state.toggle)
-  const companies = useCompanyDirectory()
-  const shipper = companies[operation.companyIds[0] ?? ''] ?? operation.shipper
+  const shipper = useShipperName(operation)
 
   const facts: ReactNode[] = [
     <Fact key="status">
@@ -54,9 +54,7 @@ export function OperationDetailHeader({
 
     operation.origin && operation.destination ? (
       <Fact key="route">
-        <span className="truncate">{operation.origin}</span>
-        <ArrowRight className="size-3 shrink-0 text-fg-subtle" aria-hidden />
-        <span className="truncate">{operation.destination}</span>
+        <OperationRoute from={operation.origin} to={operation.destination} />
       </Fact>
     ) : null,
 

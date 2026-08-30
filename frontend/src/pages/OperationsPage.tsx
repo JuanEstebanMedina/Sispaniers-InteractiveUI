@@ -11,8 +11,6 @@ import { OperationsFilters } from '@/components/operations/OperationsFilters'
 import { OperationsGrid } from '@/components/operations/OperationsGrid'
 import { operationListSchema, resolveOperationsSearch } from '@/schemas'
 
-/** La web habla en su vocabulario; el backend en el suyo. La traducción vive
- *  acá, en el único sitio que conoce los dos. */
 const HEALTH_TO_BACKEND: Record<string, string> = {
   on_track: 'ok',
   at_risk: 'warning',
@@ -26,7 +24,6 @@ const SORT_TO_BACKEND: Record<string, string> = {
 }
 export default function OperationsPage() {
   const { t } = useTranslation('domain')
-  // La URL sólo lleva lo que alguien cambió; acá se rellenan los ausentes.
   const raw = useSearch({ from: '/app/operations/' })
   const search = resolveOperationsSearch(raw)
   const navigate = useNavigate()
@@ -68,8 +65,6 @@ export default function OperationsPage() {
         onClearFilters={() =>
           void navigate({
             to: '/operations',
-            // `undefined` en todos: limpiar filtros deja la URL en
-            // `/operations` pelada, que es lo que "sin filtros" significa.
             search: { q: undefined, status: undefined, health: undefined },
           })
         }

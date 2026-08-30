@@ -26,3 +26,16 @@ export function useCompanyDirectory(): Record<string, string> {
     return byId
   }, [companies.data])
 }
+
+/**
+ * The name to show for an operation's client.
+ *
+ * The backend sends company ids, so the readable name has to be looked up.
+ * `operation.shipper` is the fallback for a company the directory has not
+ * loaded yet — a card showing an id would be worse than one showing a stale
+ * name for a second.
+ */
+export function useShipperName(operation: { companyIds: string[]; shipper: string }): string {
+  const companies = useCompanyDirectory()
+  return companies[operation.companyIds[0] ?? ''] ?? operation.shipper
+}

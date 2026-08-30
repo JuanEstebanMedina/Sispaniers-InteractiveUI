@@ -6,10 +6,6 @@ interface DropdownProps {
   trigger: ReactNode
   children: ReactNode
   align?: 'start' | 'end'
-  /**
-   * Hacia dónde abre. 'right' es para triggers en una columna angosta —el
-   * sidebar colapsado— donde abrir hacia abajo se saldría de la pantalla.
-   */
   side?: 'bottom' | 'right'
   className?: string
   width?: string
@@ -70,8 +66,7 @@ export function Dropdown({
             'rounded-md border border-line bg-surface-raised shadow-lg',
             'p-0.5 animate-slide-up',
             side === 'right'
-              ? // Anclado al borde INFERIOR del trigger: en el pie del sidebar
-                // cualquier otra cosa se sale por abajo.
+              ?
                 'bottom-0 left-[calc(100%+0.375rem)]'
               : cn('top-[calc(100%+0.25rem)]', align === 'end' ? 'right-0' : 'left-0'),
           )}
