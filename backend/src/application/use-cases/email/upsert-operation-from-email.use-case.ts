@@ -44,16 +44,16 @@ function toDocument(
   messageId: string,
   idGenerator: IdGenerator,
 ): Document | undefined {
-  // Sin bucketKey el documento no apunta a ningún archivo real — no vale la
-  // pena persistirlo (el adjunto no llegó a subirse a Supabase Storage).
+  // Without a bucketKey the document doesn't point at any real file — not
+  // worth persisting it (the attachment never made it to Supabase Storage).
   if (attachment.storagePath === undefined) {
     return undefined;
   }
 
   return {
     id: idGenerator.newId(),
-    // TODO: clasificar el tipo real del documento (invoice, BL, packing list...)
-    // — por ahora todo lo que llega por este flujo se asume orden de compra.
+    // TODO: classify the document's real type (invoice, BL, packing list...)
+    // — for now everything arriving through this flow is assumed to be a PO.
     type: "PO",
     format: attachment.format,
     bucketKey: attachment.storagePath,
@@ -63,9 +63,9 @@ function toDocument(
   };
 }
 
-// TODO: conecta el agente real aquí — hoy el vínculo correo↔operación es
-// puramente textual (el id sale del subject "Orden de compra #<id>"); más
-// adelante un agente real decidirá a qué operación pertenece cada correo.
+// TODO: wire up the real agent here — today the email↔operation link is
+// purely textual (the id comes from the subject "Orden de compra #<id>");
+// later a real agent will decide which operation each email belongs to.
 export function createUpsertOperationFromEmailUseCase(deps: UpsertOperationFromEmailDeps) {
   const { operationRepository, idGenerator } = deps;
 
