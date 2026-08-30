@@ -19,8 +19,10 @@ the operations it is responsible for.
 
 ## Environment
 
-There is one `.env` for the whole repo, at the **root** — not inside `backend/`.
-Copy `.env.example` to `.env` and fill it in.
+Env vars live in `backend/.env` (this directory), not at the repo root. Copy
+`backend/.env.example` to `backend/.env` and fill it in. `docker compose` at the repo
+root needs `--env-file backend/.env --env-file frontend/.env` to pick up both — see the
+root README.
 
 | Variable | Default | Purpose |
 |---|---|---|

@@ -89,21 +89,21 @@ frontend/    # runtime-generated UI — not started yet
 backend/     # agents, flows and orchestration — see backend/README.md
 .githooks/   # versioned git hooks, shared by every clone
 docker-compose.yml
-.env.example # single env file for the whole repo; copy to .env at the root
 ```
 
 ## Getting started
 
-**1. Configure the environment.** One `.env` for the whole repo, at the root:
+**1. Configure the environment.** Each app owns its own env file — copy the example and adjust:
 
 ```bash
-cp .env.example .env   # MONGO_PASSWORD is required, compose refuses to start without it
+cp backend/.env.example backend/.env      # MONGO_PASSWORD is required
+cp frontend/.env.example frontend/.env
 ```
 
 **2. Bring up the stack.**
 
 ```bash
-docker compose up -d --build     # API + MongoDB
+docker compose --env-file backend/.env --env-file frontend/.env up -d --build     # API + MongoDB + frontend
 curl http://127.0.0.1:8000/health
 ```
 
@@ -111,7 +111,7 @@ Or, for the fast development loop, run only the database in Docker and the API o
 host with autoreload:
 
 ```bash
-docker compose up -d mongo
+docker compose --env-file backend/.env --env-file frontend/.env up -d mongo
 cd backend
 make install
 make dev                          # http://127.0.0.1:8000
@@ -127,7 +127,9 @@ make -C backend hooks
 ```
 
 **4. Load the seed data.** The database starts empty; this loads three companies and
-four synthetic operations covering every container state:
+four synthetic operations covering every container state. `docker compose up` now runs
+this automatically via a one-off `seed` service (it's idempotent, safe to re-run). For
+the host-only dev loop (step 2's second option), run it manually:
 
 ```bash
 make -C backend seed
