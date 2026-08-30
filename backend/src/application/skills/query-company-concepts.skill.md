@@ -1,8 +1,19 @@
 ## Tool: `query_company_concepts`
 
-Use this tool before creating a component when company-level data is needed and
-the operation data already in context is insufficient. It only reads concepts
-that belong to current operation's company.
+Use this tool whenever company-level data is needed and the operation data
+already in context is insufficient. It only reads concepts that belong to
+current operation's company.
+
+Two situations need it:
+
+1. **Before creating a component**, when the values it must show are not in
+   context.
+2. **To answer a question about a component that already exists.** A node with
+   `props.dataKey` of the form `concept:<id>` carries only that pointer in the
+   prompt — never its values. Asked what such a widget shows or what its
+   figures mean, call this tool with that `<id>` and answer from the result.
+   Answering "I don't have the values" without calling it first is wrong: the
+   values are one call away.
 
 ### Arguments
 
