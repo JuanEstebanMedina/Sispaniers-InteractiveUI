@@ -14,21 +14,8 @@ export const listSearchSchema = z.object({
 
 export type ListSearch = z.infer<typeof listSearchSchema>
 
-/**
- * Filtros de la grilla.
- *
- * TODO OPCIONAL, sin `.default()`. Con defaults el router los escribe en la
- * URL en cuanto entrás, y `/operations` se convierte en
- * `/operations?status=all&health=all&sort=updatedAt&order=desc` — ruido que
- * no dice nada, porque son exactamente los valores por defecto.
- *
- * Ausente = el valor por defecto. Se resuelve al leerlos, con
- * `resolveOperationsSearch`, y así la URL sólo lleva lo que alguien cambió a
- * mano: un link compartido se lee de un vistazo.
- *
- * `.catch()` se queda: basura en la URL degrada a "sin filtro" en vez de
- * romper la página. El jurado VA a editar la URL.
- */
+// Every field carries `.catch()`: junk in the URL degrades to "no filter"
+// rather than throwing on a link somebody pasted into Slack.
 export const operationsSearchSchema = z.object({
   q: z.string().optional(),
   status: z.string().catch('all').optional(),
@@ -44,7 +31,6 @@ export const OPERATIONS_SEARCH_DEFAULTS = {
   order: 'desc',
 } as const
 
-/** Rellena los ausentes. Un solo sitio decide qué significa "sin especificar". */
 export function resolveOperationsSearch(search: OperationsSearch) {
   return {
     q: search.q ?? '',

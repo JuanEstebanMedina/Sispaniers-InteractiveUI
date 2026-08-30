@@ -12,18 +12,6 @@ import { LOCALE_LABELS, SUPPORTED_LOCALES, currentLocale, setLocale } from '@/i1
 import { cn } from '@/lib/cn'
 import { useThemeStore, type ThemeMode } from '@/stores/themeStore'
 
-/**
- * PIE DEL SIDEBAR — cuenta, preferencias y colapsar
- *
- * La barra superior se eliminó y lo suyo bajó acá.
- *
- * Idioma, tema y cerrar sesión están SIEMPRE a la vista, no detrás de un
- * desplegable: son tres cosas, no vale la pena cobrar un clic por abrirlas, y
- * escondidas hay que recordar que existen.
- *
- * Colapsado no hay ancho para "etiqueta + valor", así que las mismas tres se
- * vuelven iconos con un popover que abre hacia la derecha.
- */
 export function SidebarFooter({
   collapsed,
   labelVisibility,
@@ -177,8 +165,6 @@ export function SidebarFooter({
 
       <div
         className={cn(
-          // From md up, not lg: between the two the sidebar is icons-only, and
-          // that is exactly where a way to expand it is most needed.
           'mt-2 hidden border-t border-line pt-2 md:flex',
           collapsed ? 'justify-center' : 'justify-end',
         )}
@@ -242,9 +228,6 @@ function PreferenceRow({
                 type="button"
                 onClick={() => {
                   option.onSelect()
-                  // Se cierra al elegir: dejar la lista abierta hace que la
-                  // siguiente fila quede empujada hacia abajo y obliga a un
-                  // clic extra sólo para volver a ver el pie completo.
                   setOpen(false)
                 }}
                 className={cn(
@@ -265,17 +248,6 @@ function PreferenceRow({
   )
 }
 
-/**
- * Selector del sidebar colapsado: un popover que abre hacia la derecha.
- *
- * Antes estos iconos CICLABAN entre sus valores. Con tres opciones eso obliga
- * a pasar por la del medio para llegar a la tercera —y a mirar el tooltip para
- * saber dónde quedaste—, así que un popover con las tres a la vista cuesta los
- * mismos clics y no hace adivinar.
- *
- * Abre hacia la derecha y anclado abajo porque el trigger vive en el pie de
- * una columna de 68px: hacia abajo se saldría de la pantalla.
- */
 function CollapsedPicker({
   icon,
   label,

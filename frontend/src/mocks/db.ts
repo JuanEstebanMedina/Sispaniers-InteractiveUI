@@ -75,9 +75,3 @@ export const users: MockUser[] = [
     lastLoginAt: '2026-08-26T11:00:00Z',
   },
 ]
-
-/* ---------------------------------------------------------------------------
- * Las operaciones simuladas se borraron: el dominio lo sirve el backend real
- * en `/api/flows`. Acá sólo quedan los usuarios, porque el backend todavía no
- * tiene autenticación. Cuando la tenga, este archivo desaparece entero.
- * ------------------------------------------------------------------------ */

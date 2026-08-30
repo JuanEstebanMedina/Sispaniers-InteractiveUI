@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 
 import { ComponentDataProvider } from '@/components/generated/ComponentData'
 import { createTree } from '@/components/generated/nodeFactory'
+import { CHART_COLOR, isColorName } from '@/components/generated/colors'
 import { sampleComponents, sampleDatasets } from '@/components/generated/sampleComponents'
 import { componentSchema, type ComponentNode } from '@/schemas/component.schema'
 
@@ -396,5 +397,64 @@ describe('priority', () => {
       })
       expect(parsed.priority).toBe(level)
     }
+  })
+})
+
+describe('the agent picks the colours', () => {
+  test('a title takes the colour it asked for', () => {
+    expect(render([{ kind: 'title', order: 0, props: { text: 'X', color: 'danger' } }])).toContain(
+      'text-danger',
+    )
+  })
+
+  test('a button is tinted by name', () => {
+    expect(
+      render([{ kind: 'button', order: 0, props: { label: 'Frenar', color: 'danger' }, action: 'reject' }]),
+    ).toContain('danger')
+  })
+
+  test('a badge takes a colour from the same vocabulary', () => {
+    expect(
+      render([{ kind: 'badge', order: 0, props: { text: 'Retrasado', color: 'warning' } }]),
+    ).toContain('warning')
+  })
+
+  test('a progress bar takes one too', () => {
+    expect(
+      render([{ kind: 'progress', order: 0, props: { value: 50, color: 'success' } }]),
+    ).toContain('bg-success')
+  })
+
+  // Charts are asserted through the colour map rather than the rendered SVG:
+  // recharts measures its container, and in static markup that is 0x0, so no
+  // bars exist to inspect. The map is the actual guarantee anyway — a name in,
+  // a theme variable out.
+  test('a colour name resolves to a theme variable, never a literal', () => {
+    expect(CHART_COLOR.danger).toBe('var(--color-danger)')
+    expect(CHART_COLOR.success).toBe('var(--color-success)')
+    // A variable and not a hex is what lets a chart follow a theme switch.
+    expect(Object.values(CHART_COLOR).every((value) => value.startsWith('var(--'))).toBe(true)
+  })
+
+  test('only the documented names are colours', () => {
+    expect(isColorName('danger')).toBe(true)
+    expect(isColorName('chartreuse')).toBe(false)
+    expect(isColorName('#ff0000')).toBe(false)
+  })
+
+  test('a colour off the vocabulary never reaches the DOM', () => {
+    const html = render([{ kind: 'title', order: 0, props: { text: 'X', color: 'chartreuse' } }])
+
+    expect(html).not.toContain('chartreuse')
+    expect(html).toContain('text-fg')
+  })
+
+  test('`tone` and `status` still work, so older trees keep their colours', () => {
+    expect(render([{ kind: 'label', order: 0, props: { text: 'X', tone: 'accent' } }])).toContain(
+      'text-accent',
+    )
+    expect(
+      render([{ kind: 'progress', order: 0, props: { value: 10, status: 'danger' } }]),
+    ).toContain('bg-danger')
   })
 })

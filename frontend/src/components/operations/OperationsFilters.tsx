@@ -12,7 +12,6 @@ import {
 } from '@/schemas'
 
 interface OperationsFiltersProps {
-  /** Ya resueltos: sin `undefined`. Ver `resolveOperationsSearch`. */
   search: ReturnType<typeof import('@/schemas').resolveOperationsSearch>
   total: number | undefined
 }
@@ -37,10 +36,6 @@ export function OperationsFilters({ search, total }: OperationsFiltersProps) {
     setQuery(search.q ?? '')
   }, [search.q])
 
-  /**
-   * Escribe en la URL, pero OMITE lo que ya es el valor por defecto: así
-   * `/operations` se queda limpio y sólo aparece lo que alguien tocó.
-   */
   const update = (patch: Record<string, string | undefined>) => {
     void navigate({
       to: '/operations',
@@ -55,12 +50,7 @@ export function OperationsFilters({ search, total }: OperationsFiltersProps) {
   }
 
   return (
-    /* Móvil: rejilla de dos columnas. Tres selectores apilados a ancho completo
-       comen media pantalla antes de ver una sola tarjeta. Desde sm vuelve a ser
-       una fila que envuelve. */
     <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
-      {/* El buscador va primero en móvil (es lo que más se usa) y último en
-          escritorio, empujado a la derecha. */}
       <SearchInput
         size="sm"
         value={query}
