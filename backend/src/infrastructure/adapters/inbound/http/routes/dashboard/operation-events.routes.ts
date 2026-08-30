@@ -10,6 +10,7 @@ import { OperationNotFoundError } from "../../../../../../domain/model/errors.js
 import type { ComponentEventPublisher } from "../../../../../../domain/ports/component-event-publisher.port.js";
 import type { OperationEventPublisher } from "../../../../../../domain/ports/operation-event-publisher.port.js";
 import { toComponentWireShape } from "../../mappers/component.mapper.js";
+import { writeSseHead } from "../../sse.js";
 import { toOperationResponse } from "./operations.routes.js";
 
 const operationParamsSchema = z.object({ id: z.string().min(1) });
@@ -25,11 +26,7 @@ export const operationEventsRoutes: FastifyPluginAsyncZod<OperationEventsRouteDe
   deps,
 ) => {
   fastify.get("/operations/events", (request, reply) => {
-    reply.raw.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    });
+    writeSseHead(reply);
 
     const unsubscribe = deps.operationEventPublisher.subscribeAll((event, operation) => {
       const companyId = request.actor.companyId;
@@ -72,11 +69,7 @@ export const operationEventsRoutes: FastifyPluginAsyncZod<OperationEventsRouteDe
         throw error;
       }
 
-      reply.raw.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      });
+      writeSseHead(reply);
 
       const unsubscribeComponents = deps.componentEventPublisher.subscribe(id, (event, payload) => {
         // "component-pending" carries its own wire shape already — it has
