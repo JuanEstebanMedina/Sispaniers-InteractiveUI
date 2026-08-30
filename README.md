@@ -85,7 +85,7 @@ Employees, emails, documents, vessels and data can all be invented.
 ## Structure
 
 ```
-frontend/    # runtime-generated UI — not started yet
+frontend/    # runtime-generated UI (React + Vite) — see frontend/.env.example
 backend/     # agents, flows and orchestration — see backend/README.md
 .githooks/   # versioned git hooks, shared by every clone
 docker-compose.yml
@@ -100,12 +100,32 @@ cp backend/.env.example backend/.env      # MONGO_PASSWORD is required
 cp frontend/.env.example frontend/.env
 ```
 
-**2. Bring up the stack.**
+**2. Bring up the stack.** Both `--env-file` flags are required, every time:
 
 ```bash
-docker compose --env-file backend/.env --env-file frontend/.env up -d --build     # API + MongoDB + frontend
-curl http://127.0.0.1:8000/health
+docker compose --env-file backend/.env --env-file frontend/.env up --build
 ```
+
+That brings up MongoDB, the API, the frontend, and a one-off `seed` service that loads
+the synthetic data. When it settles:
+
+| Service | URL |
+|---|---|
+| Frontend | http://127.0.0.1:5173 |
+| API | http://127.0.0.1:8000 — `curl http://127.0.0.1:8000/health` |
+| MongoDB | `127.0.0.1:27017` |
+
+Add `-d` to run it in the background. To tear it down:
+
+```bash
+docker compose --env-file backend/.env --env-file frontend/.env down -v
+```
+
+> **`-v` deletes the MongoDB volume**, and that is usually what you want here. Mongo
+> creates its root user **only on the very first boot** and bakes the credentials into
+> the volume; changing `MONGO_PASSWORD` afterwards leaves the volume on the old one and
+> the API fails to authenticate. `down -v` is the reset. Dropping `-v` keeps the data —
+> and keeps that mismatch.
 
 Or, for the fast development loop, run only the database in Docker and the API on the
 host with autoreload:
@@ -127,9 +147,9 @@ make -C backend hooks
 ```
 
 **4. Load the seed data.** The database starts empty; this loads three companies and
-four synthetic operations covering every container state. `docker compose up` now runs
-this automatically via a one-off `seed` service (it's idempotent, safe to re-run). For
-the host-only dev loop (step 2's second option), run it manually:
+four synthetic operations covering every container state. Step 2 already ran it via the
+one-off `seed` service (it upserts by id, so it is safe to re-run). Only the host-only
+dev loop needs it by hand:
 
 ```bash
 make -C backend seed
@@ -138,6 +158,27 @@ curl http://127.0.0.1:8000/api/operations
 
 The full environment-variable table, the API reference, the data model and
 troubleshooting live in [`backend/README.md`](backend/README.md).
+
+### Why two `--env-file` flags
+
+`docker compose` auto-loads exactly one env file: a `.env` sitting next to the compose
+file. There is no `.env` at the repo root — each app owns its own, so the frontend's
+public `VITE_*` values never share a file with the backend's secrets. Passing both
+explicitly is what puts `MONGO_PASSWORD` and `VITE_API_URL` into the same interpolation
+pass. Omit them and compose refuses to start anything:
+
+```
+error while interpolating services.mongo.environment.MONGO_INITDB_ROOT_PASSWORD:
+required variable MONGO_PASSWORD is missing a value: set MONGO_PASSWORD in .env, see .env.example
+```
+
+If you get tired of typing it, export the pair once per shell:
+
+```bash
+export COMPOSE_ENV="--env-file backend/.env --env-file frontend/.env"
+docker compose $COMPOSE_ENV up --build
+docker compose $COMPOSE_ENV down -v
+```
 
 ### Why the git hooks need opting in
 
