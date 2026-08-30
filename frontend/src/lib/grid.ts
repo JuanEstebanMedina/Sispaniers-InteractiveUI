@@ -118,6 +118,12 @@ export function moveItem(
   const dragged = items.find((item) => item.id === id)
   if (!dragged) return pack(items, cols)
 
+  // The splice point below is found in reading order, which stops matching the
+  // sequence as soon as `pack` drops a later widget into an earlier hole. On a
+  // drop that lands where the widget already is there is nothing to splice, so
+  // taking the shortcut is also the only way the sequence survives it.
+  if (dragged.col === col && dragged.row === row) return items
+
   const others = items.filter((item) => item.id !== id)
   const at = others.findIndex((item) => item.row > row || (item.row === row && item.col >= col))
   const index = at === -1 ? others.length : at

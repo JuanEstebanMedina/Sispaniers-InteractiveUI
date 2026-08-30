@@ -139,11 +139,16 @@ export function WidgetGrid({
   const remember = useCallback(
     (layout: GridItem[], movedId: string) => {
       const sequence = layout.map((item) => item.id)
+      // A drop or an arrow key that changes nothing — against the edge of the
+      // grid, or back onto the widget's own cell — is not a move. Persisting it
+      // would rewrite every sibling's order for no reason.
+      if (sequence.every((id, index) => id === settled[index]?.id)) return
+
       setOrder(sequence)
       const position = sequence.indexOf(movedId)
       if (position !== -1) onMove?.(movedId, position)
     },
-    [onMove],
+    [settled, onMove],
   )
 
   const commit = useCallback(() => {
