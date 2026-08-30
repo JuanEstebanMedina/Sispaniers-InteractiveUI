@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
+import { createCreateComponentCommand } from "../../application/commands/create-component.command.js";
+import { createUpdateComponentCommand } from "../../application/commands/update-component.command.js";
 import { createApplyTrackingEventUseCase } from "../../application/use-cases/dashboard/apply-tracking-event.use-case.js";
 import { createCreateComponentUseCase } from "../../application/use-cases/dashboard/create-component.use-case.js";
 import { createCreateOperationUseCase } from "../../application/use-cases/dashboard/create-operation.use-case.js";
@@ -18,6 +20,7 @@ import { createUploadOperationDocumentUseCase } from "../../application/use-case
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import { createUpsertOperationFromEmailUseCase } from "../../application/use-cases/email/upsert-operation-from-email.use-case.js";
+import { CommandRegistry } from "../../domain/commands/command-registry.js";
 import type { AiCompletionPort } from "../../domain/ports/ai-completion-port.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
 import type { AttachmentStorage } from "../../domain/ports/attachment-storage.port.js";
@@ -50,6 +53,14 @@ const DEFAULT_SIMULATION_TICK_INTERVAL_MS = 20_000;
 // backend/). Add a build-time asset copy if that assumption ever breaks.
 const ARI_SYSTEM_PROMPT = readFileSync(
   join(process.cwd(), "src/application/prompts/ari-system-prompt.md"),
+  "utf-8",
+);
+const CREATE_COMPONENT_SKILL = readFileSync(
+  join(process.cwd(), "src/application/commands/create-component.skill.md"),
+  "utf-8",
+);
+const UPDATE_COMPONENT_SKILL = readFileSync(
+  join(process.cwd(), "src/application/commands/update-component.skill.md"),
   "utf-8",
 );
 
@@ -212,13 +223,27 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     openAiAdapter,
     geminiAdapter,
   );
+  const commandRegistry = new CommandRegistry();
+  commandRegistry.register(
+    createCreateComponentCommand({ createComponent, skill: CREATE_COMPONENT_SKILL }),
+  );
+  commandRegistry.register(
+    createUpdateComponentCommand({
+      updateComponentContent,
+      skill: UPDATE_COMPONENT_SKILL,
+    }),
+  );
+  const skills = commandRegistry
+    .list()
+    .map((command) => command.skill)
+    .filter((skill): skill is string => skill !== undefined)
+    .join("\n\n---\n\n");
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository,
     componentRepository,
     aiCompletionPort,
-    createComponent,
-    updateComponentContent,
-    promptTemplate: ARI_SYSTEM_PROMPT,
+    commandRegistry,
+    promptTemplate: `${ARI_SYSTEM_PROMPT}\n\n---\n\n${skills}`,
   });
 
   const app = buildApp({

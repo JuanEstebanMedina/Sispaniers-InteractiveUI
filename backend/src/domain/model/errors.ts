@@ -75,6 +75,20 @@ export class InvalidComponentPathError extends Error {
   }
 }
 
+export class UnknownCommandError extends Error {
+  constructor(name: string) {
+    super(`Unknown command: ${name}`);
+    this.name = "UnknownCommandError";
+  }
+}
+
+export class InvalidCommandInputError extends Error {
+  constructor(reason: string) {
+    super(`Invalid command input: ${reason}`);
+    this.name = "InvalidCommandInputError";
+  }
+}
+
 export class BookingNotFoundError extends Error {
   constructor(id: string) {
     super(`Booking not found: ${id}`);
