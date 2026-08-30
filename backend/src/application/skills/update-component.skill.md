@@ -22,6 +22,9 @@ componente de más que actualizar uno equivocado.
 }
 ```
 
+- IMPORTANTE: `kind` debe ser EXACTAMENTE uno de estos valores, nunca inventes
+  otros: `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`,
+  `label`, `button`, `layout`. Cualquier otro valor será rechazado.
 - `componentId` es **obligatorio** — el `id` que aparece en la lista de
   componentes existentes del contexto.
 - `reply` es **obligatorio** — mensaje conversacional para el usuario final,

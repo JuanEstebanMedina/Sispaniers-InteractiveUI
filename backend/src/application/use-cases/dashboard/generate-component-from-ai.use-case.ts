@@ -4,6 +4,8 @@ import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
 import {
   InvalidAiComponentError,
   InvalidCommandInputError,
+  InvalidComponentPathError,
+  InvalidComponentTreeError,
   OperationNotFoundError,
   UnknownCommandError,
 } from "../../../domain/model/errors.js";
@@ -73,17 +75,39 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
 
     if (result.kind === "text") {
       if (trigger === "chat") {
+        console.log(
+          `generateComponentFromAi: chat trigger returned plain text for operation ${operationId}`,
+        );
         return { component: null, reply: result.text };
       }
+      console.warn(
+        `generateComponentFromAi: auto trigger returned plain text instead of a tool call for operation ${operationId}, retrying`,
+      );
       throw new InvalidAiComponentError(`no tool called: ${result.text}`);
     }
 
+    console.log(
+      `generateComponentFromAi: dispatching tool "${result.toolName}" for operation ${operationId}`,
+    );
+
     try {
-      return (await commandRegistry.dispatch(result.toolName, result.input, {
+      const dispatched = (await commandRegistry.dispatch(result.toolName, result.input, {
         operationId,
       })) as { component: Component; reply: string };
+      console.log(
+        `generateComponentFromAi: tool "${result.toolName}" dispatched successfully for operation ${operationId}`,
+      );
+      return dispatched;
     } catch (error) {
-      if (error instanceof UnknownCommandError || error instanceof InvalidCommandInputError) {
+      if (
+        error instanceof UnknownCommandError ||
+        error instanceof InvalidCommandInputError ||
+        error instanceof InvalidComponentTreeError ||
+        error instanceof InvalidComponentPathError
+      ) {
+        console.warn(
+          `generateComponentFromAi: tool "${result.toolName}" dispatch failed for operation ${operationId}: ${error.message}`,
+        );
         throw new InvalidAiComponentError(error.message);
       }
       throw error;
@@ -114,7 +138,9 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       if (!(error instanceof InvalidAiComponentError)) {
         throw error;
       }
-      console.warn("generateComponentFromAi: retrying after invalid AI response");
+      console.warn(
+        `generateComponentFromAi: retrying after invalid AI response for operation ${input.operationId}: ${error.message}`,
+      );
       return completeAndDispatch(prompt, input.operationId, input.trigger);
     }
   };
