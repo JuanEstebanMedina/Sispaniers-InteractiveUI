@@ -67,3 +67,26 @@ export const uploadDocumentResponseSchema = z.object({
   url: z.string(),
   expires_in_seconds: z.number(),
 });
+
+export const trackingEventBodySchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("vessel_position"),
+    booking_id: z.string().min(1),
+    lat: z.number(),
+    lng: z.number(),
+  }),
+  z.object({
+    type: z.literal("schedule_change"),
+    booking_id: z.string().min(1),
+    new_eta: z.string().datetime({ offset: true }),
+    reason: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal("container_state"),
+    booking_id: z.string().min(1),
+    container_id: z.string().min(1),
+    state: z.enum(CONTAINER_STATES),
+  }),
+]);
+
+export type TrackingEventBody = z.infer<typeof trackingEventBodySchema>;

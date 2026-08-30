@@ -25,20 +25,30 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     listOperations,
     getDocumentPreviewUrl,
     uploadOperationDocument,
+    applyTrackingEvent,
+    enrollOperationInSimulation,
     getOperationComponents,
     updateOperationLayout,
     updateComponentContent,
     createComponent,
     componentEventPublisher,
+    operationEventPublisher,
   } = deps;
 
-  await fastify.register(emailsRoutes, { receiveEmail, sendEmail, upsertOperationFromEmail });
+  await fastify.register(emailsRoutes, {
+    receiveEmail,
+    sendEmail,
+    upsertOperationFromEmail,
+    enrollOperationInSimulation,
+  });
   await fastify.register(operationsRoutes, {
     createOperation,
     getOperation,
     listOperations,
     getDocumentPreviewUrl,
     uploadOperationDocument,
+    applyTrackingEvent,
+    enrollOperationInSimulation,
   });
   await fastify.register(operationComponentsRoutes, {
     getOperationComponents,
@@ -46,5 +56,8 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     updateComponentContent,
     createComponent,
   });
-  await fastify.register(operationEventsRoutes, { componentEventPublisher });
+  await fastify.register(operationEventsRoutes, {
+    componentEventPublisher,
+    operationEventPublisher,
+  });
 };
