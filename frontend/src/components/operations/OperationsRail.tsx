@@ -84,7 +84,6 @@ export function OperationsRail({
     [t, queryClient, activeTrackId],
   )
   useOperationEvents(activeTrackId ?? '', onOperationEvent)
-
   // La operación abierta ya está en la lista que el riel recibe, así que esto
   // es una lectura de lo que tiene en la mano — no una consulta más.
   const active = useMemo(

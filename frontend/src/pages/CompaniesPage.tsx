@@ -31,9 +31,7 @@ export default function CompaniesPage() {
   const list = useQuery({
     queryKey: queryKeys.companies.list(),
     queryFn: () => api$.get(endpoints.companies.list, companyListSchema),
-    // Companies can also be created outside this tab — e.g. the email-intake
-    // flow finds-or-creates one server-side. Same pattern as the operations
-    // grid/rail: poll, and catch up right away when the tab regains focus.
+    // Email intake can create companies without a matching SSE event yet.
     refetchInterval: 15_000,
     refetchOnWindowFocus: true,
   })

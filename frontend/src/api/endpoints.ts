@@ -57,6 +57,7 @@ export const endpoints = {
   ai: {
     chat: (operationId: string) => `/operations/${operationId}/chat`,
     events: (operationId: string) => `/operations/${operationId}/events`,
+    operationEvents: '/operations/events',
     components: (operationId: string, cols: 2 | 4 | 8) =>
       `/operations/${operationId}/components?cols=${cols}`,
   },

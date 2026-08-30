@@ -46,7 +46,6 @@ export default function OperationDetailPage() {
   const detail = useQuery({
     queryKey: queryKeys.operations.detail(trackId),
     queryFn: () => api$.get(endpoints.operations.detail(trackId), operationResponseSchema),
-    refetchInterval: 15_000,
   })
 
   // El backend empaqueta la grilla para un número de columnas concreto, y quien

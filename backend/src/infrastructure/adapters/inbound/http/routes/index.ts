@@ -108,6 +108,7 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     await protectedRoutes.register(operationEventsRoutes, {
       componentEventPublisher,
       operationEventPublisher,
+      getOperation,
     });
     await protectedRoutes.register(usersRoutes, { createUser, listUsers, updateUser });
     await protectedRoutes.register(authMeRoutes, { getMe });
