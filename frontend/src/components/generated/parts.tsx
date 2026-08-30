@@ -200,10 +200,34 @@ export function EmailAction() {
   const { t } = useTranslation('domain')
   const operation = useOperation()
 
-  const [to, setTo] = useState(props.str('to'))
-  const [subject, setSubject] = useState(props.str('subject'))
-  const [body, setBody] = useState(props.str('body'))
+  const proposed = {
+    to: props.str('to'),
+    subject: props.str('subject'),
+    body: props.str('body'),
+  }
+
+  const [to, setTo] = useState(proposed.to)
+  const [subject, setSubject] = useState(proposed.subject)
+  const [body, setBody] = useState(proposed.body)
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
+  const [lastProposed, setLastProposed] = useState(proposed)
+
+  // The draft is the user's to edit, so it lives in state rather than reading
+  // props every render. That state is seeded once at mount, so an agent
+  // rewriting this component would otherwise never reach the screen: the node
+  // stays mounted and the new props are ignored. A different proposal is a
+  // different email — the local "sent" belonged to the text it replaces.
+  if (
+    lastProposed.to !== proposed.to ||
+    lastProposed.subject !== proposed.subject ||
+    lastProposed.body !== proposed.body
+  ) {
+    setLastProposed(proposed)
+    setTo(proposed.to)
+    setSubject(proposed.subject)
+    setBody(proposed.body)
+    setStatus('idle')
+  }
 
   const canSend = status === 'idle' && to.trim() !== '' && subject.trim() !== '' && body.trim() !== ''
 
