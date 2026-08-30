@@ -88,3 +88,24 @@ export class ContainerNotFoundError extends Error {
     this.name = "ContainerNotFoundError";
   }
 }
+
+export class CompanyReferenceRequiredError extends Error {
+  constructor() {
+    super("Either company_id or company must be provided");
+    this.name = "CompanyReferenceRequiredError";
+  }
+}
+
+export class CompanyNameConflictError extends Error {
+  constructor(name: string) {
+    super(`A company named "${name}" already exists`);
+    this.name = "CompanyNameConflictError";
+  }
+}
+
+export class CompanyDisabledError extends Error {
+  constructor(email: string) {
+    super(`Cannot send email to ${email}: its company is disabled`);
+    this.name = "CompanyDisabledError";
+  }
+}

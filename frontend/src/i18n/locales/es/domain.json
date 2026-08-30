@@ -1,4 +1,39 @@
 {
+  "company": {
+    "title": "Compañías",
+    "subtitle": "Cada compañía con la que trabaja el agente, identificada por nombre para que nunca haya duplicados.",
+    "emptyTitle": "Todavía no hay compañías",
+    "emptyHint": "Creá la primera, o se va a crear sola la primera vez que una operación la nombre.",
+    "actions": {
+      "create": "Nueva compañía"
+    },
+    "modal": {
+      "title": "Nueva compañía",
+      "editTitle": "Editar compañía",
+      "description": "Las compañías se identifican por nombre — crear una con un nombre existente simplemente la reutiliza."
+    },
+    "fields": {
+      "name": "Nombre",
+      "namePlaceholder": "ej. Andes Textiles",
+      "contactEmail": "Correo de contacto",
+      "contactEmailPlaceholder": "ops@empresa.com",
+      "notificationChannel": "Canal de notificación",
+      "status": "Estado"
+    },
+    "channels": {
+      "email": "Correo",
+      "slack": "Slack"
+    },
+    "status": {
+      "active": "Activa",
+      "disabled": "Deshabilitada"
+    },
+    "toasts": {
+      "saved": "{{name}} está lista",
+      "disabled": "{{name}} fue deshabilitada",
+      "enabled": "{{name}} fue habilitada"
+    }
+  },
   "operation": {
     "title": "Operaciones",
     "subtitle": "Todo lo que los agentes están ejecutando ahora mismo. Lo que se movió último, primero.",

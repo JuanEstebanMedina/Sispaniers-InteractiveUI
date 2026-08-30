@@ -1,4 +1,39 @@
 {
+  "company": {
+    "title": "Companies",
+    "subtitle": "Every company the agent works with, matched by name so there are never duplicates.",
+    "emptyTitle": "No companies yet",
+    "emptyHint": "Create the first one, or it will be created automatically the first time an operation names it.",
+    "actions": {
+      "create": "New company"
+    },
+    "modal": {
+      "title": "New company",
+      "editTitle": "Edit company",
+      "description": "Companies are matched by name — creating one with an existing name just reuses it."
+    },
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "e.g. Andes Textiles",
+      "contactEmail": "Contact email",
+      "contactEmailPlaceholder": "ops@company.com",
+      "notificationChannel": "Notification channel",
+      "status": "Status"
+    },
+    "channels": {
+      "email": "Email",
+      "slack": "Slack"
+    },
+    "status": {
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "toasts": {
+      "saved": "{{name}} is ready",
+      "disabled": "{{name}} was disabled",
+      "enabled": "{{name}} was enabled"
+    }
+  },
   "operation": {
     "title": "Operations",
     "subtitle": "Everything the agents are running right now. Most recently moved, first.",

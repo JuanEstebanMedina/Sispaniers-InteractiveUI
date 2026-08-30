@@ -8,6 +8,7 @@ export function aCompany(overrides: Partial<Company> = {}): Company {
     name: "Andes Textiles",
     contactEmails: ["logistics@andestextiles.co"],
     preferredNotificationChannel: "email",
+    active: true,
     ...overrides,
   };
 }

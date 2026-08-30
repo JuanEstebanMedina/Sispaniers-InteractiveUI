@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from '@/i18n'
 import { toast } from '@/lib/toast'
 
+export * from './useCompanyDirectory'
 export * from './useDebounce'
 export * from './useMediaQuery'
 export * from './useOperationEvents'

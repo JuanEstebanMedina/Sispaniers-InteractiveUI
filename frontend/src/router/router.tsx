@@ -100,11 +100,11 @@ const assistantRoute = createRoute({
   component: lazyRouteComponent(() => import('@/pages/PlaceholderPage')),
 })
 
-const usersRoute = createRoute({
+const companiesRoute = createRoute({
   getParentRoute: () => appRoute,
-  path: '/users',
-  beforeLoad: ({ context }) => requirePermission(context, 'users:read'),
-  component: lazyRouteComponent(() => import('@/pages/PlaceholderPage')),
+  path: '/companies',
+  beforeLoad: ({ context }) => requirePermission(context, 'companies:read'),
+  component: lazyRouteComponent(() => import('@/pages/CompaniesPage')),
 })
 
 const settingsRoute = createRoute({
@@ -133,7 +133,7 @@ const routeTree = rootRoute.addChildren([
     indexRedirectRoute,
     operationsLayoutRoute.addChildren([operationsIndexRoute, operationDetailRoute]),
     assistantRoute,
-    usersRoute,
+    companiesRoute,
     settingsRoute,
     profileRoute,
     ...(isDev ? [componentsRoute] : []),

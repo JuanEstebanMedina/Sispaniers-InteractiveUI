@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 
+import { useCompanyDirectory } from '@/hooks'
 import { cn } from '@/lib/cn'
 import { formatRelative } from '@/lib/format'
 import type { Operation } from '@/schemas'
@@ -22,6 +23,9 @@ interface RailItemProps {
 }
 
 export function RailItem({ operation, active, onNavigate }: RailItemProps) {
+  const companies = useCompanyDirectory()
+  const shipper = companies[operation.companyIds[0] ?? ''] ?? operation.shipper
+
   // El backend no expone todavía "esperando a un humano": el status se deriva
   // del estado de los contenedores. Hasta entonces, lo que reclama atención es
   // la salud crítica.
@@ -43,7 +47,7 @@ export function RailItem({ operation, active, onNavigate }: RailItemProps) {
         waiting && 'border-l-2 border-l-accent',
       )}
     >
-      <p className="truncate text-sm font-medium text-fg">{operation.shipper}</p>
+      <p className="truncate text-sm font-medium text-fg">{shipper}</p>
 
       <p className="mt-0.5 font-mono text-xs text-fg-subtle tabular">{operation.trackId}</p>
 

@@ -69,6 +69,10 @@ void i18n
   .init({
     resources,
     defaultNS,
+    // Every screen calls shared strings like `actions.cancel` without
+    // prefixing the namespace — this is what makes that resolve even from a
+    // component whose own `useTranslation(...)` only lists its own namespace.
+    fallbackNS: 'common',
     ns: ['common', 'auth', 'errors', 'validation', 'domain'],
     fallbackLng: DEFAULT_LOCALE,
     supportedLngs: [...SUPPORTED_LOCALES],
