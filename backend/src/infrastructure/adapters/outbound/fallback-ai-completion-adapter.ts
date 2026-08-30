@@ -1,7 +1,7 @@
 import type {
   AiCompletionPort,
   AiCompletionRequest,
-  AiCompletionResult,
+  AiCompletionResponse,
 } from "../../../domain/ports/ai-completion-port.js";
 
 export class FallbackAiCompletionAdapter implements AiCompletionPort {
@@ -10,7 +10,7 @@ export class FallbackAiCompletionAdapter implements AiCompletionPort {
     private readonly secondary: AiCompletionPort,
   ) {}
 
-  async complete(request: AiCompletionRequest): Promise<AiCompletionResult> {
+  async complete(request: AiCompletionRequest): Promise<AiCompletionResponse> {
     try {
       return await this.primary.complete(request);
     } catch (error) {

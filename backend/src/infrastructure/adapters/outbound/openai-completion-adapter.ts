@@ -3,21 +3,9 @@ import OpenAI from "openai";
 import type {
   AiCompletionPort,
   AiCompletionRequest,
-  AiCompletionResult,
-  AiToolDefinition,
+  AiCompletionResponse,
 } from "../../../domain/ports/ai-completion-port.js";
 import { aiModelsConfig } from "../../config/ai-models.config.js";
-
-function toOpenAiTools(tools: AiToolDefinition[]): OpenAI.Chat.ChatCompletionTool[] {
-  return tools.map((tool) => ({
-    type: "function",
-    function: {
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.inputSchema,
-    },
-  }));
-}
 
 /**
  * The client is built on first use, not in the constructor.
@@ -43,28 +31,13 @@ export class OpenAiCompletionAdapter implements AiCompletionPort {
     return this.client;
   }
 
-  async complete(request: AiCompletionRequest): Promise<AiCompletionResult> {
+  async complete(request: AiCompletionRequest): Promise<AiCompletionResponse> {
     const response = await this.getClient().chat.completions.create({
       model: this.model,
       messages: [{ role: "user", content: request.prompt }],
-      tools: toOpenAiTools(request.tools),
+      response_format: { type: "json_object" },
     });
 
-    const message = response.choices[0]?.message;
-    const toolCall = message?.tool_calls?.[0];
-
-    if (toolCall !== undefined && toolCall.type === "function") {
-      try {
-        return {
-          kind: "tool_call",
-          toolName: toolCall.function.name,
-          input: JSON.parse(toolCall.function.arguments),
-        };
-      } catch {
-        return { kind: "text", text: toolCall.function.arguments };
-      }
-    }
-
-    return { kind: "text", text: message?.content ?? "" };
+    return { text: response.choices[0]?.message.content ?? "" };
   }
 }
