@@ -70,23 +70,90 @@ Liveness probe used by the compose healthcheck and `make smoke`. Returns `{"stat
 > steps an agent executes (see the glossary in the root README); an *operation* is the
 > shipment the agent works on. They are different things.
 
-### `POST /api/operations`
+### `GET /api/companies`
 
-Creates an operation and appends its id to the owning company. Bookings and context
-start empty, so the derived status is always `booking_confirmed`.
+Lists every company, unfiltered and unpaginated — fine at hackathon scale.
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/operations \
+curl http://127.0.0.1:8000/api/companies
+```
+
+`200` → `{ "companies": [ ... ] }`, each the same shape `POST /api/companies` returns.
+
+### `POST /api/companies`
+
+Idempotent by `name` (case-insensitive exact match): posting a name that already exists
+returns the existing company (`200`) instead of creating a duplicate; a new name creates
+one (`201`). Doubles as "find or create" for callers that just have a name.
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/companies \
   -H "Content-Type: application/json" \
-  -d '{ "company_id": "company-andes-textiles", "health": "ok" }'
+  -d '{ "name": "Andes Textiles", "contact_emails": ["ops@andestextiles.co"] }'
 ```
 
 | Field | Type | Required |
 |---|---|---|
-| `company_id` | string, non-empty | yes; `404` if the company does not exist |
+| `name` | string, non-empty | yes — the idempotency key |
+| `contact_emails` | string[] | no, defaults to `[]` |
+| `preferred_notification_channel` | `email` \| `slack` | no, defaults to `email` |
+
+`200` (existing) or `201` (new) → the company object (`id`, `name`, `contact_emails`,
+`preferred_notification_channel`, `active`). New companies are always created `active: true`.
+
+### `PATCH /api/companies/:id`
+
+Partial update — every field is optional, only what's sent changes. There is no
+`DELETE`: a company is never removed, only **disabled** with `{ "active": false }` on this
+same endpoint — its data, and every operation that already references it, stays intact.
+Re-enabling is the same request with `{ "active": true }`.
+
+```bash
+# a regular field update
+curl -X PATCH http://127.0.0.1:8000/api/companies/company-andes-textiles \
+  -H "Content-Type: application/json" \
+  -d '{ "preferred_notification_channel": "slack" }'
+
+# disable instead of delete
+curl -X PATCH http://127.0.0.1:8000/api/companies/company-andes-textiles \
+  -H "Content-Type: application/json" \
+  -d '{ "active": false }'
+```
+
+Same fields as `POST /api/companies`, plus `active` (boolean), all optional. `200` → the
+updated company object. `404` → `company_not_found`. `409` → `company_name_conflict` if
+`name` is changed to one already used by a **different** company (the same idempotency
+key `POST` relies on, so renaming can't quietly create a duplicate elsewhere).
+
+A disabled company still shows up in `GET /api/companies` and `POST /api/operations`'s
+`company_id` lookups keep working against it — disabling doesn't hide or lock it, it's
+just a flag for the UI to grey out or filter on.
+
+### `POST /api/operations`
+
+Creates an operation and links it to a company. Bookings and context start empty, so the
+derived status is always `booking_confirmed`.
+
+```bash
+# by an existing company's id
+curl -X POST http://127.0.0.1:8000/api/operations \
+  -H "Content-Type: application/json" \
+  -d '{ "company_id": "company-andes-textiles", "health": "ok" }'
+
+# or find-or-create by name, same idempotency as POST /api/companies
+curl -X POST http://127.0.0.1:8000/api/operations \
+  -H "Content-Type: application/json" \
+  -d '{ "company": { "name": "Andes Textiles" }, "health": "ok" }'
+```
+
+| Field | Type | Required |
+|---|---|---|
+| `company_id` | string, non-empty | exactly one of `company_id`/`company`; `404` if the id does not exist |
+| `company` | `{ name, contact_emails? }` | exactly one of `company_id`/`company`; resolved via the same find-or-create as `POST /api/companies` |
 | `health` | `ok` \| `warning` \| `error` | no, defaults to `ok` |
 
-`201` returns the operation object.
+`201` returns the operation object. `400` → `company_reference_required` (neither or both
+of `company_id`/`company` given) or `validation_error`. `404` → `company_not_found`.
 
 ### `POST /api/operations/search`
 
@@ -307,6 +374,28 @@ yet). Re-processing the same `message_id` against an operation that already has 
 no-op (Make's polling can double-post the same email). A subject that doesn't match the
 pattern skips this step entirely — extraction and upload above still happen either way.
 
+**A labelled line in the body links the email to a company.** This is a convention in
+the free text, not a field on this endpoint's payload — Make forwards the raw email as
+received, so whoever composes it (a supplier's PO template, a human) is expected to
+include a line matching `Company: <name>` (or `Compañía: <name>`), anywhere in
+`body_text`, case-insensitive. When present, `<name>` is resolved the same
+find-or-create-by-name way as `POST /api/companies` and linked to the operation. An
+optional `Contact: <email>` (or `Contacto: <email>`) line sets that company's contact
+email on creation; without one, the sender's own address (`from`) is used instead.
+
+```
+Orden de compra #OP-ANDES-042
+Company: Andes Textiles
+Contact: ops@andestextiles.co
+
+Please find the purchase order attached.
+```
+
+This link is only ever set **once**, the moment the operation is created from its first
+email — a later email in the same thread (or one with no company line at all) never
+overwrites it. An email with no matching line leaves the operation without a company,
+same as today.
+
 ### `POST /api/emails/send`
 
 Sends an outbound email through Gmail SMTP. Nothing is persisted — the request is only
@@ -326,6 +415,12 @@ curl -X POST http://127.0.0.1:8000/api/emails/send \
 Required: `run_id`, `to`, `subject`, `body_text`. Optional: `body_html`, `in_reply_to`.
 `201` → `{ "email_id": "...", "status": "sent" }`.
 
+If `to` matches one of a company's `contact_emails` and that company is disabled
+(`active: false`), the send is blocked before it ever reaches Gmail — `403` →
+`company_disabled`. An address that doesn't match any company's contacts (a carrier, a
+colleague) always sends; only a recipient we can tie to a known-disabled company is
+blocked.
+
 ### Errors
 
 Every error response is `{ "error": "<machine_code>", "message": "<human text>" }`.
@@ -334,11 +429,14 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 |---|---|---|
 | `400` | `validation_error` | body, params or querystring failed the zod schema; adds a `details` array |
 | `400` | `invalid_filter_combination` | `date` sent together with `from`/`to` |
+| `400` | `company_reference_required` | `POST /api/operations` sent with neither `company_id` nor `company` |
 | `404` | `operation_not_found` | no operation with that id |
 | `404` | `company_not_found` | no company with that id |
 | `404` | `document_not_found` | no document with that id on that operation |
 | `404` | `booking_not_found` | no booking with that id on that operation |
 | `404` | `container_not_found` | no container with that id on that booking |
+| `409` | `company_name_conflict` | `PATCH /api/companies/:id` renamed to a name another company already has |
+| `403` | `company_disabled` | `POST /api/emails/send` targeted a disabled company's contact email |
 | `502` | `email_send_failed` | SMTP rejected the message |
 | `502` | `document_upload_failed` | Supabase Storage rejected the upload |
 

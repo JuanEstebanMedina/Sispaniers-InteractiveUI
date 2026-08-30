@@ -76,6 +76,10 @@ export function Modal({
         if (dismissible && event.target === ref.current) onClose()
       }}
       className={cn(
+        // Tailwind's preflight zeroes every element's margin, which breaks a
+        // native <dialog>'s built-in `margin: auto` centering — pinned back
+        // here explicitly instead of relying on the UA stylesheet.
+        'fixed inset-0 m-auto',
         'w-[calc(100vw-2rem)] max-h-[85dvh] p-0',
         'rounded-lg border border-line bg-surface text-fg shadow-xl',
         'backdrop:bg-overlay backdrop:backdrop-blur-sm',

@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { type AiRouteDeps, aiRoutes } from "./dashboard/ai.routes.js";
+import { type CompaniesRouteDeps, companiesRoutes } from "./dashboard/companies.routes.js";
 import {
   type OperationComponentsRouteDeps,
   operationComponentsRoutes,
@@ -15,7 +16,8 @@ export type RouteDependencies = EmailsRouteDeps &
   OperationsRouteDeps &
   OperationComponentsRouteDeps &
   AiRouteDeps &
-  OperationEventsRouteDeps;
+  OperationEventsRouteDeps &
+  CompaniesRouteDeps;
 
 export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastify, deps) => {
   const {
@@ -38,8 +40,16 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     deleteComponent,
     componentEventPublisher,
     operationEventPublisher,
+    createCompany,
+    listCompanies,
+    updateCompany,
   } = deps;
 
+  await fastify.register(companiesRoutes, {
+    createCompany,
+    listCompanies,
+    updateCompany,
+  });
   await fastify.register(emailsRoutes, {
     receiveEmail,
     sendEmail,

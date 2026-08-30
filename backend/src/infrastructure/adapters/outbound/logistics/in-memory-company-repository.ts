@@ -8,6 +8,30 @@ export class InMemoryCompanyRepository implements CompanyRepository {
     return this.companies.get(id) ?? null;
   }
 
+  async findByName(name: string): Promise<Company | null> {
+    const target = name.trim().toLowerCase();
+
+    for (const company of this.companies.values()) {
+      if (company.name.trim().toLowerCase() === target) {
+        return company;
+      }
+    }
+
+    return null;
+  }
+
+  async findByContactEmail(email: string): Promise<Company | null> {
+    const target = email.trim().toLowerCase();
+
+    for (const company of this.companies.values()) {
+      if (company.contactEmails.some((candidate) => candidate.trim().toLowerCase() === target)) {
+        return company;
+      }
+    }
+
+    return null;
+  }
+
   async findAll(): Promise<Company[]> {
     return [...this.companies.values()];
   }

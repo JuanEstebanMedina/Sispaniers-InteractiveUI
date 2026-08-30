@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Check, Container, Copy, MessageSquare } from 'lu
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useCopyToClipboard } from '@/hooks'
+import { useCompanyDirectory, useCopyToClipboard } from '@/hooks'
 import { cn } from '@/lib/cn'
 import { formatCalendarDate, formatRelative } from '@/lib/format'
 import type { Operation } from '@/schemas'
@@ -37,6 +37,8 @@ export function OperationDetailHeader({ operation, waiting = 0 }: OperationDetai
   const { copy, copied } = useCopyToClipboard()
   const railOpen = useRailStore((state) => state.open)
   const toggleRail = useRailStore((state) => state.toggle)
+  const companies = useCompanyDirectory()
+  const shipper = companies[operation.companyIds[0] ?? ''] ?? operation.shipper
 
   const facts: ReactNode[] = [
     <Fact key="status">
@@ -92,7 +94,7 @@ export function OperationDetailHeader({ operation, waiting = 0 }: OperationDetai
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           <h1 className="min-w-0 truncate font-display text-md font-semibold tracking-tight text-fg">
-            {operation.shipper}
+            {shipper}
           </h1>
 
         <button

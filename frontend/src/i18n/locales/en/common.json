@@ -9,6 +9,8 @@
     "confirm": "Confirm",
     "delete": "Delete",
     "edit": "Edit",
+    "disable": "Disable",
+    "enable": "Enable",
     "create": "Create",
     "close": "Close",
     "back": "Back",
@@ -101,7 +103,7 @@
     "items": {
       "operations": "Operations",
       "assistant": "Assistant",
-      "users": "Users",
+      "companies": "Companies",
       "settings": "Settings",
       "components": "Components",
       "profile": "My profile"

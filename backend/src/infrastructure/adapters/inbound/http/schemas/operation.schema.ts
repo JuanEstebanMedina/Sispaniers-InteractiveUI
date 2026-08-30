@@ -8,10 +8,20 @@ import { DOCUMENT_FORMATS } from "../../../../../domain/enums/document-format.js
 import { DOCUMENT_TYPES } from "../../../../../domain/enums/document-type.js";
 import { OPERATION_HEALTH_STATES } from "../../../../../domain/enums/operation-health.js";
 
-export const createOperationBodySchema = z.object({
-  company_id: z.string().min(1),
-  health: z.enum(OPERATION_HEALTH_STATES).optional(),
-});
+export const createOperationBodySchema = z
+  .object({
+    company_id: z.string().min(1).optional(),
+    company: z
+      .object({
+        name: z.string().min(1),
+        contact_emails: z.array(z.string()).optional(),
+      })
+      .optional(),
+    health: z.enum(OPERATION_HEALTH_STATES).optional(),
+  })
+  .refine((body) => (body.company_id !== undefined) !== (body.company !== undefined), {
+    message: "exactly one of company_id or company must be provided",
+  });
 
 export type CreateOperationBody = z.infer<typeof createOperationBodySchema>;
 

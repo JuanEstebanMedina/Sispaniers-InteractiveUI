@@ -10,7 +10,7 @@ import { cn } from '@/lib/cn'
  * La lista de navegación del sidebar.
  *
  * Se filtra por permiso: cada ítem declara lo que necesita en config/nav.ts,
- * así un operador sencillamente nunca ve "Usuarios" — no porque alguien se
+ * así un operador sencillamente nunca ve "Compañías" — no porque alguien se
  * acordara de escribir un `if` acá.
  */
 

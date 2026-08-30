@@ -18,6 +18,24 @@ export class MongoCompanyRepository implements CompanyRepository {
     return document === null ? null : toCompany(document);
   }
 
+  async findByName(name: string): Promise<Company | null> {
+    const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const document = await this.companies.findOne({
+      name: { $regex: `^${escaped}$`, $options: "i" },
+    });
+
+    return document === null ? null : toCompany(document);
+  }
+
+  async findByContactEmail(email: string): Promise<Company | null> {
+    const escaped = email.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const document = await this.companies.findOne({
+      contactEmails: { $regex: `^${escaped}$`, $options: "i" },
+    });
+
+    return document === null ? null : toCompany(document);
+  }
+
   async findAll(): Promise<Company[]> {
     const documents = await this.companies.find({}).toArray();
 

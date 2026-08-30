@@ -435,7 +435,9 @@ export function DataTable<TData extends RowData>({
                   {rest.map((cell) => (
                     <div key={cell.id} className="min-w-0">
                       <dt className="text-2xs uppercase tracking-wide text-fg-subtle">
-                        <table.FlexRender header={cell.column.columnDef.header as never} />
+                        {typeof cell.column.columnDef.header === 'string'
+                          ? cell.column.columnDef.header
+                          : cell.column.id}
                       </dt>
                       <dd
                         className={cn(

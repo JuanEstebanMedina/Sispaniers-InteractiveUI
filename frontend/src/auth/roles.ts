@@ -7,10 +7,10 @@ export const PERMISSIONS = [
   'operations:update',
   'operations:decide',
 
-  'users:read',
-  'users:create',
-  'users:update',
-  'users:delete',
+  'companies:read',
+  'companies:create',
+  'companies:update',
+
   'settings:read',
   'settings:update',
 
@@ -36,7 +36,9 @@ const OPERATOR: Permission[] = [...ANALYST, 'operations:create', 'operations:upd
 const MANAGER: Permission[] = [
   ...OPERATOR,
   'operations:decide',
-  'users:read',
+  'companies:read',
+  'companies:create',
+  'companies:update',
   'settings:read',
 ]
 
