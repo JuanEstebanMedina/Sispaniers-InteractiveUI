@@ -5,6 +5,8 @@ import type { WidgetSizeName } from "./widget-size.js";
 export interface Component {
   id: string;
   operationId: string;
+  order: number;
+  title?: string;
   size: WidgetSizeName;
   kind: GridComponentKind;
   children: ComponentNode[];

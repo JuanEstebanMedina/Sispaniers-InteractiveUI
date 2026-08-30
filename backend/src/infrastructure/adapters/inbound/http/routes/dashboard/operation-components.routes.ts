@@ -7,10 +7,7 @@ import type {
   GetOperationComponentsResult,
 } from "../../../../../../application/use-cases/dashboard/get-operation-components.use-case.js";
 import type { UpdateComponentContentInput } from "../../../../../../application/use-cases/dashboard/update-component-content.use-case.js";
-import type {
-  UpdateOperationLayoutInput,
-  UpdateOperationLayoutResult,
-} from "../../../../../../application/use-cases/dashboard/update-operation-layout.use-case.js";
+import type { UpdateComponentPlacementInput } from "../../../../../../application/use-cases/dashboard/update-component-placement.use-case.js";
 import type { Component } from "../../../../../../domain/components/component.js";
 import type { LayoutEntry } from "../../../../../../domain/components/layout.js";
 import {
@@ -29,8 +26,7 @@ import {
   getComponentsResponseSchema,
   updateComponentContentBodySchema,
   updateComponentContentResponseSchema,
-  updateLayoutBodySchema,
-  updateLayoutResponseSchema,
+  updateComponentPlacementBodySchema,
 } from "../../schemas/operation-component.schema.js";
 
 const operationParamsSchema = z.object({ id: z.string().min(1) });
@@ -43,9 +39,7 @@ export interface OperationComponentsRouteDeps {
   getOperationComponents: (
     input: GetOperationComponentsInput,
   ) => Promise<GetOperationComponentsResult>;
-  updateOperationLayout: (
-    input: UpdateOperationLayoutInput,
-  ) => Promise<UpdateOperationLayoutResult>;
+  updateComponentPlacement: (input: UpdateComponentPlacementInput) => Promise<Component>;
   updateComponentContent: (input: UpdateComponentContentInput) => Promise<Component>;
   createComponent: (input: CreateComponentInput) => Promise<Component>;
   deleteComponent: (input: DeleteComponentInput) => Promise<void>;
@@ -98,34 +92,36 @@ export const operationComponentsRoutes: FastifyPluginAsyncZod<
   );
 
   app.patch(
-    "/operations/:id/layout",
+    "/operations/:id/components/:componentId/placement",
     {
       schema: {
-        params: operationParamsSchema,
-        body: updateLayoutBodySchema,
+        params: operationComponentParamsSchema,
+        body: updateComponentPlacementBodySchema,
         response: {
-          200: updateLayoutResponseSchema,
-          400: errorResponseSchema,
+          200: componentResponseSchema,
           404: errorResponseSchema,
         },
       },
     },
     async (request, reply) => {
-      const { id } = request.params;
-      const { cols, layout } = request.body;
+      const { id, componentId } = request.params;
+      const { position, title } = request.body;
 
       try {
-        const result = await deps.updateOperationLayout({ operationId: id, cols, layout });
-        reply
-          .code(200)
-          .send({ cols: result.cols, layout: result.layout.map(toLayoutEntryResponse) });
+        const component = await deps.updateComponentPlacement({
+          operationId: id,
+          componentId,
+          ...(position !== undefined ? { position } : {}),
+          ...(title !== undefined ? { title } : {}),
+        });
+        reply.code(200).send(toComponentWireShape(component));
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
           reply.code(404).send({ error: "operation_not_found", message: error.message });
           return;
         }
-        if (error instanceof InvalidLayoutError) {
-          reply.code(400).send({ error: "invalid_layout", message: error.message });
+        if (error instanceof ComponentNotFoundError) {
+          reply.code(404).send({ error: "component_not_found", message: error.message });
           return;
         }
         throw error;

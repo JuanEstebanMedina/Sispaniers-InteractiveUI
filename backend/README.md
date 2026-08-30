@@ -256,6 +256,13 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 
 ## Things the code will not tell you at a glance
 
+**A widget's position is its place in a sequence, not a pair of coordinates.**
+`Component.order` is what the user controls by dragging; `col`/`row` are packed from that
+order for whatever column count is asked for, so one arrangement serves every screen
+width and nothing has to be stored per breakpoint. Widgets can be moved and renamed
+(`Component.title` overrides the name the agent generated) but never resized: the size
+comes from `Component.size` alone.
+
 **Two different company links, on purpose.** `Operation.companyId` is the company the
 operation was opened *for* — absent when the operation came from an inbound email, where
 no company is known yet. `bookings[].companyIds` are the parties on each booking, which

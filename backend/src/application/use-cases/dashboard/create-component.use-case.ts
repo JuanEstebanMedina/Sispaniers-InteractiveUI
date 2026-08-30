@@ -25,9 +25,12 @@ export function createCreateComponentUseCase(deps: CreateComponentDeps) {
   return async function createComponent(input: CreateComponentInput): Promise<Component> {
     validateComponentTree(input.children);
 
+    const siblings = await componentRepository.findByOperationId(input.operationId);
+
     const component: Component = {
       id: idGenerator.newId(),
       operationId: input.operationId,
+      order: siblings.reduce((next, sibling) => Math.max(next, sibling.order + 1), 0),
       size: input.size,
       kind: input.kind,
       children: input.children,

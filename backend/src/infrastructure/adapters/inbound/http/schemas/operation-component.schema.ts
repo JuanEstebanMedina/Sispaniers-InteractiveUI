@@ -18,20 +18,6 @@ export const layoutEntrySchema = z.object({
   h: z.number().int().min(1),
 });
 
-/**
- * Widgets can be moved but never resized, so `w`/`h` are accepted for wire
- * compatibility and then ignored: the size comes from the component itself.
- */
-export const layoutPositionSchema = z
-  .object({
-    id: z.string().min(1),
-    col: z.number().int().min(0),
-    row: z.number().int().min(0),
-    w: z.number().int().min(1).optional(),
-    h: z.number().int().min(1).optional(),
-  })
-  .transform(({ id, col, row }) => ({ id, col, row }));
-
 // Wire-level key stays "content" for backward compatibility with the already
 // shipped flow-components contract (SPEC-FC-007); its value is now the
 // ComponentNode[] tree (children) rather than an opaque bag.
@@ -53,20 +39,23 @@ export const getComponentsResponseSchema = z.object({
   layout: z.array(layoutEntrySchema),
 });
 
-export const updateLayoutBodySchema = z.object({
-  cols: gridColsSchema,
-  layout: z.array(layoutPositionSchema),
-});
-
-export const updateLayoutResponseSchema = z.object({
-  cols: gridColsSchema,
-  layout: z.array(layoutEntrySchema),
-});
-
 export const updateComponentContentBodySchema = z.union([
   z.object({ content: componentChildrenSchema }).strict(),
   z.object({ path: z.string().min(1), value: z.unknown() }).strict(),
 ]);
+
+// A widget can be moved and renamed, never resized: position is an index in the
+// operation's sequence, and the grid coordinates are packed from it.
+export const updateComponentPlacementBodySchema = z
+  .object({
+    position: z.number().int().min(0).optional(),
+    title: z.string().max(120).optional(),
+  })
+  .strict()
+  .refine(
+    (body) => body.position !== undefined || body.title !== undefined,
+    "at least one of position or title is required",
+  );
 
 export const updateComponentContentResponseSchema = componentResponseSchema;
 

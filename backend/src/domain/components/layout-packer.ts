@@ -39,11 +39,7 @@ function occupy(widget: PackableWidget, row: number, col: number, occupied: Set<
   }
 }
 
-export function packDefaultLayout(
-  widgets: PackableWidget[],
-  cols: GridCols,
-  reserved: LayoutEntry[] = [],
-): LayoutEntry[] {
+export function packDefaultLayout(widgets: PackableWidget[], cols: GridCols): LayoutEntry[] {
   const placeable = widgets.filter((widget) => widget.w <= cols);
 
   const sortOrder = new Map(placeable.map((widget, index) => [widget, index]));
@@ -59,13 +55,7 @@ export function packDefaultLayout(
   const occupied = new Set<string>();
   const result: LayoutEntry[] = [];
 
-  for (const entry of reserved) {
-    occupy(entry, entry.row, entry.col, occupied);
-  }
-
-  const reservedRows = reserved.reduce((max, entry) => Math.max(max, entry.row + entry.h), 0);
-  const rowCap =
-    placeable.reduce((sum, widget) => sum + widget.h, 0) + placeable.length + reservedRows + 1;
+  const rowCap = placeable.reduce((sum, widget) => sum + widget.h, 0) + placeable.length + 1;
 
   for (let row = 0; row < rowCap && unplaced.length > 0; row += 1) {
     for (let col = 0; col < cols; col += 1) {

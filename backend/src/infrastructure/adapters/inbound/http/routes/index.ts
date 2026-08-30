@@ -26,7 +26,7 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     getDocumentPreviewUrl,
     uploadOperationDocument,
     getOperationComponents,
-    updateOperationLayout,
+    updateComponentPlacement,
     updateComponentContent,
     createComponent,
     deleteComponent,
@@ -43,7 +43,7 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
   });
   await fastify.register(operationComponentsRoutes, {
     getOperationComponents,
-    updateOperationLayout,
+    updateComponentPlacement,
     updateComponentContent,
     createComponent,
     deleteComponent,
