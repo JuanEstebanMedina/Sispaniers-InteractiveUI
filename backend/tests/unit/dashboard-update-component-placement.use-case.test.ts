@@ -31,6 +31,19 @@ async function buildUseCase(componentIds: string[] = []) {
   };
 }
 
+/**
+ * Holds every write open long enough for a second caller to read the sequence
+ * the first one has not finished rewriting. Delaying the read instead proves
+ * nothing: Node drains the first call's microtasks before the second wakes up.
+ */
+function slowWrites(repository: InMemoryComponentRepository): void {
+  const save = repository.save.bind(repository);
+  repository.save = async (component) => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    return save(component);
+  };
+}
+
 test("an unknown operation is a not-found error", async () => {
   const { updateComponentPlacement } = await buildUseCase();
 
@@ -111,4 +124,23 @@ test("an empty title clears the rename instead of storing a blank one", async ()
   await updateComponentPlacement({ operationId: operation.id, componentId: "a", title: "" });
 
   expect((await componentRepository.findById("a"))?.title).toBeUndefined();
+});
+
+/**
+ * The front fires a move per drag without waiting for the previous one, so two
+ * can be in flight at once. Each is a read-modify-write of the whole sequence:
+ * interleaved, the second reads orders the first has not written yet and the
+ * stored sequence ends up matching neither drag.
+ */
+test("two moves in flight at once still end in the sequence the second one asked for", async () => {
+  const { operation, orderedIds, componentRepository, updateComponentPlacement } =
+    await buildUseCase(["a", "b", "c"]);
+  slowWrites(componentRepository);
+
+  await Promise.all([
+    updateComponentPlacement({ operationId: operation.id, componentId: "a", position: 2 }),
+    updateComponentPlacement({ operationId: operation.id, componentId: "c", position: 0 }),
+  ]);
+
+  expect(await orderedIds()).toEqual(["c", "b", "a"]);
 });

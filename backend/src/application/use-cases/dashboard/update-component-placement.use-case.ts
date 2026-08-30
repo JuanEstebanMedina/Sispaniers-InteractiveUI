@@ -1,7 +1,8 @@
-import type { Component } from "../../../domain/components/component.js";
+import { type Component, bySequence } from "../../../domain/components/component.js";
 import { ComponentNotFoundError, OperationNotFoundError } from "../../../domain/model/errors.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
+import { createKeyedQueue } from "../../support/keyed-queue.js";
 
 export interface UpdateComponentPlacementInput {
   operationId: string;
@@ -16,9 +17,7 @@ export interface UpdateComponentPlacementDeps {
 }
 
 function reorder(siblings: Component[], moved: Component, position: number): Component[] {
-  const others = siblings
-    .filter((component) => component.id !== moved.id)
-    .sort((a, b) => a.order - b.order);
+  const others = siblings.filter((component) => component.id !== moved.id).sort(bySequence);
   const index = Math.min(Math.max(position, 0), others.length);
 
   return [...others.slice(0, index), moved, ...others.slice(index)];
@@ -26,10 +25,13 @@ function reorder(siblings: Component[], moved: Component, position: number): Com
 
 export function createUpdateComponentPlacementUseCase(deps: UpdateComponentPlacementDeps) {
   const { operationRepository, componentRepository } = deps;
+  // Renumbering the sequence means reading it, rewriting it, and storing it
+  // back. The front fires one of these per drag without waiting for the last,
+  // so two overlap easily — and the second would read orders the first had not
+  // written yet, leaving a stored sequence that matches neither drag.
+  const enqueue = createKeyedQueue();
 
-  return async function updateComponentPlacement(
-    input: UpdateComponentPlacementInput,
-  ): Promise<Component> {
+  async function place(input: UpdateComponentPlacementInput): Promise<Component> {
     if ((await operationRepository.findById(input.operationId)) === null) {
       throw new OperationNotFoundError(input.operationId);
     }
@@ -59,6 +61,12 @@ export function createUpdateComponentPlacementUseCase(deps: UpdateComponentPlace
     );
 
     return { ...renamed, order: sequence.findIndex((component) => component.id === renamed.id) };
+  }
+
+  return async function updateComponentPlacement(
+    input: UpdateComponentPlacementInput,
+  ): Promise<Component> {
+    return enqueue(input.operationId, () => place(input));
   };
 }
 
