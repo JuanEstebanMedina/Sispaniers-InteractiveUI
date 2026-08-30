@@ -49,6 +49,14 @@ test("the first component of an operation opens the sequence", async () => {
   expect((await createComponent(aRequest())).order).toBe(0);
 });
 
+test("priority is retained for the component event and frontend wire shape", async () => {
+  const { createComponent } = buildUseCase();
+
+  expect((await createComponent({ ...aRequest(), priority: "critical" })).priority).toBe(
+    "critical",
+  );
+});
+
 test("a new component lands after the last of its siblings", async () => {
   const { componentRepository, createComponent } = buildUseCase();
   await componentRepository.save(aComponent({ operationId: OPERATION_ID, order: 4 }));
@@ -79,6 +87,15 @@ test("an invalid tree is rejected before anything is stored", async () => {
 
   await expect(createComponent({ ...aRequest(), children: unknownKind })).rejects.toThrow(
     InvalidComponentTreeError,
+  );
+  expect(await componentRepository.findByOperationId(OPERATION_ID)).toHaveLength(0);
+});
+
+test("a 1x1 component is rejected before anything is stored", async () => {
+  const { componentRepository, createComponent } = buildUseCase();
+
+  await expect(createComponent({ ...aRequest(), size: "tile" })).rejects.toThrow(
+    "size tile (1x1) is not allowed",
   );
   expect(await componentRepository.findByOperationId(OPERATION_ID)).toHaveLength(0);
 });

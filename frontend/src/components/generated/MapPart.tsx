@@ -2,6 +2,8 @@ import type { LatLngExpression } from 'leaflet'
 import { useEffect } from 'react'
 import { CircleMarker, MapContainer, TileLayer, Tooltip as LeafletTooltip, useMap } from 'react-leaflet'
 
+import { InlineMarkdown } from '@/lib/markdown'
+
 import { CHART_COLOR } from './colors'
 import { useDataset } from './ComponentData'
 import { colorOf, type VesselPositionRow } from './parts'
@@ -39,7 +41,7 @@ export default function MapPart() {
     <div className="flex min-h-40 flex-1 flex-col gap-1">
       {title && (
         <h4 className="truncate font-display text-sm font-semibold tracking-tight text-fg">
-          {title}
+          <InlineMarkdown text={title} />
         </h4>
       )}
       <div className="min-h-0 flex-1 overflow-hidden rounded-md">

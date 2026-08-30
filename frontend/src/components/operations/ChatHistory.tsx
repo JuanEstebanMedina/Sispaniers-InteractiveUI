@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/cn'
+import { Markdown } from '@/lib/markdown'
 import type { ChatMessage } from '@/stores/chatStore'
 
 export function ChatHistory({ messages }: { messages: ChatMessage[] }) {
@@ -51,7 +52,7 @@ function Bubble({ message }: { message: ChatMessage }) {
         message.author === 'human' ? 'ml-auto bg-brand-subtle text-fg' : 'bg-surface text-fg-muted',
       )}
     >
-      {message.body}
+      {message.author === 'agent' ? <Markdown body={message.body} /> : message.body}
 
       {message.refs.map((title) => (
         <span key={title} className="mt-1 flex items-center gap-1.5 text-xs text-fg-muted">

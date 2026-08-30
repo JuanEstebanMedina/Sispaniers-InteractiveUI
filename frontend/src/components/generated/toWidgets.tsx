@@ -1,4 +1,5 @@
 import { byOrder, type ComponentNode, type GeneratedComponent, type LayoutEntry } from '@/schemas'
+import { ComponentIdProvider } from './NodeContext'
 import { createTree } from './nodeFactory'
 import type { Widget } from './WidgetGrid'
 
@@ -45,7 +46,11 @@ function liftTitle(nodes: ComponentNode[]): Heading {
   return { title, rest }
 }
 
-export function toWidgets(components: GeneratedComponent[], layout: LayoutEntry[]): Widget[] {
+export function toWidgets(
+  components: GeneratedComponent[],
+  layout: LayoutEntry[],
+  onEmailSent?: (componentId: string) => void,
+): Widget[] {
   const placement = new Map(layout.map((entry) => [entry.id, entry]))
 
   return components.flatMap((component) => {
@@ -68,9 +73,11 @@ export function toWidgets(components: GeneratedComponent[], layout: LayoutEntry[
         // a chart's `flex-1` does nothing inside a bare Fragment, it needs a
         // flex ancestor to grow against.
         body: (
-          <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
-            {createTree(rest, component.id)}
-          </div>
+          <ComponentIdProvider componentId={component.id} onEmailSent={onEmailSent}>
+            <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
+              {createTree(rest, component.id)}
+            </div>
+          </ComponentIdProvider>
         ),
       },
     ]

@@ -26,6 +26,7 @@ import {
   companyConceptsResponseSchema,
   operationListSchema,
   operationResponseSchema,
+  type GeneratedComponent,
   type Operation,
 } from '@/schemas'
 import { needsAttention } from '@/lib/operation'
@@ -170,19 +171,44 @@ export default function OperationDetailPage() {
 
       if (event === 'component-created' || event === 'component-updated') {
         setPending((current) => current.slice(1))
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.operations.components(trackId, cols),
-        })
+        const component = payload as GeneratedComponent | null
+        if (!component) return
+        // A refetch already in flight (mount, window focus) can resolve after
+        // this patch and clobber it with a pre-creation snapshot. Cancel it
+        // first so a late response never overwrites the newer SSE data.
+        void queryClient.cancelQueries({ queryKey: queryKeys.operations.componentsAll(trackId) })
+        queryClient.setQueriesData<ComponentsResponse>(
+          { queryKey: queryKeys.operations.componentsAll(trackId) },
+          (cached) => {
+            if (!cached) return cached
+            const exists = cached.components.some(({ id }) => id === component.id)
+            return {
+              components: exists
+                ? cached.components.map((current) => (current.id === component.id ? component : current))
+                : [...cached.components, component],
+              layout: cached.layout.some(({ id }) => id === component.id)
+                ? cached.layout
+                : [
+                    ...cached.layout,
+                    { id: component.id, col: 0, row: 0, ...WIDGET_SIZES[component.size] },
+                  ],
+            }
+          },
+        )
         return
       }
 
       const nextOperation = payload as Operation | null
       if (nextOperation) {
         queryClient.setQueryData(queryKeys.operations.detail(trackId), nextOperation)
-        void queryClient.invalidateQueries({ queryKey: queryKeys.operations.list() })
+        // Not queryKeys.operations.list() — that key carries an empty {} body,
+        // which only matches list queries with no filters. listAll is the bare
+        // ['operations','list'] prefix, so every filtered/sorted grid still
+        // gets the update instead of needing a reload to see it.
+        void queryClient.invalidateQueries({ queryKey: queryKeys.operations.listAll })
       }
     },
-    [queryClient, trackId, cols],
+    [queryClient, trackId],
   )
   const stream = useOperationEvents(trackId, onOperationEvent)
 
@@ -210,10 +236,12 @@ export default function OperationDetailPage() {
     [pending, t],
   )
 
+  const dropComponent = removeComponent.mutate
+
   const widgets = useMemo(() => {
-    const base = generated ? toWidgets(generated.components, generated.layout) : []
+    const base = generated ? toWidgets(generated.components, generated.layout, dropComponent) : []
     return [...base, ...pendingWidgets]
-  }, [generated, pendingWidgets])
+  }, [generated, pendingWidgets, dropComponent])
 
   const persist = savePlacement.mutate
   const persistable = (generated?.components.length ?? 0) > 0

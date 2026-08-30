@@ -76,7 +76,12 @@ export class OpenAiCompletionAdapter implements AiCompletionPort {
       ...(hasTools
         ? {
             tools: toOpenAiTools(request.tools as AiToolDefinition[]),
-            tool_choice: forceTool ? "required" : "auto",
+            tool_choice:
+              request.requiredToolName === undefined
+                ? forceTool
+                  ? "required"
+                  : "auto"
+                : { type: "function", function: { name: request.requiredToolName } },
           }
         : {}),
     });

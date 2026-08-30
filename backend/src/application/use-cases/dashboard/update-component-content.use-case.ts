@@ -43,12 +43,15 @@ export function createUpdateComponentContentUseCase(deps: UpdateComponentContent
     }
 
     const isPathScoped = "path" in input;
-    if (!isPathScoped) {
-      assertFactualDataUnchanged(existing.children, input.children);
-    }
     const updatedChildren = isPathScoped
       ? setComponentTreePath(existing.children, input.path, input.value)
       : input.children;
+
+    // Both shapes are checked against the same resulting tree: writing one
+    // field is a narrower edit, never a wider permission, and the field it
+    // writes can just as easily be the company's own record.
+    assertFactualDataUnchanged(existing.children, updatedChildren);
+
     const updatedSize = isPathScoped ? existing.size : (input.size ?? existing.size);
 
     validateComponentTree(updatedChildren);

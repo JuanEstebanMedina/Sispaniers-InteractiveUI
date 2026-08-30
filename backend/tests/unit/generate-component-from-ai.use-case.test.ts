@@ -116,6 +116,7 @@ test("chat offers update_component to the AI", async () => {
   });
 
   let offeredTools: string[] = [];
+  let systemPrompt = "";
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository: {
       findById: async () => ({ id: OPERATION_ID }) as unknown as Operation,
@@ -130,8 +131,9 @@ test("chat offers update_component to the AI", async () => {
       deleteById: async () => {},
     },
     aiCompletionPort: {
-      complete: async ({ tools }) => {
+      complete: async ({ tools, systemPrompt: prompt }) => {
         offeredTools = (tools ?? []).map((tool) => tool.name);
+        systemPrompt = prompt ?? "";
         return { kind: "tool_call", toolName: "create_component", input: {} };
       },
     },
@@ -142,6 +144,9 @@ test("chat offers update_component to the AI", async () => {
   await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "crea uno" });
 
   expect(offeredTools).toEqual(["create_component", "update_component"]);
+  expect(systemPrompt).toContain("Available tools for this request");
+  expect(systemPrompt).toContain("create_component: stub");
+  expect(systemPrompt).toContain("update_component: stub");
 });
 
 /**
@@ -164,6 +169,22 @@ test("chat carries the existing components under a name the user could type", as
 
   expect(capture.systemPrompt).toContain("Costos por aduana");
   expect(capture.systemPrompt).toContain("cmp-chart");
+});
+
+test("chat carries each component's size and packed position", async () => {
+  const capture = { systemPrompt: "" };
+  const first = componentStub({ id: "cmp-first", order: 0, size: "small" });
+  const second = componentStub({ id: "cmp-second", order: 1, size: "wide" });
+  const generateComponentFromAi = buildReferencingUseCase([first, second], capture);
+
+  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "ordénalos" });
+
+  expect(capture.systemPrompt).toContain(
+    '"id":"cmp-first","label":null,"size":"small","position":0,"col":0,"row":0,"w":2,"h":2',
+  );
+  expect(capture.systemPrompt).toContain(
+    '"id":"cmp-second","label":null,"size":"wide","position":1,"col":0,"row":2,"w":4,"h":2',
+  );
 });
 
 test("chat includes prior conversation on later messages", async () => {
@@ -320,8 +341,9 @@ test("chat text reply does not publish a component placeholder", async () => {
   expect(events).toEqual(["component-pending-cleared"]);
 });
 
-test("chat publishes a placeholder only after AI calls a component-building tool", async () => {
+test("chat publishes a component placeholder before AI starts an explicit component request", async () => {
   const events: string[] = [];
+  let eventsWhenAiStarts: string[] = [];
   const commandRegistry = new CommandRegistry();
   commandRegistry.register({
     name: "create_component",
@@ -343,7 +365,10 @@ test("chat publishes a placeholder only after AI calls a component-building tool
       deleteById: async () => {},
     },
     aiCompletionPort: {
-      complete: async () => ({ kind: "tool_call", toolName: "create_component", input: {} }),
+      complete: async () => {
+        eventsWhenAiStarts = [...events];
+        return { kind: "tool_call", toolName: "create_component", input: {} };
+      },
     },
     commandRegistry,
     promptTemplate: "{{trigger}}",
@@ -361,6 +386,51 @@ test("chat publishes a placeholder only after AI calls a component-building tool
   });
 
   expect(events).toEqual(["component-pending"]);
+  expect(eventsWhenAiStarts).toEqual(["component-pending"]);
+});
+
+test("an explicit component request requires an AI tool call", async () => {
+  let forceTool = false;
+  let requiredToolName: string | undefined;
+  const commandRegistry = new CommandRegistry();
+  commandRegistry.register({
+    name: "create_component",
+    description: "stub",
+    inputSchema: { type: "object", properties: {} },
+    execute: async () => ({ component: { id: "component-1" }, reply: "Creado." }),
+  });
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async (request) => {
+        forceTool = request.forceTool ?? false;
+        requiredToolName = request.requiredToolName;
+        return { kind: "tool_call", toolName: "create_component", input: {} };
+      },
+    },
+    commandRegistry,
+    promptTemplate: "{{trigger}}",
+  });
+
+  await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "Crea un componente con estado de contenedores",
+  });
+
+  expect(forceTool).toBe(true);
+  expect(requiredToolName).toBe("create_component");
 });
 
 test("auto flow can ingest, query, then create a component", async () => {
