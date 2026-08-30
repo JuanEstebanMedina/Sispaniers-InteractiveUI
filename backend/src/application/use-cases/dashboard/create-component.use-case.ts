@@ -1,4 +1,7 @@
-import { validateComponentTree } from "../../../domain/components/component-node.js";
+import {
+  validateComponentSize,
+  validateComponentTree,
+} from "../../../domain/components/component-node.js";
 import type { Component, ComponentNode } from "../../../domain/components/component.js";
 import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
 import type { GridComponentKind } from "../../../domain/enums/widget-kind.js";
@@ -24,6 +27,7 @@ export function createCreateComponentUseCase(deps: CreateComponentDeps) {
 
   return async function createComponent(input: CreateComponentInput): Promise<Component> {
     validateComponentTree(input.children);
+    validateComponentSize(input.size, input.children);
 
     const component: Component = {
       id: idGenerator.newId(),
