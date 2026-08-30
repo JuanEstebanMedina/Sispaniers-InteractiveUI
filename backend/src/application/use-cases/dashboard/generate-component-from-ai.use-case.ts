@@ -61,7 +61,8 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
   async function completeAndDispatch(
     prompt: string,
     operationId: string,
-  ): Promise<{ component: Component; reply: string }> {
+    trigger: AiTrigger,
+  ): Promise<{ component: Component | null; reply: string }> {
     const tools = commandRegistry.list().map((command) => ({
       name: command.name,
       description: command.description,
@@ -71,6 +72,9 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     const result = await aiCompletionPort.complete({ prompt, tools });
 
     if (result.kind === "text") {
+      if (trigger === "chat") {
+        return { component: null, reply: result.text };
+      }
       throw new InvalidAiComponentError(`no tool called: ${result.text}`);
     }
 
@@ -88,7 +92,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
 
   return async function generateComponentFromAi(
     input: GenerateComponentFromAiInput,
-  ): Promise<{ component: Component; reply: string }> {
+  ): Promise<{ component: Component | null; reply: string }> {
     const operation = await operationRepository.findById(input.operationId);
     if (operation === null) {
       throw new OperationNotFoundError(input.operationId);
@@ -105,13 +109,13 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     const prompt = buildPrompt(promptTemplate, input.trigger, input.input, existingComponents);
 
     try {
-      return await completeAndDispatch(prompt, input.operationId);
+      return await completeAndDispatch(prompt, input.operationId, input.trigger);
     } catch (error) {
       if (!(error instanceof InvalidAiComponentError)) {
         throw error;
       }
       console.warn("generateComponentFromAi: retrying after invalid AI response");
-      return completeAndDispatch(prompt, input.operationId);
+      return completeAndDispatch(prompt, input.operationId, input.trigger);
     }
   };
 }
