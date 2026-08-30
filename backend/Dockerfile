@@ -7,7 +7,7 @@ RUN corepack enable
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN --mount=type=cache,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
@@ -22,7 +22,7 @@ CMD ["pnpm", "run", "seed"]
 
 FROM build AS builder
 
-RUN --mount=type=cache,target=/pnpm/store pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod
 
 
 FROM node:22-bookworm-slim AS runtime
