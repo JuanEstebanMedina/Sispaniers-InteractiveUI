@@ -26,16 +26,43 @@ Reading to answer is allowed. A node whose `props.dataKey` looks like
 any other `dataKey` you have no tool: say the figure comes from the operation's
 records and that you cannot read it from here, rather than guessing at it.
 
-### `children` is the whole component, not your edit
+### Change one field, not the component
 
-Whatever you send in `children` becomes the component. Anything you leave out
-is deleted — its title, a node you were not asked about, a prop you did not
-mention. Copy the component you were given, change the one thing that was
-asked, and send every other node and every other prop back byte for byte.
+There are two shapes, and the narrow one is the default:
 
-The recipient is the trap worth naming: an `email-action` whose `to` you drop
-comes back as an empty field, and the user cannot send that draft at all.
-Rewriting the wording never means clearing the address.
+- **`path` + `value`** — rewrite a single field. `path` is dotted and rooted at
+  `children`: `children.1.props.body` is the message of the second node.
+  `value` is the new text. Nothing else in the component is read or written, so
+  nothing else can drift. The field has to exist already; a `path` naming a
+  prop that is not there is rejected rather than invented.
+- **`children`** — the whole new tree, and only when the set of nodes itself has
+  to change: a node added, removed, or reordered. Whatever you leave out is
+  deleted, so every node and every prop you still want has to come back byte for
+  byte.
+
+Almost every edit is one field. "Reword this", "make it warmer", "shorten the
+message", "fix that label", "translate this line" — all of them are one `path`.
+Reaching for `children` to change a sentence is how a title disappears and a
+recipient comes back empty.
+
+### An edit means what the user pointed at, and no more
+
+The user names the thing they want changed. Everything they did not name is a
+decision they already made, and it stays.
+
+An `email-action` is the case worth spelling out, because it holds three fields
+the user chose separately:
+
+- "edit the email", "reword it", "make it more formal" → `props.body`. The
+  message is what those words mean.
+- The recipient (`props.to`) changes only when the user names a different
+  person, and the subject (`props.subject`) only when they ask about the
+  subject. Neither one follows from rewriting the message.
+- The container's title is not part of the email at all. Leave it.
+
+If you believe a second field genuinely has to change too, do the one that was
+asked and say in `reply` what else you would change and why. Asking costs the
+user one sentence; guessing costs them the address they typed.
 
 ### What it does not do
 
@@ -72,6 +99,19 @@ is fine when it helps you say what the current figure actually is.
 
 ### Arguments
 
+One field — the shape to reach for first:
+
+```json
+{
+  "path": "children.<index>.props.<prop>",
+  "value": "<the new text>",
+  "componentId": "<id of the existing component to update>",
+  "reply": "<short natural-language message, addressed directly to the end user and shown verbatim in a chat bubble>"
+}
+```
+
+The whole tree — only when nodes are added, removed or reordered:
+
 ```json
 {
   "children": [
@@ -86,11 +126,15 @@ is fine when it helps you say what the current figure actually is.
 the same data sources (`dataKey`) as `create_component` — there is no separate
 list for updates.
 
+- Send **either** `path` and `value` **or** `children`. Both together is
+  rejected: they are two edits that disagree about the result.
 - **`children` replaces the whole tree.** It is not a patch. Whatever you leave
   out is gone from the component. Start from the content you were given for that
   component, change what the user asked for, and send back every other node
   unchanged — same `kind`, same `order`, same `props`. Sending only the node you
   edited erases the rest of the widget.
+- `path` counts nodes as they were given to you, from zero, and points at one
+  prop: `children.0.props.text`, `children.2.props.label`.
 - `componentId` is **required** — an `id` from the existing-components list or
   from the referenced block. Never invent one: an id that does not belong to
   this operation is rejected.

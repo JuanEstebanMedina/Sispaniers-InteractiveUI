@@ -33,12 +33,26 @@ export class InMemoryComponentRepository implements ComponentRepository {
     this.components.set(component.id, component);
   }
 
+  // Mirrors Mongo's dotted-path `$set`: the real adapter walks into the tree,
+  // so a fake that writes a literal "children.1.props.body" key would let a
+  // narrow edit look stored while the component never changed.
   async setField(id: string, path: string, value: unknown): Promise<void> {
     const component = this.components.get(id);
     if (component === undefined) {
       return;
     }
-    this.components.set(id, { ...component, [path]: value } as Component);
+
+    const copy = structuredClone(component) as unknown as Record<string, unknown>;
+    const segments = path.split(".");
+    const lastKey = segments.pop() as string;
+
+    let cursor: Record<string, unknown> = copy;
+    for (const segment of segments) {
+      cursor = cursor[segment] as Record<string, unknown>;
+    }
+    cursor[lastKey] = value;
+
+    this.components.set(id, copy as unknown as Component);
   }
 
   async deleteById(id: string): Promise<void> {
