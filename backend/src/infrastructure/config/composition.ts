@@ -49,19 +49,20 @@ import { connectMongo } from "./mongo.js";
 
 const DEFAULT_SIMULATION_TICK_INTERVAL_MS = 20_000;
 
-// ponytail: tsc doesn't copy .md assets to dist, so this reads from `src/`
-// relative to process.cwd() (both `pnpm dev` and `pnpm start` run from
-// backend/). Add a build-time asset copy if that assumption ever breaks.
+// ponytail: .md files stay under src/ only — dist/ is pure compiled JS.
+// The Dockerfile's runtime stage copies src/application/{prompts,skills}
+// directly (unrelated to tsc), and pnpm dev/start both run from backend/
+// locally, so process.cwd() + "src/..." resolves in every environment.
 const ARI_SYSTEM_PROMPT = readFileSync(
   join(process.cwd(), "src/application/prompts/ari-system-prompt.md"),
   "utf-8",
 );
 const CREATE_COMPONENT_SKILL = readFileSync(
-  join(process.cwd(), "src/application/commands/create-component.skill.md"),
+  join(process.cwd(), "src/application/skills/create-component.skill.md"),
   "utf-8",
 );
 const UPDATE_COMPONENT_SKILL = readFileSync(
-  join(process.cwd(), "src/application/commands/update-component.skill.md"),
+  join(process.cwd(), "src/application/skills/update-component.skill.md"),
   "utf-8",
 );
 
