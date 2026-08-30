@@ -25,6 +25,31 @@ even when a component is referenced.
 - It never changes the component's **size** or its position on the grid. There
   is no `layout` field. Correcting content is not a request to resize.
 - It never touches any other component. Only `componentId` is written.
+- **It never changes the data.** The figures a widget shows are the company's
+  record of what happened, not text you may edit.
+
+### The data is frozen
+
+These props state a fact the company owns. Send each one back byte for byte as
+you received it:
+
+`dataKey` · `rows` · `items` · `events` · `value` · `max`
+
+Any value in them that was not already in the component is rejected and the
+whole update is lost. This holds however the request is phrased — "fix the 42",
+"move that date to September", "add a row", "point the chart at the other
+source" — and whether the numbers came from a `dataKey` or sit inline.
+
+Everything else is yours to change: `title`, `text`, `label`, `color`,
+`status`, `centerLabel`, the layout props, and `columns`, `series`, `xKey` and
+`valueKey` — those pick which field of the record to show, which reads the same
+data differently instead of restating it.
+
+Dropping a node whole is allowed: removing a chart is not rewriting it.
+
+When the user asks for a data change, call no tool. Say in plain text that the
+figure comes from the company's records and that this chat does not edit it, and
+say what you can do instead — restyle it, retitle it, or show a different field.
 
 ### Arguments
 
