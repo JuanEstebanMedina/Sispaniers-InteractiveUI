@@ -3,7 +3,7 @@ import { CONTAINER_STATES } from "../../../../../domain/enums/container-state.js
 import { OPERATION_HEALTH_STATES } from "../../../../../domain/enums/operation-health.js";
 
 export const createFlowBodySchema = z.object({
-  client_id: z.string().min(1),
+  company_id: z.string().min(1),
   health: z.enum(OPERATION_HEALTH_STATES).optional(),
 });
 
@@ -11,18 +11,21 @@ export type CreateFlowBody = z.infer<typeof createFlowBodySchema>;
 
 export const flowResponseSchema = z.object({
   id: z.string(),
-  client_id: z.string(),
+  company_ids: z.array(z.string()),
   status: z.enum(CONTAINER_STATES),
   health: z.enum(OPERATION_HEALTH_STATES),
   created_at: z.string(),
   bookings: z.array(z.unknown()),
-  documents: z.array(z.unknown()),
+  context: z.object({
+    emails: z.array(z.unknown()),
+    documents: z.array(z.unknown()),
+  }),
 });
 
 export const listFlowsQuerySchema = z.object({
   status: z.enum(CONTAINER_STATES).optional(),
   health: z.enum(OPERATION_HEALTH_STATES).optional(),
-  search: z.string().optional(),
+  company_id: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
   date: z.string().optional(),

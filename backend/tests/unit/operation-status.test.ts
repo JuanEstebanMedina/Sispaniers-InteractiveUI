@@ -17,6 +17,7 @@ function containerIn(state: ContainerState): Container {
 function bookingWith(states: ContainerState[]): Booking {
   return {
     id: `booking-${states.join("-")}`,
+    companyIds: ["company-1"],
     carrier: "Maersk",
     vessel: "Ever Given",
     originPort: "CNSHA",
@@ -34,9 +35,8 @@ function bookingWith(states: ContainerState[]): Booking {
 function operationWith(bookings: Booking[]): Operation {
   return {
     id: "operation-1",
-    clientId: "client-1",
     bookings,
-    documents: [],
+    context: { emails: [], documents: [] },
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
   };
 }

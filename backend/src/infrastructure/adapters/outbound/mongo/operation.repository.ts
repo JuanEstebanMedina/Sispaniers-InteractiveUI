@@ -1,5 +1,4 @@
 import type { Collection, Db, Filter } from "mongodb";
-import type { ContainerState } from "../../../../domain/enums/container-state.js";
 import type { Operation } from "../../../../domain/logistics/operation.js";
 import type {
   OperationQueryFilter,
@@ -8,8 +7,6 @@ import type {
 import { type OperationDocument, toOperation, toOperationDocument } from "./operation.mapper.js";
 
 const COLLECTION_NAME = "operations";
-
-const DELIVERED: ContainerState = "delivered";
 
 export class MongoOperationRepository implements OperationRepository {
   private readonly operations: Collection<OperationDocument>;
@@ -24,30 +21,14 @@ export class MongoOperationRepository implements OperationRepository {
     return document === null ? null : toOperation(document);
   }
 
-  async findActiveByClient(clientId: string): Promise<Operation[]> {
-    const documents = await this.operations
-      .find({
-        clientId,
-        $or: [
-          {
-            bookings: { $elemMatch: { containers: { $elemMatch: { state: { $ne: DELIVERED } } } } },
-          },
-          { "bookings.containers.state": { $exists: false } },
-        ],
-      })
-      .toArray();
-
-    return documents.map(toOperation);
-  }
-
   async findAll(filter: OperationQueryFilter = {}): Promise<Operation[]> {
     const query: Filter<OperationDocument> = {};
 
+    if (filter.ids !== undefined) {
+      query._id = { $in: filter.ids };
+    }
     if (filter.health !== undefined) {
       query.health = filter.health;
-    }
-    if (filter.clientIdContains !== undefined) {
-      query.clientId = { $regex: filter.clientIdContains, $options: "i" };
     }
     if (filter.createdFrom !== undefined || filter.createdTo !== undefined) {
       query.createdAt = {

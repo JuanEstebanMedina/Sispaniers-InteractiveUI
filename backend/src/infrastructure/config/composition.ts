@@ -9,6 +9,7 @@ import { createUpdateOperationLayoutUseCase } from "../../application/use-cases/
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
+import type { CompanyRepository } from "../../domain/ports/company.repository.js";
 import type { ComponentRepository } from "../../domain/ports/component.repository.js";
 import type { EmailSender } from "../../domain/ports/email-sender.port.js";
 import type { OperationLayoutRepository } from "../../domain/ports/operation-layout.repository.js";
@@ -17,6 +18,7 @@ import { buildApp } from "../adapters/inbound/http/app.js";
 import { MultiFormatAttachmentExtractor } from "../adapters/outbound/attachment/multi-format-attachment-extractor.js";
 import { NodemailerEmailSender } from "../adapters/outbound/email/nodemailer-email-sender.js";
 import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.js";
+import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repository.js";
 import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
 import { MongoOperationLayoutRepository } from "../adapters/outbound/mongo/operation-layout.repository.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
@@ -30,6 +32,7 @@ export interface CreateAppOverrides {
   emailSender?: EmailSender;
   attachmentExtractor?: AttachmentExtractor;
   operationRepository?: OperationRepository;
+  companyRepository?: CompanyRepository;
   componentRepository?: ComponentRepository;
   operationLayoutRepository?: OperationLayoutRepository;
 }
@@ -46,31 +49,38 @@ function buildEmailSender(override: EmailSender | undefined): EmailSender {
 
 interface RepositorySources {
   operationRepository: OperationRepository;
+  companyRepository: CompanyRepository;
   componentRepository: ComponentRepository;
   operationLayoutRepository: OperationLayoutRepository;
   close?: () => Promise<void>;
 }
 
 async function buildRepositories(overrides: CreateAppOverrides): Promise<RepositorySources> {
+  const { operationRepository, companyRepository, componentRepository, operationLayoutRepository } =
+    overrides;
+
   if (
-    overrides.operationRepository !== undefined &&
-    overrides.componentRepository !== undefined &&
-    overrides.operationLayoutRepository !== undefined
+    operationRepository !== undefined &&
+    companyRepository !== undefined &&
+    componentRepository !== undefined &&
+    operationLayoutRepository !== undefined
   ) {
     return {
-      operationRepository: overrides.operationRepository,
-      componentRepository: overrides.componentRepository,
-      operationLayoutRepository: overrides.operationLayoutRepository,
+      operationRepository,
+      companyRepository,
+      componentRepository,
+      operationLayoutRepository,
     };
   }
 
   const mongo = await connectMongo();
 
   return {
-    operationRepository: overrides.operationRepository ?? new MongoOperationRepository(mongo.db),
-    componentRepository: overrides.componentRepository ?? new MongoComponentRepository(mongo.db),
+    operationRepository: operationRepository ?? new MongoOperationRepository(mongo.db),
+    companyRepository: companyRepository ?? new MongoCompanyRepository(mongo.db),
+    componentRepository: componentRepository ?? new MongoComponentRepository(mongo.db),
     operationLayoutRepository:
-      overrides.operationLayoutRepository ?? new MongoOperationLayoutRepository(mongo.db),
+      operationLayoutRepository ?? new MongoOperationLayoutRepository(mongo.db),
     close: mongo.close,
   };
 }
@@ -79,15 +89,24 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const idGenerator = new CryptoIdGenerator();
   const emailSender = buildEmailSender(overrides.emailSender);
   const attachmentExtractor = overrides.attachmentExtractor ?? new MultiFormatAttachmentExtractor();
-  const { operationRepository, componentRepository, operationLayoutRepository, close } =
-    await buildRepositories(overrides);
+  const {
+    operationRepository,
+    companyRepository,
+    componentRepository,
+    operationLayoutRepository,
+    close,
+  } = await buildRepositories(overrides);
 
   const receiveEmail = createReceiveEmailUseCase({ idGenerator, attachmentExtractor });
   const sendEmail = createSendEmailUseCase({ emailSender, idGenerator });
-  const createOperation = createCreateOperationUseCase({ operationRepository, idGenerator });
+  const createOperation = createCreateOperationUseCase({
+    operationRepository,
+    companyRepository,
+    idGenerator,
+  });
   const createComponent = createCreateComponentUseCase({ componentRepository, idGenerator });
   const getOperation = createGetOperationUseCase({ operationRepository });
-  const listOperations = createListOperationsUseCase({ operationRepository });
+  const listOperations = createListOperationsUseCase({ operationRepository, companyRepository });
   const getOperationComponents = createGetOperationComponentsUseCase({
     operationRepository,
     componentRepository,

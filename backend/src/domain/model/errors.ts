@@ -19,6 +19,13 @@ export class InvalidFilterCombinationError extends Error {
   }
 }
 
+export class CompanyNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Company not found: ${id}`);
+    this.name = "CompanyNotFoundError";
+  }
+}
+
 export class InvalidLayoutError extends Error {
   constructor(reason: string) {
     super(`Invalid layout: ${reason}`);

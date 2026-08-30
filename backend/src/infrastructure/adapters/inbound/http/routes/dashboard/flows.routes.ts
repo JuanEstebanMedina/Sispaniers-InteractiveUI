@@ -15,6 +15,7 @@ import type {
 import type { ContainerState } from "../../../../../../domain/enums/container-state.js";
 import type { Operation } from "../../../../../../domain/logistics/operation.js";
 import {
+  CompanyNotFoundError,
   InvalidFilterCombinationError,
   OperationNotFoundError,
 } from "../../../../../../domain/model/errors.js";
@@ -37,13 +38,13 @@ export interface FlowsRouteDeps {
 function toFlowResponse(operation: Operation, status: ContainerState) {
   return {
     id: operation.id,
-    client_id: operation.clientId,
+    company_ids: [...new Set(operation.bookings.flatMap((booking) => booking.companyIds))],
     status,
     health: operation.health ?? "ok",
     created_at: operation.createdAt.toISOString(),
     bookings: operation.bookings,
-    documents: operation.documents,
-  } as const;
+    context: operation.context,
+  };
 }
 
 export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify, deps) => {
@@ -54,18 +55,26 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
     {
       schema: {
         body: createFlowBodySchema,
-        response: { 201: flowResponseSchema },
+        response: { 201: flowResponseSchema, 404: errorResponseSchema },
       },
     },
     async (request, reply) => {
       const dto = request.body;
 
-      const result = await deps.createOperation({
-        clientId: dto.client_id,
-        ...(dto.health !== undefined ? { health: dto.health } : {}),
-      });
+      try {
+        const result = await deps.createOperation({
+          companyId: dto.company_id,
+          ...(dto.health !== undefined ? { health: dto.health } : {}),
+        });
 
-      reply.code(201).send(toFlowResponse(result.operation, result.status));
+        reply.code(201).send(toFlowResponse(result.operation, result.status));
+      } catch (error) {
+        if (error instanceof CompanyNotFoundError) {
+          reply.code(404).send({ error: "company_not_found", message: error.message });
+          return;
+        }
+        throw error;
+      }
     },
   );
 
@@ -98,7 +107,11 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
     {
       schema: {
         querystring: listFlowsQuerySchema,
-        response: { 200: listFlowsResponseSchema, 400: errorResponseSchema },
+        response: {
+          200: listFlowsResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+        },
       },
     },
     async (request, reply) => {
@@ -108,7 +121,7 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
         const results = await deps.listOperations({
           ...(query.status !== undefined ? { status: query.status } : {}),
           ...(query.health !== undefined ? { health: query.health } : {}),
-          ...(query.search !== undefined ? { search: query.search } : {}),
+          ...(query.company_id !== undefined ? { companyId: query.company_id } : {}),
           ...(query.from !== undefined ? { from: new Date(query.from) } : {}),
           ...(query.to !== undefined ? { to: new Date(query.to) } : {}),
           ...(query.date !== undefined ? { date: new Date(query.date) } : {}),
@@ -120,6 +133,10 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
       } catch (error) {
         if (error instanceof InvalidFilterCombinationError) {
           reply.code(400).send({ error: "invalid_filter_combination", message: error.message });
+          return;
+        }
+        if (error instanceof CompanyNotFoundError) {
+          reply.code(404).send({ error: "company_not_found", message: error.message });
           return;
         }
         throw error;
