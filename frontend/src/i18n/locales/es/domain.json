@@ -97,7 +97,12 @@
       "moveWidget": "Mover {{title}}",
       "renameWidget": "Renombrar widget",
       "widgetName": "Nombre del widget",
-      "untitledWidget": "Componente IA"
+      "untitledWidget": "Componente IA",
+      "deleteWidget": "Eliminar {{title}}",
+      "deleteTitle": "¿Eliminar este componente?",
+      "deleteMessage": "«{{title}}» se va a quitar de la interfaz de este run. No se puede deshacer.",
+      "deleteConfirm": "Eliminar componente",
+      "deleteError": "No se pudo eliminar el componente."
     },
     "chat": {
       "title": "Hablar con el agente",

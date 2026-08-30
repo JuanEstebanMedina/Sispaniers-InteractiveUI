@@ -97,7 +97,12 @@
       "moveWidget": "Move {{title}}",
       "renameWidget": "Rename widget",
       "widgetName": "Widget name",
-      "untitledWidget": "AI component"
+      "untitledWidget": "AI component",
+      "deleteWidget": "Delete {{title}}",
+      "deleteTitle": "Delete this component?",
+      "deleteMessage": "“{{title}}” will be removed from this run’s interface. This cannot be undone.",
+      "deleteConfirm": "Delete component",
+      "deleteError": "The component could not be deleted."
     },
     "chat": {
       "title": "Talk to the agent",

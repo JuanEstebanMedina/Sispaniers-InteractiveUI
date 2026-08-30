@@ -34,6 +34,8 @@ export const endpoints = {
       `/operations/${id}/components/${componentId}/placement`,
     componentContent: (id: string, componentId: string) =>
       `/operations/${id}/components/${componentId}`,
+    componentRemove: (id: string, componentId: string) =>
+      `/operations/${id}/components/${componentId}`,
   },
 
   notifications: {
@@ -70,6 +72,13 @@ export const queryKeys = {
      */
     list: (body?: unknown) => ['operations', 'list', body ?? {}] as const,
     detail: (id: string) => ['operations', 'detail', id] as const,
+    /**
+     * The backend packs the grid for one specific width, so there is a cache
+     * entry per column count the user has already been at. `componentsAll` is
+     * the whole family: whatever stops existing has to leave ALL of them, not
+     * just the one on screen.
+     */
+    componentsAll: (id: string) => ['operations', 'components', id] as const,
     components: (id: string, cols: number) => ['operations', 'components', id, cols] as const,
   },
   notifications: {
