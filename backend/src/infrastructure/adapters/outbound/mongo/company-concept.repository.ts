@@ -22,19 +22,15 @@ export class MongoCompanyConceptRepository implements CompanyConceptRepository {
     string,
     { expiresAt: number; concepts: CompanyConceptDocument[] }
   >();
-  private readonly indexesReady: Promise<void>;
+  private indexesReady: Promise<void> | undefined;
 
   constructor(db: Db) {
     this.concepts = db.collection<CompanyConceptDocument>("company_concepts");
     this.values = db.collection<CompanyConceptObservationDocument>("company_concept_values");
-    this.indexesReady = Promise.all([
-      this.concepts.createIndex({ companyId: 1, id: 1 }, { unique: true }),
-      this.values.createIndex({ companyId: 1, conceptId: 1, observedAt: -1 }),
-    ]).then(() => undefined);
   }
 
   async findForCompany(companyId: string, conceptIds: string[]): Promise<CompanyConceptResult[]> {
-    await this.indexesReady;
+    await this.ensureIndexes();
     const requestedIds = [...new Set(conceptIds)];
     const concepts = await this.findConcepts(companyId);
     const requested =
@@ -83,7 +79,7 @@ export class MongoCompanyConceptRepository implements CompanyConceptRepository {
       return;
     }
 
-    await this.indexesReady;
+    await this.ensureIndexes();
     await this.concepts.bulkWrite(
       concepts.map((concept) => ({
         updateOne: {
@@ -106,7 +102,7 @@ export class MongoCompanyConceptRepository implements CompanyConceptRepository {
       return;
     }
 
-    await this.indexesReady;
+    await this.ensureIndexes();
     await this.values.bulkWrite(
       observations.map(({ id, ...observation }) => ({
         replaceOne: {
@@ -127,5 +123,13 @@ export class MongoCompanyConceptRepository implements CompanyConceptRepository {
     const concepts = await this.concepts.find({ companyId }).toArray();
     this.conceptCache.set(companyId, { concepts, expiresAt: Date.now() + CACHE_TTL_MS });
     return concepts;
+  }
+
+  private ensureIndexes(): Promise<void> {
+    this.indexesReady ??= Promise.all([
+      this.concepts.createIndex({ companyId: 1, id: 1 }, { unique: true }),
+      this.values.createIndex({ companyId: 1, conceptId: 1, observedAt: -1 }),
+    ]).then(() => undefined);
+    return this.indexesReady;
   }
 }
