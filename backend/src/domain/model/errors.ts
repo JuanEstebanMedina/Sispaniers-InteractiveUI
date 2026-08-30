@@ -39,3 +39,17 @@ export class ComponentNotFoundError extends Error {
     this.name = "ComponentNotFoundError";
   }
 }
+
+export class InvalidComponentTreeError extends Error {
+  constructor(reason: string) {
+    super(`Invalid component tree: ${reason}`);
+    this.name = "InvalidComponentTreeError";
+  }
+}
+
+export class InvalidComponentPathError extends Error {
+  constructor(reason: string) {
+    super(`Invalid component path: ${reason}`);
+    this.name = "InvalidComponentPathError";
+  }
+}

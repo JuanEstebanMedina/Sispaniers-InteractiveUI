@@ -45,5 +45,18 @@ services:
       retries: 5
       start_period: 10s
 
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+        VITE_USE_MOCKS: "true"
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   mongo-data:
