@@ -3,11 +3,14 @@ import {
   ATOMIC_NODE_KINDS,
   type ActionKind,
   type AtomicNodeKind,
+  DATA_SOURCE_NAMES,
   LAYOUT_DIRECTIONS,
   NESTABLE_ATOMIC_NODE_KINDS,
 } from "../enums/widget-kind.js";
 import { MAX_COMPONENT_NODE_DEPTH } from "./component-node.js";
 import { WIDGET_SIZES, type WidgetSizeName, fitsChart } from "./widget-size.js";
+
+const STATUS_TONES = "neutral | brand | accent | success | warning | danger | info";
 
 export interface NodeSpec {
   purpose: string;
@@ -26,6 +29,8 @@ export interface NodeSpec {
  * live here, because the wire schema accepts any `props` bag and the renderer
  * is the only thing that knows which keys it reads.
  */
+const DATA_KEY_PROP = `string — one of ${DATA_SOURCE_NAMES.join(", ")}; it carries no rows itself`;
+
 const NODE_SPECS: Record<AtomicNodeKind, Omit<NodeSpec, "nestable">> = {
   title: {
     purpose: "Heading of a widget. One per widget at most.",
@@ -66,22 +71,22 @@ const NODE_SPECS: Record<AtomicNodeKind, Omit<NodeSpec, "nestable">> = {
   "trend-chart": {
     purpose: "A value over time. Needs a dataset the host already provides.",
     props: {
-      dataKey: "string — names a dataset the host supplies; it carries no rows itself",
+      dataKey: DATA_KEY_PROP,
       title: "string",
       xKey: "string — the row field on the x axis, defaults to 'x'",
       series: "array of { key, label, colorIndex } — which columns to draw",
     },
     example: {
-      dataKey: "eta-history",
+      dataKey: "schedule-changes",
       title: "ETA over time",
-      xKey: "date",
-      series: [{ key: "eta", label: "ETA", colorIndex: 0 }],
+      xKey: "at",
+      series: [{ key: "days", label: "Days of slip", colorIndex: 0 }],
     },
   },
   "category-chart": {
     purpose: "A value compared across categories.",
     props: {
-      dataKey: "string — names a dataset the host supplies",
+      dataKey: DATA_KEY_PROP,
       title: "string",
       xKey: "string — the row field on the x axis, defaults to 'x'",
       series: "array of { key, label, colorIndex }",
@@ -96,10 +101,89 @@ const NODE_SPECS: Record<AtomicNodeKind, Omit<NodeSpec, "nestable">> = {
   "breakdown-chart": {
     purpose: "Parts of a whole.",
     props: {
-      dataKey: "string — names a dataset the host supplies",
+      dataKey: DATA_KEY_PROP,
       title: "string",
     },
-    example: { dataKey: "cost-breakdown", title: "Cost breakdown" },
+    example: { dataKey: "containers-by-state", title: "Containers by state" },
+  },
+  timeline: {
+    purpose: "The sequence of what happened, newest last. The narrative of an operation.",
+    props: {
+      events: "array of { text, at, status } — the events themselves",
+      dataKey: `${DATA_KEY_PROP}; used only when "events" is absent`,
+    },
+    example: {
+      events: [
+        { text: "Booking confirmed", at: "2026-07-02", status: "success" },
+        { text: "Transshipment in Singapore", at: "2026-07-19", status: "warning" },
+      ],
+    },
+  },
+  table: {
+    purpose: "Rows to scan side by side. Needs its columns; without them it renders nothing.",
+    props: {
+      columns: "array of { key, label } — required, and the order of the columns",
+      rows: "array of objects keyed by the column keys",
+      dataKey: `${DATA_KEY_PROP}; used only when "rows" is absent`,
+    },
+    example: {
+      columns: [
+        { key: "container", label: "Container" },
+        { key: "state", label: "State" },
+      ],
+      dataKey: "containers",
+    },
+  },
+  "key-values": {
+    purpose: "Label/value pairs: the fields pulled off a document, a booking's data.",
+    props: { items: "array of { label, value } — required" },
+    example: {
+      items: [
+        { label: "Vessel", value: "MV Southern Cross" },
+        { label: "BL", value: "SGMX0099213" },
+      ],
+    },
+  },
+  progress: {
+    purpose: "How far along something is. Clamped to its own maximum.",
+    props: {
+      value: "number — required",
+      max: "number — defaults to 100",
+      label: "string — what is progressing",
+    },
+    example: { value: 6, max: 9, label: "Containers delivered" },
+  },
+  badge: {
+    purpose: "A short state marker next to what it qualifies.",
+    props: {
+      text: "string — required",
+      status: STATUS_TONES,
+    },
+    example: { text: "Delayed", status: "warning" },
+  },
+  divider: {
+    purpose: "A rule separating two blocks of a widget.",
+    props: {},
+    example: {},
+  },
+  sparkline: {
+    purpose: "The shape of a trend, with no axes. For a size too small to hold a chart.",
+    props: {
+      dataKey: `${DATA_KEY_PROP} — required`,
+      valueKey: "string — the row field to plot, defaults to 'value'",
+    },
+    example: { dataKey: "schedule-changes", valueKey: "days" },
+  },
+  file: {
+    purpose: "One document of the operation, with its link.",
+    props: {
+      name: "string — required, the file name",
+      type: "string — its extension or MIME type, decides the icon",
+      size: "string — human readable, e.g. '284 KB'",
+      at: "string — when it arrived",
+      url: "string — where to open it",
+    },
+    example: { name: "booking-confirmation.pdf", type: "pdf", size: "284 KB" },
   },
 };
 
