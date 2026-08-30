@@ -3,13 +3,27 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { api$, toQuery } from '@/api/client'
+import { api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { OperationsFilters } from '@/components/operations/OperationsFilters'
 import { OperationsGrid } from '@/components/operations/OperationsGrid'
-import { flowListSchema } from '@/schemas'
+import { operationListSchema, resolveOperationsSearch } from '@/schemas'
+
+/** La web habla en su vocabulario; el backend en el suyo. La traducción vive
+ *  acá, en el único sitio que conoce los dos. */
+const HEALTH_TO_BACKEND: Record<string, string> = {
+  on_track: 'ok',
+  at_risk: 'warning',
+  critical: 'error',
+}
+
+const SORT_TO_BACKEND: Record<string, string> = {
+  updatedAt: 'updatedAt',
+  shipper: 'company',
+  trackId: 'id',
+}
 
 /**
  * GRILLA DE OPERACIONES — la pantalla principal
@@ -25,33 +39,31 @@ import { flowListSchema } from '@/schemas'
 
 export default function OperationsPage() {
   const { t } = useTranslation('domain')
-  const search = useSearch({ from: '/app/operations/' })
+  // La URL sólo lleva lo que alguien cambió; acá se rellenan los ausentes.
+  const raw = useSearch({ from: '/app/operations/' })
+  const search = resolveOperationsSearch(raw)
   const navigate = useNavigate()
 
+  // El backend filtra Y ordena: la web ya no lo hace en memoria, porque el
+  // cliente sólo podría ordenar dentro de lo que alcanzó a descargar.
   const list = useQuery({
     queryKey: queryKeys.operations.list(search),
     queryFn: () =>
-      api$.get(
-        // El backend filtra por status/health/search; NO ordena ni pagina, así
-        // que el orden se hace acá abajo sobre el resultado.
-        endpoints.operations.list +
-          toQuery({ status: search.status, health: search.health, search: search.q }),
-        flowListSchema,
+      api$.post(
+        endpoints.operations.search,
+        operationListSchema,
+        {
+          ...(search.q ? { search: search.q } : {}),
+          ...(search.status !== 'all' ? { status: search.status } : {}),
+          ...(search.health !== 'all' ? { health: HEALTH_TO_BACKEND[search.health] } : {}),
+          sort_by: SORT_TO_BACKEND[search.sort] ?? 'updatedAt',
+          sort_dir: search.order,
+        },
       ),
     refetchInterval: 15_000,
   })
 
-  const operations = useMemo(() => {
-    const rows = list.data?.flows ?? []
-    const direction = search.order === 'asc' ? 1 : -1
-
-    // Copia antes de ordenar: `rows` sale de la caché de React Query.
-    return [...rows].sort((a, b) => {
-      if (search.sort === 'shipper') return a.shipper.localeCompare(b.shipper) * direction
-      if (search.sort === 'trackId') return a.trackId.localeCompare(b.trackId) * direction
-      return (Date.parse(a.updatedAt) - Date.parse(b.updatedAt)) * direction
-    })
-  }, [list.data, search.sort, search.order])
+  const operations = list.data?.operations ?? []
 
   const filtered = Boolean(search.q) || search.status !== 'all' || search.health !== 'all'
 
@@ -60,7 +72,7 @@ export default function OperationsPage() {
       <PageHeader title={t('operation.title')} description={t('operation.subtitle')} />
 
       <div className="mb-section">
-        <OperationsFilters search={search} total={list.data?.flows.length} />
+        <OperationsFilters search={search} total={list.data?.operations.length} />
       </div>
 
       <OperationsGrid
@@ -72,7 +84,9 @@ export default function OperationsPage() {
         onClearFilters={() =>
           void navigate({
             to: '/operations',
-            search: { q: undefined, status: 'all', health: 'all' },
+            // `undefined` en todos: limpiar filtros deja la URL en
+            // `/operations` pelada, que es lo que "sin filtros" significa.
+            search: { q: undefined, status: undefined, health: undefined },
           })
         }
       />

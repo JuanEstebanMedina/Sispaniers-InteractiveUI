@@ -23,6 +23,13 @@ export interface Widget extends GridItem {
 interface WidgetGridProps {
   widgets: Widget[]
   onLayoutChange?: (layout: GridItem[]) => void
+  /**
+   * Width, in px, that something else is taking from the row — the side panel.
+   * The grid sizes itself as if that space were still its own and overflows
+   * instead, so opening the panel scrolls the canvas rather than reflowing it
+   * into a different column count.
+   */
+  reserve?: number
   /** Fires when the user renames a widget, so the caller can persist it. */
   onTitleChange?: (id: string, title: string) => void
   className?: string
@@ -41,6 +48,7 @@ export function WidgetGrid({
   widgets,
   onLayoutChange,
   onTitleChange,
+  reserve = 0,
   className,
 }: WidgetGridProps) {
   const { t } = useTranslation('domain')
@@ -72,8 +80,9 @@ export function WidgetGrid({
     return () => observer.disconnect()
   }, [])
 
-  const cols = width > 0 ? colsForWidth(width, GAP_PX) : 4
-  const cell = width > 0 ? (width - GAP_PX * (cols - 1)) / cols : 0
+  const layoutWidth = width > 0 ? width + reserve : 0
+  const cols = layoutWidth > 0 ? colsForWidth(layoutWidth, GAP_PX) : 4
+  const cell = layoutWidth > 0 ? (layoutWidth - GAP_PX * (cols - 1)) / cols : 0
 
   // Widgets the user has never touched — anything the agent just added — keep
   // their incoming order and land at the end.
@@ -174,15 +183,16 @@ export function WidgetGrid({
   const byId = useMemo(() => new Map(widgets.map((widget) => [widget.id, widget])), [widgets])
 
   return (
-    <div
-      ref={containerRef}
-      className={cn('grid w-full', className)}
-      style={{
-        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-        gridAutoRows: cell > 0 ? `${cell}px` : undefined,
-        gap: GAP_PX,
-      }}
-    >
+    <div ref={containerRef} className={cn('w-full', className)}>
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+          gridAutoRows: cell > 0 ? `${cell}px` : undefined,
+          gap: GAP_PX,
+          width: layoutWidth > 0 ? layoutWidth : '100%',
+        }}
+      >
       {landing && (
         <div
           aria-hidden
@@ -313,7 +323,8 @@ export function WidgetGrid({
             <div className="min-h-0 flex-1 overflow-auto p-3">{widget.body}</div>
           </article>
         )
-      })}
+        })}
+      </div>
     </div>
   )
 }

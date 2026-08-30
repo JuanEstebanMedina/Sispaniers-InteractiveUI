@@ -16,7 +16,7 @@ interface OperationCardProps {
 export function OperationCard({ operation, active = false, className }: OperationCardProps) {
   const { t } = useTranslation(['domain', 'common'])
 
-  const needsDecision = operation.status === 'needs_decision'
+  const needsAttention = operation.health === 'critical'
 
   return (
     <Link
@@ -28,7 +28,7 @@ export function OperationCard({ operation, active = false, className }: Operatio
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         'pointer-fine:hover:border-line-strong pointer-fine:hover:shadow-sm',
 
-        needsDecision ? 'border-accent/40 border-l-2 border-l-accent' : 'border-line',
+        needsAttention ? 'border-accent/40 border-l-2 border-l-accent' : 'border-line',
         active && 'border-brand ring-1 ring-brand',
         className,
       )}

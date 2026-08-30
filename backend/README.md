@@ -85,23 +85,34 @@ curl -X POST http://127.0.0.1:8000/api/operations \
 
 `201` returns the operation object.
 
-### `GET /api/operations`
+### `POST /api/operations/search`
 
-Lists operations. All query parameters are optional.
+El **único** listado. Había también un `GET /api/operations` y se eliminó: dos
+rutas para lo mismo son dos contratos que mantener y dos sitios donde arreglar
+un bug de filtrado. Los filtros de la web —texto libre, estado, salud, empresa,
+rango de fechas y orden— no caben en una query string legible, así que la que
+sobrevive es la que puede con todo. Un body vacío lista todo.
 
-| Parameter | Type | Behaviour |
+Todos los campos son opcionales; un body vacío lista todo.
+
+| Campo | Tipo | Comportamiento |
 |---|---|---|
-| `status` | container state | filters on the **derived** status, in memory |
-| `health` | `ok` \| `warning` \| `error` | filters in Mongo |
-| `company_id` | string | reads `Company.operationIds` and narrows to those ids |
-| `from` / `to` | ISO date | `created_at` range |
-| `date` | ISO date | that whole UTC day; **cannot be combined** with `from`/`to` |
+| `search` | string | subcadena sin distinguir mayúsculas sobre el id de la operación, los ids de empresa y los puertos |
+| `status` | container state | filtra sobre el status **derivado**, en memoria |
+| `health` | `ok` \| `warning` \| `error` | filtra en Mongo |
+| `company_id` | string | operaciones de esa empresa |
+| `from` / `to` | fecha ISO | rango sobre `created_at` |
+| `date` | fecha ISO | ese día UTC; **no se combina** con `from`/`to` |
+| `sort_by` | `updatedAt` \| `company` \| `id` | `updatedAt` es derivado: el cambio de ETA más reciente, o la creación |
+| `sort_dir` | `asc` \| `desc` | por defecto `desc` |
 
 ```bash
-curl "http://127.0.0.1:8000/api/operations?status=in_transit&company_id=company-andes-textiles"
+curl -X POST http://127.0.0.1:8000/api/operations/search \
+  -H "Content-Type: application/json" \
+  -d '{ "search": "andes", "sort_by": "id", "sort_dir": "asc" }'
 ```
 
-`200` → `{ "operations": [ ... ] }`
+`200` → `{ "operations": [ ... ] }` · `400` → `invalid_filter_combination` · `404` → `company_not_found`
 
 ### `GET /api/operations/:id`
 

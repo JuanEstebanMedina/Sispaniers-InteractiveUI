@@ -71,7 +71,7 @@ const demoColumn = columnHelperFor<DemoRow>()
 
 const DEMO_ROWS: DemoRow[] = [
   { id: '1', trackId: 'TRK-4400', shipper: 'Muebles del Sur', containers: 4, status: 'in_transit' },
-  { id: '2', trackId: 'TRK-4401', shipper: 'Textiles Andinos S.A.', containers: 2, status: 'needs_decision' },
+  { id: '2', trackId: 'op-andes-002', shipper: 'Andes Textiles', containers: 2, status: 'customs' },
   { id: '3', trackId: 'TRK-4402', shipper: 'Café de Origen Ltda.', containers: 1, status: 'in_orbit' },
 ]
 
@@ -317,8 +317,8 @@ export default function ComponentsPage() {
           >
             <Row>
               {[
-                'needs_decision',
-                'agent_working',
+                'booking_confirmed',
+                'arrived_port',
                 'in_transit',
                 'customs',
                 'delivered',
