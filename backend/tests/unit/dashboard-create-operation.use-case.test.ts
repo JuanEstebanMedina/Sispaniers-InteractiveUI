@@ -3,8 +3,8 @@ import { createCreateCompanyUseCase } from "../../src/application/use-cases/dash
 import { createCreateOperationUseCase } from "../../src/application/use-cases/dashboard/create-operation.use-case.js";
 import { createResolveCompanyUseCase } from "../../src/application/use-cases/shared/resolve-company.use-case.js";
 import { CompanyNotFoundError } from "../../src/domain/model/errors.js";
-import { InMemoryCompanyRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-company-repository.js";
 import { InMemoryOperationEventPublisher } from "../../src/infrastructure/adapters/outbound/events/in-memory-operation-event-publisher.js";
+import { InMemoryCompanyRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-company-repository.js";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 import { aCompany } from "../support/operation-fixtures.js";
 
