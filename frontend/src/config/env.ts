@@ -16,10 +16,6 @@ const envSchema = z.object({
 
   VITE_API_TIMEOUT: z.coerce.number().int().positive().default(15_000),
 
-  VITE_USE_MOCKS: booleanish,
-
-  VITE_MOCK_DELAY: z.coerce.number().int().min(0).default(320),
-
   VITE_THEME: z.enum(['light', 'dark', 'system']).default('light'),
 
   VITE_LOCALE: z.enum(['es', 'en', 'pt-BR', '']).default(''),
@@ -31,8 +27,6 @@ const envSchema = z.object({
   VITE_WS_URL: z.string().optional(),
 
   VITE_DEVTOOLS: booleanish,
-
-  VITE_DEMO_MODE: booleanish,
 
   VITE_SENTRY_DSN: z.string().optional(),
 })

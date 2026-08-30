@@ -7,8 +7,7 @@ The main screen is the **operations grid** — everything the agents are working
 on right now. Open one and the others stay visible in a rail on the left, so you
 can jump between them and notice a change in one while working on another.
 
-It runs end to end **without a backend** — a Service Worker answers real HTTP
-requests — and switches to the real API by changing one environment variable.
+It runs against the Sispaniers backend API.
 
 ---
 
@@ -27,22 +26,7 @@ pnpm dev
 
 Open **http://localhost:5173**.
 
-Sign in with any of the demo accounts — they are listed on the login screen and
-fill themselves in with one click:
-
-| Email                  | Password   | Role          | What they can do                       |
-| ---------------------- | ---------- | ------------- | -------------------------------------- |
-| `admin@yuno.com`       | `demo1234` | Administrator | Everything                             |
-| `supervisor@yuno.com`  | `demo1234` | Supervisor    | Answer agent decisions, users, settings |
-| `operator@nauta.com`   | `demo1234` | Operator      | Create and update operations           |
-| `analyst@nauta.com`    | `demo1234` | Analyst       | Read-only + the AI assistant           |
-| `guest@yuno.com`       | `demo1234` | Guest         | Read-only                              |
-
-> Sign in as **operator** and then as **supervisor**: only the supervisor can
-> answer what an agent is asking (`operations:decide`). That is the RBAC
-> working, not a mock — and it is the one permission boundary that matters,
-> because answering an agent redirects an automated flow and is signed by whoever
-> gave the answer.
+Sign in with a user created by the backend.
 
 ---
 
@@ -66,30 +50,18 @@ pnpm preview --host      # production build, reachable on the LAN
 
 ---
 
-## Connecting the real backend
-
-This is the whole procedure. There is no refactor.
+## Backend API
 
 ```bash
-# .env
-VITE_USE_MOCKS=false
 VITE_API_URL=https://the-real-backend/api
 ```
 
 If the backend runs locally and CORS is in the way, use the dev proxy instead:
 
 ```bash
-# .env
-VITE_USE_MOCKS=false
 VITE_API_URL=/api
 VITE_API_PROXY=http://localhost:8000
 ```
-
-**Hybrid mode** — the one that actually gets used at 3 AM. Mocks are configured
-with `onUnhandledRequest: 'bypass'`, so any endpoint without a handler falls
-through to the real server. You can wire real endpoints one at a time as the
-backend delivers them, while the rest stays mocked. Delete a handler from
-`src/mocks/handlers.ts` and that endpoint goes live.
 
 ---
 
@@ -111,10 +83,6 @@ states (loading / error / empty / no-results) are real, everywhere.
 
 **i18n** — Spanish, English and Brazilian Portuguese. No user-facing string is
 hardcoded in a component.
-
-**Mock backend** — 24 operations, deterministic, including the ugly cases:
-three different pending decisions, one stuck in customs, one in exception, and a
-company name long enough to break a narrow card.
 
 Open **`/components`** in development: a live catalogue of everything, where you
 can check all 6 theme × locale combinations at a glance.
@@ -140,7 +108,6 @@ src/
 ├─ hooks/            useMediaQuery, useDebounce, useDisclosure, useHotkey…
 ├─ stores/           theme store (theme, density)
 ├─ styles/           design tokens and the Manifiesto palette
-├─ mocks/            MSW: handlers + seeded data
 └─ config/           validated env, navigation
 ```
 
@@ -171,7 +138,6 @@ Four files are worth reading first, because they explain most of the rest:
 | TanStack Form          | Takes the zod schema directly, no resolver adapter                       |
 | Zustand                | Auth state readable from outside React (interceptors, route guards)      |
 | Zod                    | Runtime validation at the network boundary                               |
-| MSW                    | A real mock server, so the app code never knows it is mocked             |
 | Recharts               | Charts with a validated, colour-blind-safe palette                       |
 | i18next                | es / en / pt-BR from day one                                             |
 
@@ -187,13 +153,10 @@ matter:
 
 | Variable            | Default         | What it does                                          |
 | ------------------- | --------------- | ----------------------------------------------------- |
-| `VITE_USE_MOCKS`    | `true`          | `false` → hits the real backend                       |
 | `VITE_API_URL`      | `/api`          | Backend base URL                                      |
 | `VITE_API_PROXY`    | —               | Dev proxy target; kills CORS in development           |
 | `VITE_THEME`        | `dark`          | `light` \| `dark` \| `system`                         |
-| `VITE_DEMO_MODE`    | `true`          | Prefills login credentials so nobody types on stage   |
 | `VITE_DEVTOOLS`     | `true`          | Query and Router devtools panels                      |
-| `VITE_MOCK_DELAY`   | `320`           | Artificial mock latency, so skeletons are visible     |
 
 Only `VITE_`-prefixed variables reach the browser, which means **they are all
 public**. Never put a secret here.
@@ -204,9 +167,6 @@ public**. Never put a secret here.
 
 **Blank page after `pnpm dev`** — open the console. If it says the env is
 invalid, you are missing `.env`: run `cp .env.example .env`.
-
-**Mocks not intercepting** — `public/mockServiceWorker.js` must exist. If it
-does not: `npx msw init public/`.
 
 **Port 5173 in use** — `pnpm dev --port 3000`, or set `VITE_PORT` in `.env`.
 

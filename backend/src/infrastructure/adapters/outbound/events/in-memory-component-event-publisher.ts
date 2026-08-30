@@ -1,8 +1,8 @@
 import { EventEmitter } from "node:events";
-import type { Component } from "../../../../domain/components/component.js";
 import type {
   ComponentEventListener,
   ComponentEventName,
+  ComponentEventPayload,
   ComponentEventPublisher,
 } from "../../../../domain/ports/component-event-publisher.port.js";
 
@@ -13,8 +13,8 @@ import type {
 export class InMemoryComponentEventPublisher implements ComponentEventPublisher {
   private readonly emitter = new EventEmitter();
 
-  publish(operationId: string, event: ComponentEventName, component: Component): void {
-    this.emitter.emit(operationId, event, component);
+  publish(operationId: string, event: ComponentEventName, payload: ComponentEventPayload): void {
+    this.emitter.emit(operationId, event, payload);
   }
 
   subscribe(operationId: string, listener: ComponentEventListener): () => void {

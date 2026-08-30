@@ -131,7 +131,8 @@
       "moveWidget": "Mover {{title}}",
       "renameWidget": "Renomear widget",
       "widgetName": "Nome do widget",
-      "untitledWidget": "Componente IA"
+      "untitledWidget": "Componente IA",
+      "pendingTitle": "Gerando…"
     },
     "chat": {
       "title": "Falar com o agente",

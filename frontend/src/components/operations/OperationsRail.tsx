@@ -1,8 +1,12 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Skeleton } from '@/components/ui/Skeleton'
+import { useOperationEvents } from '@/hooks'
+import type { OperationEventName } from '@/hooks/useOperationEvents'
 import { cn } from '@/lib/cn'
+import { toast } from '@/lib/toast'
 import type { Operation } from '@/schemas'
 import {
   DEFAULT_SECTIONS,
@@ -48,12 +52,38 @@ export function OperationsRail({
   open,
 }: OperationsRailProps) {
   const { t } = useTranslation('domain')
+  const queryClient = useQueryClient()
   const width = useRailStore((state) => state.width)
   const setWidth = useRailStore((state) => state.setWidth)
   const [resizing, setResizing] = useState(false)
   const sections = useRailStore((state) => state.sections)
   const toggleSection = useRailStore((state) => state.toggleSection)
 
+  const onOperationEvent = useCallback(
+    (eventName: OperationEventName) => {
+      // Pending placeholders and operation-level events are someone else's
+      // concern — the rail only reacts once a component actually exists to
+      // invalidate the cache for.
+      if (eventName !== 'component-created' && eventName !== 'component-updated') return
+      toast.info(
+        eventName === 'component-created'
+          ? t('operation.events.componentCreated')
+          : t('operation.events.componentUpdated'),
+      )
+      // `cols` is measured by the grid itself and can be 2, 4 or 8 depending on
+      // the viewport — matching it exactly here would silently miss whichever
+      // width the grid actually settled on. A predicate on the operation id
+      // catches the active query regardless of its column count.
+      void queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === 'operations' &&
+          query.queryKey[1] === 'components' &&
+          query.queryKey[2] === (activeTrackId ?? ''),
+      })
+    },
+    [t, queryClient, activeTrackId],
+  )
+  useOperationEvents(activeTrackId ?? '', onOperationEvent)
   // La operación abierta ya está en la lista que el riel recibe, así que esto
   // es una lectura de lo que tiene en la mano — no una consulta más.
   const active = useMemo(

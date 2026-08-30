@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
+import { createCreateComponentCommand } from "../../application/commands/create-component.command.js";
+import { createUpdateComponentCommand } from "../../application/commands/update-component.command.js";
 import { createCreateUserUseCase } from "../../application/use-cases/auth/create-user.use-case.js";
 import { createGetMeUseCase } from "../../application/use-cases/auth/get-me.use-case.js";
 import { createListUsersUseCase } from "../../application/use-cases/auth/list-users.use-case.js";
@@ -19,7 +21,6 @@ import { createGetOperationComponentsUseCase } from "../../application/use-cases
 import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
 import { createListCompaniesUseCase } from "../../application/use-cases/dashboard/list-companies.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
-import { createRespondToChatUseCase } from "../../application/use-cases/dashboard/respond-to-chat.use-case.js";
 import { createRunSimulationTickUseCase } from "../../application/use-cases/dashboard/run-simulation-tick.use-case.js";
 import { createUpdateCompanyUseCase } from "../../application/use-cases/dashboard/update-company.use-case.js";
 import { createUpdateComponentContentUseCase } from "../../application/use-cases/dashboard/update-component-content.use-case.js";
@@ -29,6 +30,7 @@ import { createReceiveEmailUseCase } from "../../application/use-cases/email/rec
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import { createUpsertOperationFromEmailUseCase } from "../../application/use-cases/email/upsert-operation-from-email.use-case.js";
 import { createResolveCompanyUseCase } from "../../application/use-cases/shared/resolve-company.use-case.js";
+import { CommandRegistry } from "../../domain/commands/command-registry.js";
 import type { AiCompletionPort } from "../../domain/ports/ai-completion-port.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
 import type { AttachmentStorage } from "../../domain/ports/attachment-storage.port.js";
@@ -62,11 +64,20 @@ import { connectMongo } from "./mongo.js";
 
 const DEFAULT_SIMULATION_TICK_INTERVAL_MS = 20_000;
 
-// ponytail: tsc doesn't copy .md assets to dist, so this reads from `src/`
-// relative to process.cwd() (both `pnpm dev` and `pnpm start` run from
-// backend/). Add a build-time asset copy if that assumption ever breaks.
+// ponytail: .md files stay under src/ only — dist/ is pure compiled JS.
+// The Dockerfile's runtime stage copies src/application/{prompts,skills}
+// directly (unrelated to tsc), and pnpm dev/start both run from backend/
+// locally, so process.cwd() + "src/..." resolves in every environment.
 const ARI_SYSTEM_PROMPT = readFileSync(
   join(process.cwd(), "src/application/prompts/ari-system-prompt.md"),
+  "utf-8",
+);
+const CREATE_COMPONENT_SKILL = readFileSync(
+  join(process.cwd(), "src/application/skills/create-component.skill.md"),
+  "utf-8",
+);
+const UPDATE_COMPONENT_SKILL = readFileSync(
+  join(process.cwd(), "src/application/skills/update-component.skill.md"),
   "utf-8",
 );
 
@@ -254,20 +265,30 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     openAiAdapter,
     geminiAdapter,
   );
+  const commandRegistry = new CommandRegistry();
+  commandRegistry.register(
+    createCreateComponentCommand({ createComponent, skill: CREATE_COMPONENT_SKILL }),
+  );
+  commandRegistry.register(
+    createUpdateComponentCommand({
+      updateComponentContent,
+      skill: UPDATE_COMPONENT_SKILL,
+    }),
+  );
+  const skills = commandRegistry
+    .list()
+    .map((command) => command.skill)
+    .filter((skill): skill is string => skill !== undefined)
+    .join("\n\n---\n\n");
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository,
     componentRepository,
     aiCompletionPort,
-    createComponent,
-    updateComponentContent,
-    promptTemplate: ARI_SYSTEM_PROMPT,
+    commandRegistry,
+    promptTemplate: `${ARI_SYSTEM_PROMPT}\n\n---\n\n${skills}`,
+    eventPublisher: componentEventPublisher,
+    idGenerator,
   });
-  const respondToChat = createRespondToChatUseCase({
-    operationRepository,
-    aiCompletionPort,
-    promptTemplate: ARI_SYSTEM_PROMPT,
-  });
-
   const app = buildApp({
     receiveEmail,
     sendEmail,
@@ -286,7 +307,6 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     updateComponentPlacement,
     updateComponentContent,
     generateComponentFromAi,
-    respondToChat,
     createComponent,
     deleteComponent,
     componentEventPublisher,
