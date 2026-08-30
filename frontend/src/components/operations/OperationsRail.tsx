@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { useOperationEvents } from '@/hooks'
 import type { OperationEventName } from '@/hooks/useOperationEvents'
 import { cn } from '@/lib/cn'
+import { needsAttention } from '@/lib/operation'
 import { toast } from '@/lib/toast'
 import type { Operation } from '@/schemas'
 import {
@@ -19,24 +20,6 @@ import { AgentChat } from './AgentChat'
 import { OperationFiles } from './OperationFiles'
 import { RailItem } from './RailItem'
 import { RailSection } from './RailSection'
-
-/**
- * The right-hand panel: talking to the agent on top, every other operation
- * below.
- *
- * It is a column, never an overlay — it shares the row with the content and
- * pushes it, the way the sidebar does. A panel that floats on top hides the
- * very thing you opened it beside, which defeats keeping the other operations
- * in view while you work on this one.
- *
- * It sits on the RIGHT because on the left it competed with the menu: two
- * navigation columns side by side make you choose which one to read. With the
- * content between them, the menu answers "where can I go" and this answers
- * "what else is happening".
- *
- * The ones waiting on a person come FIRST. If the agent is blocked waiting for
- * someone, that cannot end up below the scroll.
- */
 
 interface OperationsRailProps {
   operations: Operation[]
@@ -61,19 +44,12 @@ export function OperationsRail({
 
   const onOperationEvent = useCallback(
     (eventName: OperationEventName) => {
-      // Pending placeholders and operation-level events are someone else's
-      // concern — the rail only reacts once a component actually exists to
-      // invalidate the cache for.
       if (eventName !== 'component-created' && eventName !== 'component-updated') return
       toast.info(
         eventName === 'component-created'
           ? t('operation.events.componentCreated')
           : t('operation.events.componentUpdated'),
       )
-      // `cols` is measured by the grid itself and can be 2, 4 or 8 depending on
-      // the viewport — matching it exactly here would silently miss whichever
-      // width the grid actually settled on. A predicate on the operation id
-      // catches the active query regardless of its column count.
       void queryClient.invalidateQueries({
         predicate: (query) =>
           query.queryKey[0] === 'operations' &&
@@ -84,8 +60,6 @@ export function OperationsRail({
     [t, queryClient, activeTrackId],
   )
   useOperationEvents(activeTrackId ?? '', onOperationEvent)
-  // La operación abierta ya está en la lista que el riel recibe, así que esto
-  // es una lectura de lo que tiene en la mano — no una consulta más.
   const active = useMemo(
     () => operations.find((operation) => operation.trackId === activeTrackId),
     [operations, activeTrackId],
@@ -93,16 +67,14 @@ export function OperationsRail({
   const documents = active?.documents ?? []
 
   const sorted = useMemo(() => {
-    const waiting = (operation: Operation) => (operation.health === 'critical' ? 0 : 1)
-    // Copy before sorting: `operations` comes from the React Query cache and
-    // sorting it in place corrupts what every other consumer sees.
+    const waiting = (operation: Operation) => (needsAttention(operation) ? 0 : 1)
     return [...operations].sort(
       (a, b) => waiting(a) - waiting(b) || Date.parse(b.updatedAt) - Date.parse(a.updatedAt),
     )
   }, [operations])
 
   const alerts = operations.filter(
-    (operation) => operation.trackId !== activeTrackId && operation.health === 'critical',
+    (operation) => operation.trackId !== activeTrackId && needsAttention(operation),
   ).length
 
   if (!open) return null
@@ -111,11 +83,7 @@ export function OperationsRail({
     <aside
       className={cn(
         'sticky top-0 flex h-dvh shrink-0 flex-col bg-canvas',
-        // `relative` anchors the resize handle sitting on the leading edge.
         'relative',
-        // A hard edge, not a hairline: this is where the generated canvas ends
-        // and the app's own chrome begins, and the two must not read as one
-        // surface.
         'border-l-2 border-line-strong shadow-[-8px_0_24px_-12px_rgb(0_0_0/0.18)]',
         resizing && 'select-none',
       )}
@@ -175,13 +143,6 @@ export function OperationsRail({
   )
 }
 
-/**
- * Drag strip on the panel's leading edge.
- *
- * Two elements wide visually but with a fat invisible hit area: a 2px target is
- * unhittable. It reports drag start and end so the panel can suppress text
- * selection for the duration — without that, dragging highlights the chat.
- */
 function ResizeHandle({
   width,
   onResize,
@@ -202,8 +163,6 @@ function ResizeHandle({
 
   useEffect(() => {
     if (!origin) return
-    // The panel is on the right, so dragging LEFT makes it wider: the delta is
-    // subtracted, not added.
     const onMove = (event: PointerEvent) =>
       onResize(origin.width - (event.clientX - origin.x))
     window.addEventListener('pointermove', onMove)

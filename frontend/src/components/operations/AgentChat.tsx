@@ -15,12 +15,6 @@ interface AgentChatProps {
   className?: string
 }
 
-/**
- * Hablar con el agente para lo que la UI generada no tiene widget — «avisa al
- * cliente», «frena esto hasta que revise».
- *
- * El agente responde con un componente Y con un `reply` corto para leer.
- */
 export function AgentChat({ operationId, className }: AgentChatProps) {
   const { t } = useTranslation('domain')
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -72,9 +66,9 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
 }
 
 /**
- * `POST /operations/:id/chat` sólo acepta `message: string` — no tiene canal
- * para adjuntos, así que el documento se cita por tipo e id dentro del texto.
- * El agente ya tiene la operación en su contexto y con el id lo encuentra.
+ * `POST /operations/:id/chat` only accepts `message: string` — there is no
+ * channel for attachments, so a document is cited by type and id inside the
+ * text. The agent already holds the operation and resolves the id from there.
  */
 function withDocs(body: string, docs: LogisticsDocument[]): string {
   if (docs.length === 0) return body

@@ -6,22 +6,17 @@ import { navigation } from '@/config/nav'
 import { isDev } from '@/config/env'
 import { cn } from '@/lib/cn'
 
-/**
- * La lista de navegación del sidebar.
- *
- * Se filtra por permiso: cada ítem declara lo que necesita en config/nav.ts,
- * así un operador sencillamente nunca ve "Compañías" — no porque alguien se
- * acordara de escribir un `if` acá.
- */
-
 interface SidebarNavProps {
-  /** Clases que muestran u ocultan las etiquetas según ancho y estado. */
   labelVisibility: string
   collapsed: boolean
   onNavigate: () => void
   badges: Partial<Record<'decisions' | 'notifications', number>>
 }
 
+/**
+ * The menu filters by permission, so an operator simply never sees Companies —
+ * not because somebody remembered to write an `if` at the call site.
+ */
 export function SidebarNav({ labelVisibility, collapsed, onNavigate, badges }: SidebarNavProps) {
   const { t } = useTranslation()
   const isAtLeast = useAuthStore((state) => state.isAtLeast)
@@ -35,7 +30,6 @@ export function SidebarNav({ labelVisibility, collapsed, onNavigate, badges }: S
         return isAtLeast(item.minRole)
       }),
     }))
-    // Una sección sin ítems visibles no puede dejar su encabezado huérfano.
     .filter((section) => section.items.length > 0)
 
   return (
@@ -63,8 +57,6 @@ export function SidebarNav({ labelVisibility, collapsed, onNavigate, badges }: S
                 <li key={item.to}>
                   <Link
                     to={item.to}
-                    // `exact` sólo en la raíz: si no, "/" queda marcada como
-                    // activa en todas sus rutas hijas.
                     activeOptions={{ exact: item.to === '/' }}
                     onClick={onNavigate}
                     className={cn(
@@ -75,29 +67,20 @@ export function SidebarNav({ labelVisibility, collapsed, onNavigate, badges }: S
                       'md:justify-center',
                       !collapsed && 'lg:justify-start',
                     )}
-                    // TanStack Router pone data-status="active" en el link que
-                    // coincide; estilamos desde ahí en vez de pasar una render
-                    // prop, y las clases quedan legibles.
                     activeProps={{
                       className:
                         'bg-brand-subtle text-brand hover:bg-brand-subtle hover:text-brand',
                     }}
-                    // El title es el tooltip cuando sólo se ven iconos.
                     title={label}
                   >
                     <Icon className="size-5 shrink-0" aria-hidden />
 
                     <span className={cn('min-w-0 flex-1 truncate', labelVisibility)}>{label}</span>
 
-                    {/* Un punto y no un número: en el menú sólo hace falta
-                        saber QUE hay algo esperando. El cuánto está en la
-                        pantalla a la que lleva. */}
                     {badge !== undefined && badge > 0 && (
                       <span
                         className={cn(
                           'size-2 shrink-0 rounded-full bg-accent',
-                          // Colapsado se va al borde del icono: sigue avisando
-                          // y no ocupa ancho.
                           'md:absolute md:right-2 md:top-2',
                           !collapsed && 'lg:static',
                         )}

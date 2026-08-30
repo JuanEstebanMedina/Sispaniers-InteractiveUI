@@ -69,6 +69,31 @@ export type DataSourceName = (typeof DATA_SOURCE_NAMES)[number];
  * Three levels and no more: with five, nothing reads as urgent because the
  * middle three are indistinguishable at a glance.
  */
+/**
+ * The colours a node may ask for, on any element: the text of a title, the
+ * tint of a button, the fill of one bar.
+ *
+ * Names and never values. A hex would look right in one theme and be invisible
+ * in the other, and it would drift off the palette the moment the model
+ * improvises — which is exactly what a generated UI must not do.
+ *
+ * Keep in step with frontend/src/components/generated/colors.ts.
+ */
+export const COLOR_NAMES = [
+  "default",
+  "muted",
+  "subtle",
+  "agent",
+  "brand",
+  "accent",
+  "success",
+  "warning",
+  "danger",
+  "info",
+] as const;
+
+export type ColorName = (typeof COLOR_NAMES)[number];
+
 export const COMPONENT_PRIORITIES = ["normal", "high", "critical"] as const;
 
 export type ComponentPriority = (typeof COMPONENT_PRIORITIES)[number];

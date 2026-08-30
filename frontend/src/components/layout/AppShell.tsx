@@ -8,6 +8,7 @@ import { endpoints, queryKeys } from '@/api/endpoints'
 import { ErrorBoundary } from '@/components/feedback/ErrorBoundary'
 import { Button } from '@/components/ui/Button'
 import { useDisclosure, useLocalStorage, useSse } from '@/hooks'
+import { needsAttention } from '@/lib/operation'
 import { operationListSchema } from '@/schemas'
 import { Sidebar } from './Sidebar'
 
@@ -25,7 +26,7 @@ export function AppShell() {
     queryKey: queryKeys.operations.list(),
     queryFn: () =>
       api$.post(endpoints.operations.search, operationListSchema, {}),
-    select: (list) => list.operations.filter((o) => o.health === 'critical').length,
+    select: (list) => list.operations.filter(needsAttention).length,
   })
 
   const [collapsed, setCollapsed] = useLocalStorage('yn.sidebar.collapsed', false)

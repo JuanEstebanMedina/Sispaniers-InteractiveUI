@@ -14,12 +14,8 @@ type StatusVisual = { tone: BadgeTone; pulse?: boolean }
 
 const STATUS_VISUALS: Record<ContainerState, StatusVisual> = {
   booking_confirmed: { tone: 'neutral' },
-  // Pulsa porque está pasando ahora mismo y el estado cambia solo mientras
-  // mirás la pantalla.
   in_transit: { tone: 'info', pulse: true },
   arrived_port: { tone: 'info' },
-  // Ámbar: en Manifiesto es "asunto de un humano", y una retención en aduana
-  // lo es siempre.
   customs: { tone: 'warning' },
   delivered: { tone: 'success' },
 }

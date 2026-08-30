@@ -5,7 +5,7 @@ import {
   validateComponentSize,
   validateComponentTree,
 } from "../../src/domain/components/component-node.js";
-import { DATA_SOURCE_NAMES } from "../../src/domain/enums/widget-kind.js";
+import { COLOR_NAMES, DATA_SOURCE_NAMES } from "../../src/domain/enums/widget-kind.js";
 import {
   InvalidComponentPathError,
   InvalidComponentTreeError,
@@ -198,5 +198,23 @@ test("accepts every documented data source", () => {
 });
 
 test("a node with no dataKey is none of that rule's business", () => {
+  expect(() => validateComponentTree([statNode(0)])).not.toThrow();
+});
+
+test("rejects a colour that is not in the palette vocabulary", () => {
+  const tree = [{ kind: "title", order: 0, props: { text: "X", color: "chartreuse" } }];
+
+  expect(() => validateComponentTree(tree)).toThrow(InvalidComponentTreeError);
+});
+
+test("accepts every documented colour name", () => {
+  for (const color of COLOR_NAMES) {
+    expect(() =>
+      validateComponentTree([{ kind: "title", order: 0, props: { text: "X", color } }]),
+    ).not.toThrow();
+  }
+});
+
+test("a node with no colour is none of that rule's business", () => {
   expect(() => validateComponentTree([statNode(0)])).not.toThrow();
 });

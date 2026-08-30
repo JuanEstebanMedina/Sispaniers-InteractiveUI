@@ -39,7 +39,7 @@ export interface PropReader {
   bool(key: string, fallback?: boolean): boolean
   oneOf<T extends string>(key: string, allowed: readonly T[], fallback: T): T
   /** Maps an array prop, dropping every entry the mapper rejects. */
-  list<T>(key: string, map: (item: Record<string, unknown>) => T | null): T[]
+  list<T>(key: string, map: (item: Record<string, unknown>, index: number) => T | null): T[]
   action(fallback?: string): string
 }
 
@@ -66,9 +66,9 @@ export function useProps(): PropReader {
       list: (key, map) => {
         const value = raw[key]
         if (!Array.isArray(value)) return []
-        return value.flatMap((item) => {
+        return value.flatMap((item, index) => {
           if (typeof item !== 'object' || item === null) return []
-          const mapped = map(item as Record<string, unknown>)
+          const mapped = map(item as Record<string, unknown>, index)
           return mapped === null ? [] : [mapped]
         })
       },
