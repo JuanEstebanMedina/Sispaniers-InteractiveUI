@@ -26,6 +26,7 @@ import {
   companyConceptsResponseSchema,
   operationListSchema,
   operationResponseSchema,
+  type GeneratedComponent,
   type Operation,
 } from '@/schemas'
 import { needsAttention } from '@/lib/operation'
@@ -170,9 +171,26 @@ export default function OperationDetailPage() {
 
       if (event === 'component-created' || event === 'component-updated') {
         setPending((current) => current.slice(1))
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.operations.components(trackId, cols),
-        })
+        const component = payload as GeneratedComponent | null
+        if (!component) return
+        queryClient.setQueriesData<ComponentsResponse>(
+          { queryKey: queryKeys.operations.componentsAll(trackId) },
+          (cached) => {
+            if (!cached) return cached
+            const exists = cached.components.some(({ id }) => id === component.id)
+            return {
+              components: exists
+                ? cached.components.map((current) => (current.id === component.id ? component : current))
+                : [...cached.components, component],
+              layout: cached.layout.some(({ id }) => id === component.id)
+                ? cached.layout
+                : [
+                    ...cached.layout,
+                    { id: component.id, col: 0, row: 0, ...WIDGET_SIZES[component.size] },
+                  ],
+            }
+          },
+        )
         return
       }
 
@@ -182,7 +200,7 @@ export default function OperationDetailPage() {
         void queryClient.invalidateQueries({ queryKey: queryKeys.operations.list() })
       }
     },
-    [queryClient, trackId, cols],
+    [queryClient, trackId],
   )
   const stream = useOperationEvents(trackId, onOperationEvent)
 

@@ -21,6 +21,7 @@ never create one solely to avoid clarification.
     { "kind": "<one from the index below>", "order": <n>, "props": { ... } }
   ],
   "layout": { "cols": <n>, "rows": <n> },
+  "priority": "<normal|high|critical>",
   "reply": "<short natural-language message, addressed directly to the end user and shown as-is in a chat bubble>"
 }
 ```
@@ -31,6 +32,9 @@ never create one solely to avoid clarification.
   internal jargon, no HTML, no markdown, no code, never empty.
 - Don't compute position (`x`, `y`) — the backend assigns that when it
   inserts the event; you only declare the size.
+- `priority` is optional. Omit it for routine information; use `high` for a
+  decision or delay requiring attention, `critical` for an immediate material
+  risk. The frontend colors the component border from it.
 
 ---
 

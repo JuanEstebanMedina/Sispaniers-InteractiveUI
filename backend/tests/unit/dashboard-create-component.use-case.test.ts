@@ -49,6 +49,14 @@ test("the first component of an operation opens the sequence", async () => {
   expect((await createComponent(aRequest())).order).toBe(0);
 });
 
+test("priority is retained for the component event and frontend wire shape", async () => {
+  const { createComponent } = buildUseCase();
+
+  expect((await createComponent({ ...aRequest(), priority: "critical" })).priority).toBe(
+    "critical",
+  );
+});
+
 test("a new component lands after the last of its siblings", async () => {
   const { componentRepository, createComponent } = buildUseCase();
   await componentRepository.save(aComponent({ operationId: OPERATION_ID, order: 4 }));

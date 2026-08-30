@@ -3,6 +3,7 @@ import type { JsonSchema } from "../../domain/commands/json-schema.js";
 import { validateComponentTree } from "../../domain/components/component-node.js";
 import type { Component, ComponentNode } from "../../domain/components/component.js";
 import { WIDGET_SIZES, type WidgetSizeName } from "../../domain/components/widget-size.js";
+import { COMPONENT_PRIORITIES, type ComponentPriority } from "../../domain/enums/widget-kind.js";
 import type { CreateComponentInput } from "../use-cases/dashboard/create-component.use-case.js";
 import { componentNodeSchema, layoutSchema, replySchema } from "./component-node-schema.js";
 
@@ -14,6 +15,7 @@ export interface CreateComponentCommandDeps {
 export interface CreateComponentCommandInput {
   children: ComponentNode[];
   layout: { cols: number; rows: number };
+  priority?: ComponentPriority;
   reply: string;
 }
 
@@ -22,6 +24,7 @@ const inputSchema: JsonSchema = {
   properties: {
     children: { type: "array", items: componentNodeSchema },
     layout: layoutSchema,
+    priority: { type: "string", enum: [...COMPONENT_PRIORITIES] },
     reply: replySchema,
   },
   required: ["children", "layout", "reply"],
@@ -65,6 +68,7 @@ export function createCreateComponentCommand(deps: CreateComponentCommandDeps): 
         kind: "container",
         children: input.children,
         size: nearestSize(input.layout.cols, input.layout.rows),
+        ...(input.priority === undefined ? {} : { priority: input.priority }),
       });
       return { component, reply: input.reply };
     },
