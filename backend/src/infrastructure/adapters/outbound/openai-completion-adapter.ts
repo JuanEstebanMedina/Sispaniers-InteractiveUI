@@ -55,7 +55,6 @@ export class OpenAiCompletionAdapter implements AiCompletionPort {
           : [{ role: "developer" as const, content: request.systemPrompt }]),
         { role: "user", content: request.prompt },
       ],
-      reasoning_effort: "none",
       // "required" forces an actual function call whenever tools are offered
       // — left on "auto", the model is free to answer in plain prose, which
       // is right for a caller with a legitimate "nothing to show" case (see
