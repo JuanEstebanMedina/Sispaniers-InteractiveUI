@@ -26,7 +26,9 @@ services:
       context: ./backend
     restart: unless-stopped
     environment:
-      MONGODB_URI: mongodb://${MONGO_USER:-sispaniers}:${MONGO_PASSWORD:?set MONGO_PASSWORD in .env, see .env.example}@mongo:27017/${MONGO_DB:-sispaniers}?authSource=admin
+      # Set MONGODB_URI in .env to point at Atlas (or anywhere else) instead —
+      # this default is only the local docker-compose mongo service.
+      MONGODB_URI: ${MONGODB_URI:-mongodb://${MONGO_USER:-sispaniers}:${MONGO_PASSWORD:?set MONGO_PASSWORD in .env, see .env.example}@mongo:27017/${MONGO_DB:-sispaniers}?authSource=admin}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env, see .env.example}
       GMAIL_USER: ${GMAIL_USER:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
@@ -58,7 +60,9 @@ services:
       target: seed
     restart: "no"
     environment:
-      MONGODB_URI: mongodb://${MONGO_USER:-sispaniers}:${MONGO_PASSWORD:?set MONGO_PASSWORD in .env, see .env.example}@mongo:27017/${MONGO_DB:-sispaniers}?authSource=admin
+      # Set MONGODB_URI in .env to point at Atlas (or anywhere else) instead —
+      # this default is only the local docker-compose mongo service.
+      MONGODB_URI: ${MONGODB_URI:-mongodb://${MONGO_USER:-sispaniers}:${MONGO_PASSWORD:?set MONGO_PASSWORD in .env, see .env.example}@mongo:27017/${MONGO_DB:-sispaniers}?authSource=admin}
     depends_on:
       mongo:
         condition: service_healthy
