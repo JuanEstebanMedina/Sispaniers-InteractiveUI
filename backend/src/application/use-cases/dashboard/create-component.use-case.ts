@@ -1,4 +1,7 @@
-import { validateComponentTree } from "../../../domain/components/component-node.js";
+import {
+  validateComponentSize,
+  validateComponentTree,
+} from "../../../domain/components/component-node.js";
 import {
   type Component,
   type ComponentNode,
@@ -28,6 +31,7 @@ export function createCreateComponentUseCase(deps: CreateComponentDeps) {
 
   return async function createComponent(input: CreateComponentInput): Promise<Component> {
     validateComponentTree(input.children);
+    validateComponentSize(input.size, input.children);
 
     const siblings = await componentRepository.findByOperationId(input.operationId);
 

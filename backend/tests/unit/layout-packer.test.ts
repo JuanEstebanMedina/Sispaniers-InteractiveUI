@@ -34,7 +34,7 @@ test("a widget wider than the grid is clamped rather than dropped", async () => 
 test("every widget is placed exactly once", async () => {
   const packed = packDefaultLayout(
     [
-      widget("a", "tower"),
+      widget("a", "small"),
       widget("b", "banner"),
       widget("c", "tile"),
       widget("d", "large"),

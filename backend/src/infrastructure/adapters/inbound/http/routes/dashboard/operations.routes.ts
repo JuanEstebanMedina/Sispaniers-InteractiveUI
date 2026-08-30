@@ -1,9 +1,11 @@
 import type { FastifyPluginAsyncZod, ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
+import type { ApplyTrackingEventInput } from "../../../../../../application/use-cases/dashboard/apply-tracking-event.use-case.js";
 import type {
   CreateOperationInput,
   CreateOperationResult,
 } from "../../../../../../application/use-cases/dashboard/create-operation.use-case.js";
+import type { EnrollOperationInSimulationInput } from "../../../../../../application/use-cases/dashboard/enroll-operation-in-simulation.use-case.js";
 import type {
   GetDocumentPreviewUrlInput,
   GetDocumentPreviewUrlResult,
@@ -22,9 +24,12 @@ import type {
 } from "../../../../../../application/use-cases/dashboard/upload-operation-document.use-case.js";
 import type { ContainerState } from "../../../../../../domain/enums/container-state.js";
 import type { Document } from "../../../../../../domain/logistics/document.js";
+import { deriveOperationStatus } from "../../../../../../domain/logistics/operation-status.js";
 import type { Operation } from "../../../../../../domain/logistics/operation.js";
 import {
+  BookingNotFoundError,
   CompanyNotFoundError,
+  ContainerNotFoundError,
   DocumentNotFoundError,
   DocumentUploadError,
   InvalidFilterCombinationError,
@@ -37,6 +42,7 @@ import {
   listOperationsResponseSchema,
   operationResponseSchema,
   searchOperationsBodySchema,
+  trackingEventBodySchema,
   uploadDocumentBodySchema,
   uploadDocumentResponseSchema,
 } from "../../schemas/operation.schema.js";
@@ -57,9 +63,11 @@ export interface OperationsRouteDeps {
   uploadOperationDocument: (
     input: UploadOperationDocumentInput,
   ) => Promise<UploadOperationDocumentResult>;
+  applyTrackingEvent: (input: ApplyTrackingEventInput) => Promise<Operation>;
+  enrollOperationInSimulation: (input: EnrollOperationInSimulationInput) => Promise<void>;
 }
 
-function toOperationResponse(operation: Operation, status: ContainerState) {
+export function toOperationResponse(operation: Operation, status: ContainerState) {
   return {
     id: operation.id,
     company_ids: [
@@ -110,6 +118,11 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
         const result = await deps.createOperation({
           companyId: dto.company_id,
           ...(dto.health !== undefined ? { health: dto.health } : {}),
+        });
+
+        await deps.enrollOperationInSimulation({
+          operationId: result.operation.id,
+          companyId: dto.company_id,
         });
 
         reply.code(201).send(toOperationResponse(result.operation, result.status));
@@ -272,6 +285,61 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
         }
         if (error instanceof DocumentUploadError) {
           reply.code(502).send({ error: "document_upload_failed", message: error.message });
+          return;
+        }
+        throw error;
+      }
+    },
+  );
+
+  // Manual override for the automatic simulator (see run-simulation-tick.use-case.ts)
+  // — force a specific tracking event on demand, e.g. during a live demo.
+  app.post(
+    "/operations/:id/tracking-events",
+    {
+      schema: {
+        params: operationParamsSchema,
+        body: trackingEventBodySchema,
+        response: { 200: operationResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+      const dto = request.body;
+
+      try {
+        const operation = await deps.applyTrackingEvent({
+          operationId: id,
+          event:
+            dto.type === "vessel_position"
+              ? { type: "vessel_position", bookingId: dto.booking_id, lat: dto.lat, lng: dto.lng }
+              : dto.type === "schedule_change"
+                ? {
+                    type: "schedule_change",
+                    bookingId: dto.booking_id,
+                    newEta: new Date(dto.new_eta),
+                    reason: dto.reason,
+                  }
+                : {
+                    type: "container_state",
+                    bookingId: dto.booking_id,
+                    containerId: dto.container_id,
+                    state: dto.state,
+                  },
+        });
+
+        reply.code(200).send(toOperationResponse(operation, deriveOperationStatus(operation)));
+      } catch (error) {
+        if (error instanceof OperationNotFoundError) {
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
+          return;
+        }
+        if (error instanceof BookingNotFoundError) {
+          reply.code(404).send({ error: "booking_not_found", message: error.message });
+          return;
+        }
+        if (error instanceof ContainerNotFoundError) {
+          reply.code(404).send({ error: "container_not_found", message: error.message });
           return;
         }
         throw error;

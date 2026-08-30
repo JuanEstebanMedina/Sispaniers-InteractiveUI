@@ -26,14 +26,13 @@ export function colsForWidth(width: number, gap: number): number {
 /**
  * Widths must divide the column count, or gaps become unavoidable arithmetic:
  * a 3-wide widget on a 4-column grid always strands one column. Heights are
- * free — a 1x5 tower is fine.
+ * free.
  */
 export const WIDGET_SIZES = {
   tile: { w: 1, h: 1 },
   small: { w: 2, h: 2 },
   wide: { w: 4, h: 2 },
   tall: { w: 2, h: 4 },
-  tower: { w: 1, h: 5 },
   large: { w: 4, h: 4 },
   banner: { w: 4, h: 1 },
 } as const

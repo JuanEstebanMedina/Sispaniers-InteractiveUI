@@ -44,10 +44,28 @@ export async function ensureIndexes(db: Db): Promise<void> {
   ]);
 }
 
+const CONNECT_MAX_ATTEMPTS = 5;
+const CONNECT_RETRY_DELAY_MS = 2000;
+
+async function connectWithRetry(client: MongoClient): Promise<void> {
+  for (let attempt = 1; attempt <= CONNECT_MAX_ATTEMPTS; attempt++) {
+    try {
+      await client.connect();
+      return;
+    } catch (error) {
+      if (attempt === CONNECT_MAX_ATTEMPTS) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, CONNECT_RETRY_DELAY_MS));
+    }
+  }
+}
+
 export async function connectMongo(uri: string = resolveMongoUri()): Promise<MongoConnection> {
   const client = new MongoClient(uri);
 
-  await client.connect();
+  await connectWithRetry(client);
 
   const db = client.db();
   await ensureIndexes(db);

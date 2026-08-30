@@ -13,7 +13,7 @@ import { GeneratedSurface } from '@/components/operations/GeneratedSurface'
 import { OperationDetailHeader } from '@/components/operations/OperationDetailHeader'
 import { Skeleton } from '@/components/ui/Skeleton'
 import {
-  operationComponentsSchema,
+  componentsResponseSchema,
   operationListSchema,
   operationResponseSchema,
 } from '@/schemas'
@@ -52,7 +52,7 @@ export default function OperationDetailPage() {
     queryFn: () =>
       api$.get(
         `${endpoints.operations.components(trackId)}?cols=${cols}`,
-        operationComponentsSchema,
+        componentsResponseSchema,
       ),
   })
 

@@ -44,9 +44,10 @@ export const endpoints = {
   },
 
   ai: {
-    ask: '/ai/ask',
-    stream: '/ai/stream',
-    suggestions: '/ai/suggestions',
+    chat: (operationId: string) => `/operations/${operationId}/chat`,
+    events: (operationId: string) => `/operations/${operationId}/events`,
+    components: (operationId: string, cols: 2 | 4 | 8) =>
+      `/operations/${operationId}/components?cols=${cols}`,
   },
 
   health: '/health',

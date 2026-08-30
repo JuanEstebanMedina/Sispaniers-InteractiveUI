@@ -27,8 +27,12 @@ services:
       MONGODB_URI: mongodb://${MONGO_USER:-sispaniers}:${MONGO_PASSWORD:?set MONGO_PASSWORD in .env, see .env.example}@mongo:27017/${MONGO_DB:-sispaniers}?authSource=admin
       GMAIL_USER: ${GMAIL_USER:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -49,8 +53,18 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: /api
-        VITE_USE_MOCKS: "true"
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        # MSW es HÍBRIDO, no un backend falso: sólo intercepta /auth/* y /health
+        # (el backend no tiene login todavía) y deja pasar el resto al backend
+        # real. Ponerlo en false rompe el login.
+        VITE_USE_MOCKS: ${VITE_USE_MOCKS:-true}
+        VITE_DEMO_MODE: ${VITE_DEMO_MODE:-true}
+        VITE_API_TIMEOUT: ${VITE_API_TIMEOUT:-15000}
+        VITE_MOCK_DELAY: ${VITE_MOCK_DELAY:-320}
+        VITE_THEME: ${VITE_THEME:-light}
+        VITE_APP_NAME: ${VITE_APP_NAME:-Sispaniers}
+        VITE_AUTH_STORAGE: ${VITE_AUTH_STORAGE:-localStorage}
+        VITE_DEVTOOLS: ${VITE_DEVTOOLS:-false}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-5173}:80"

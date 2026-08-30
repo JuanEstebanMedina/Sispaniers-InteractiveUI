@@ -61,7 +61,8 @@
       "emptyHint": "Quando o agente executar o fluxo, a interface desta execução será construída aqui e vai se reorganizar sozinha conforme avança.",
       "moveWidget": "Mover {{title}}",
       "renameWidget": "Renomear widget",
-      "widgetName": "Nome do widget"
+      "widgetName": "Nome do widget",
+      "untitledWidget": "Componente IA"
     },
     "chat": {
       "title": "Falar com o agente",
@@ -70,7 +71,13 @@
       "send": "Enviar",
       "attach": "Anexar arquivo",
       "removeFile": "Remover {{name}}",
-      "emptyTitle": "Algo para fazer na mão?"
+      "emptyTitle": "Algo para fazer na mão?",
+      "componentGenerated": "Componente atualizado no painel.",
+      "sendError": "Não foi possível enviar a mensagem ao agente."
+    },
+    "events": {
+      "componentCreated": "Um novo componente foi gerado",
+      "componentUpdated": "Um componente foi atualizado"
     }
   }
 }

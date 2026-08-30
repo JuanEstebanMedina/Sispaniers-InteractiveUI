@@ -40,6 +40,13 @@ export class ComponentNotFoundError extends Error {
   }
 }
 
+export class InvalidAiComponentError extends Error {
+  constructor(reason: string) {
+    super(`Invalid AI component output: ${reason}`);
+    this.name = "InvalidAiComponentError";
+  }
+}
+
 export class DocumentNotFoundError extends Error {
   constructor(id: string) {
     super(`Document not found: ${id}`);
@@ -65,5 +72,19 @@ export class InvalidComponentPathError extends Error {
   constructor(reason: string) {
     super(`Invalid component path: ${reason}`);
     this.name = "InvalidComponentPathError";
+  }
+}
+
+export class BookingNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Booking not found: ${id}`);
+    this.name = "BookingNotFoundError";
+  }
+}
+
+export class ContainerNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Container not found: ${id}`);
+    this.name = "ContainerNotFoundError";
   }
 }

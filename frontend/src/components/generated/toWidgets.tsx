@@ -1,4 +1,4 @@
-import type { LayoutEntry, OperationComponent } from '@/schemas'
+import type { GeneratedComponent, LayoutEntry } from '@/schemas'
 import { ComponentNodeView, agentTitleOf } from './ComponentNodeView'
 import type { Widget } from './WidgetGrid'
 
@@ -9,7 +9,7 @@ import type { Widget } from './WidgetGrid'
  * `layout`.
  */
 export function toWidgets(
-  components: OperationComponent[],
+  components: GeneratedComponent[],
   layout: LayoutEntry[],
 ): Widget[] {
   const placement = new Map(layout.map((entry) => [entry.id, entry]))
