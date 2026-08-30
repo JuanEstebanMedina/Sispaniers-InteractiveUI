@@ -3,6 +3,7 @@ import {
   ATOMIC_NODE_KINDS,
   type ActionKind,
   type AtomicNodeKind,
+  COLOR_NAMES,
   DATA_SOURCE_NAMES,
   LAYOUT_DIRECTIONS,
   type LayoutDirection,
@@ -65,6 +66,17 @@ function validateComponentNode(node: unknown, remainingDepth: number): void {
     }
   } else if (action !== undefined) {
     throw new InvalidComponentTreeError(`action is not permitted on kind: ${kind}`);
+  }
+
+  // An unknown colour name silently falls back to the default, so the agent
+  // would never learn its palette word was wrong. Say so instead.
+  if (
+    props.color !== undefined &&
+    !(COLOR_NAMES as readonly string[]).includes(String(props.color))
+  ) {
+    throw new InvalidComponentTreeError(
+      `unknown color: ${String(props.color)} (expected one of ${COLOR_NAMES.join(", ")})`,
+    );
   }
 
   // A dataKey the frontend cannot resolve renders nothing and says nothing.

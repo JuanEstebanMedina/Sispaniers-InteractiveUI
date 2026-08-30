@@ -30,6 +30,8 @@ export interface Series {
   key: string
   label: string
   colorIndex?: number
+  /** Overrides the palette slot. Used when a series means something. */
+  color?: string
 }
 
 interface ChartFrameProps {
@@ -132,7 +134,7 @@ function renderLegend(series: Series[]) {
         <li key={item.key} className="flex items-center gap-2">
           <span
             className="size-2 rounded-xs"
-            style={{ backgroundColor: seriesColor(item.colorIndex ?? index) }}
+            style={{ backgroundColor: (item.color ?? seriesColor(item.colorIndex ?? index)) }}
             aria-hidden
           />
           <span className="text-fg-muted">{item.label}</span>
@@ -172,7 +174,7 @@ export function TrendChart({
           <AreaChart data={rows} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
             <defs>
               {series.map((item, index) => {
-                const color = seriesColor(item.colorIndex ?? index)
+                const color = (item.color ?? seriesColor(item.colorIndex ?? index))
                 return (
                   <linearGradient key={item.key} id={`fill-${item.key}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={color} stopOpacity={0.28} />
@@ -198,7 +200,7 @@ export function TrendChart({
                 dataKey={item.key}
                 name={item.label}
                 stackId={stacked ? 'stack' : undefined}
-                stroke={seriesColor(item.colorIndex ?? index)}
+                stroke={(item.color ?? seriesColor(item.colorIndex ?? index))}
                 strokeWidth={MARK.strokeWidth}
                 fill={`url(#fill-${item.key})`}
                 dot={false}
@@ -224,7 +226,7 @@ export function TrendChart({
                 type="monotone"
                 dataKey={item.key}
                 name={item.label}
-                stroke={seriesColor(item.colorIndex ?? index)}
+                stroke={(item.color ?? seriesColor(item.colorIndex ?? index))}
                 strokeWidth={MARK.strokeWidth}
                 dot={false}
                 activeDot={{ r: MARK.activeDotRadius, strokeWidth: 2, stroke: 'var(--color-surface)' }}
@@ -292,7 +294,7 @@ export function CategoryChart({
               dataKey={item.key}
               name={item.label}
               stackId={stacked ? 'stack' : undefined}
-              fill={seriesColor(item.colorIndex ?? index)}
+              fill={(item.color ?? seriesColor(item.colorIndex ?? index))}
               radius={
                 horizontal ? [0, MARK.barRadius, MARK.barRadius, 0] : [MARK.barRadius, MARK.barRadius, 0, 0]
               }

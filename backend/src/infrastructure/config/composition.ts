@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { createCreateComponentCommand } from "../../application/commands/create-component.command.js";
 import { createQueryCompanyConceptsCommand } from "../../application/commands/query-company-concepts.command.js";
+import { createSaveCompanyContextCommand } from "../../application/commands/save-company-context.command.js";
 import { createUpdateComponentCommand } from "../../application/commands/update-component.command.js";
 import { createCreateUserUseCase } from "../../application/use-cases/auth/create-user.use-case.js";
 import { createGetMeUseCase } from "../../application/use-cases/auth/get-me.use-case.js";
@@ -24,6 +25,7 @@ import { createListCompaniesUseCase } from "../../application/use-cases/dashboar
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
 import { createQueryCompanyConceptsUseCase } from "../../application/use-cases/dashboard/query-company-concepts.use-case.js";
 import { createRunSimulationTickUseCase } from "../../application/use-cases/dashboard/run-simulation-tick.use-case.js";
+import { createSaveCompanyContextUseCase } from "../../application/use-cases/dashboard/save-company-context.use-case.js";
 import { createUpdateCompanyUseCase } from "../../application/use-cases/dashboard/update-company.use-case.js";
 import { createUpdateComponentContentUseCase } from "../../application/use-cases/dashboard/update-component-content.use-case.js";
 import { createUpdateComponentPlacementUseCase } from "../../application/use-cases/dashboard/update-component-placement.use-case.js";
@@ -56,6 +58,7 @@ import { InMemoryOperationEventPublisher } from "../adapters/outbound/events/in-
 import { FallbackAiCompletionAdapter } from "../adapters/outbound/fallback-ai-completion-adapter.js";
 import { GeminiCompletionAdapter } from "../adapters/outbound/gemini-completion-adapter.js";
 import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.js";
+import { InMemoryChatHistoryStore } from "../adapters/outbound/memory/in-memory-chat-history-store.js";
 import { MongoCompanyConceptRepository } from "../adapters/outbound/mongo/company-concept.repository.js";
 import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repository.js";
 import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
@@ -86,6 +89,10 @@ const UPDATE_COMPONENT_SKILL = readFileSync(
 );
 const QUERY_COMPANY_CONCEPTS_SKILL = readFileSync(
   join(process.cwd(), "src/application/skills/query-company-concepts.skill.md"),
+  "utf-8",
+);
+const SAVE_COMPANY_CONTEXT_SKILL = readFileSync(
+  join(process.cwd(), "src/application/skills/save-company-context.skill.md"),
   "utf-8",
 );
 
@@ -232,6 +239,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   });
   const simulationRegistry = overrides.simulationRegistry ?? new InMemorySimulationRegistry();
   const createComponent = createCreateComponentUseCase({
+    operationRepository,
     componentRepository,
     idGenerator,
     eventPublisher: componentEventPublisher,
@@ -285,6 +293,10 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     operationRepository,
     componentRepository,
   });
+  const saveCompanyContext = createSaveCompanyContextUseCase({
+    operationRepository,
+    companyRepository,
+  });
   // ponytail: the OpenAI/Gemini SDKs throw at construction time on a falsy
   // apiKey, so an empty string would crash boot when the env var isn't set.
   // A placeholder keeps boot working; real calls fail with a normal auth
@@ -300,6 +312,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     geminiAdapter,
   );
   const commandRegistry = new CommandRegistry();
+  const chatHistoryPort = new InMemoryChatHistoryStore();
   commandRegistry.register(
     createCreateComponentCommand({ createComponent, skill: CREATE_COMPONENT_SKILL }),
   );
@@ -307,6 +320,12 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     createQueryCompanyConceptsCommand({
       queryCompanyConcepts,
       skill: QUERY_COMPANY_CONCEPTS_SKILL,
+    }),
+  );
+  commandRegistry.register(
+    createSaveCompanyContextCommand({
+      saveCompanyContext,
+      skill: SAVE_COMPANY_CONTEXT_SKILL,
     }),
   );
   commandRegistry.register(
@@ -323,9 +342,11 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository,
     componentRepository,
+    companyRepository,
     aiCompletionPort,
     commandRegistry,
     promptTemplate: `${ARI_SYSTEM_PROMPT}\n\n---\n\n${skills}`,
+    chatHistoryPort,
     eventPublisher: componentEventPublisher,
     idGenerator,
   });

@@ -45,12 +45,29 @@ export class OpenAiCompletionAdapter implements AiCompletionPort {
 
   async complete(request: AiCompletionRequest): Promise<AiCompletionResult> {
     const hasTools = request.tools !== undefined && request.tools.length > 0;
+    const forceTool = request.forceTool ?? true;
 
     const response = await this.getClient().chat.completions.create({
       model: this.model,
-      messages: [{ role: "user", content: request.prompt }],
+      messages: [
+        ...(request.systemPrompt === undefined
+          ? []
+          : [{ role: "developer" as const, content: request.systemPrompt }]),
+        { role: "user", content: request.prompt },
+      ],
       reasoning_effort: "none",
-      ...(hasTools ? { tools: toOpenAiTools(request.tools as AiToolDefinition[]) } : {}),
+      // "required" forces an actual function call whenever tools are offered
+      // — left on "auto", the model is free to answer in plain prose, which
+      // is right for a caller with a legitimate "nothing to show" case (see
+      // `forceTool` on the port) and wrong everywhere else: prose that
+      // describes a skill's own instructions back at the user is a real
+      // thing it did otherwise.
+      ...(hasTools
+        ? {
+            tools: toOpenAiTools(request.tools as AiToolDefinition[]),
+            tool_choice: forceTool ? "required" : "auto",
+          }
+        : {}),
     });
 
     const message = response.choices[0]?.message;

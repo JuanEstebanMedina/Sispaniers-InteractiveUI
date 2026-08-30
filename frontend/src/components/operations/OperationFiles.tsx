@@ -25,11 +25,6 @@ import {
 import { useChatAttachStore } from '@/stores/chatAttachStore'
 import { useRailStore } from '@/stores/railStore'
 
-/**
- * Los documentos ya vienen dentro de la operación, así que listarlos no cuesta
- * una consulta. La URL firmada sí se pide al abrir: dura cinco minutos.
- */
-
 const FORMAT_ICONS: Record<DocumentFormat, typeof File> = {
   pdf: FileText,
   spreadsheet: FileSpreadsheet,
@@ -39,7 +34,6 @@ const FORMAT_ICONS: Record<DocumentFormat, typeof File> = {
 }
 
 interface OperationFilesProps {
-  /** La operación entera, necesaria para obtener la URL firmada. */
   operation: Operation | undefined
   documents: LogisticsDocument[]
   className?: string
@@ -91,13 +85,11 @@ function FileRow({
   const openSection = useRailStore((state) => state.openSection)
 
   const Icon = FORMAT_ICONS[document.format]
-  // Si el backend añade un tipo nuevo, se muestra crudo antes que en blanco.
   const label = t(`operation.files.types.${document.type}`, { defaultValue: document.type })
 
   async function open() {
     if (!operation) return
 
-    // Sincrónico: abrirla tras el `await` la vuelve un popup y el navegador la bloquea.
     const tab = window.open('', '_blank')
     setOpening(true)
 
@@ -158,7 +150,6 @@ function FileRow({
         </div>
       </div>
 
-      {/* Lo que el agente extrajo: el motivo por el que esto no es una carpeta. */}
       {facts.length > 0 && (
         <dl className="mt-1.5 flex flex-wrap gap-1 pl-6">
           {facts.map(([key, value]) => (

@@ -6,19 +6,11 @@ import { useTranslation } from 'react-i18next'
 import { normalizeError } from '@/api/errors'
 import { useAuth } from '@/auth/useAuth'
 import { Button } from '@/components/ui/Button'
-import { Field } from '@/components/ui/Field'
-import { Input } from '@/components/ui/Input'
+import { FieldInput } from '@/components/ui/FieldInput'
 import { Checkbox } from '@/components/ui/Toggle'
 import { env } from '@/config/env'
 import { toast } from '@/lib/toast'
 import { createLoginSchema } from '@/schemas'
-
-function errorText(error: unknown): string | undefined {
-  if (!error) return undefined
-  if (typeof error === 'string') return error
-  if (typeof error === 'object' && 'message' in error) return String(error.message)
-  return String(error)
-}
 
 export default function LoginPage() {
   const { t } = useTranslation(['auth', 'common'])
@@ -100,42 +92,30 @@ export default function LoginPage() {
           >
             <form.Field name="email">
               {(field) => (
-                <Field
-                  label={t('auth:login.email')}
+                <FieldInput
+                  field={field}
                   required
-                  error={errorText(field.state.meta.errors[0])}
-                >
-                  <Input
-                    type="email"
-                    autoComplete="email"
-                    autoFocus
-                    placeholder={t('auth:login.emailPlaceholder')}
-                    leading={<Mail />}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                </Field>
+                  label={t('auth:login.email')}
+                  type="email"
+                  autoComplete="email"
+                  autoFocus
+                  placeholder={t('auth:login.emailPlaceholder')}
+                  leading={<Mail />}
+                />
               )}
             </form.Field>
 
             <form.Field name="password">
               {(field) => (
-                <Field
-                  label={t('auth:login.password')}
+                <FieldInput
+                  field={field}
                   required
-                  error={errorText(field.state.meta.errors[0])}
-                >
-                  <Input
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    leading={<KeyRound />}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                </Field>
+                  label={t('auth:login.password')}
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  leading={<KeyRound />}
+                />
               )}
             </form.Field>
 

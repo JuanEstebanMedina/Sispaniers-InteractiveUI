@@ -1,4 +1,4 @@
-import { GripVertical, Pencil } from 'lucide-react'
+import { GripVertical, Pencil, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +31,12 @@ const PRIORITY_HEADER: Record<ComponentPriority, string> = {
 
 const GAP_PX = 12
 
+const HEADER_ACTION = cn(
+  'shrink-0 rounded-xs p-1 text-fg-subtle opacity-0 transition-opacity last:-mr-1',
+  'group-hover/widget:opacity-100 focus-visible:opacity-100',
+  'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
+)
+
 export interface Widget extends GridItem {
   title: string
   /** Drives the frame's severity tint. Absent reads as `normal`. */
@@ -62,6 +68,12 @@ interface WidgetGridProps {
    * must agree or the widgets land on different cells.
    */
   onColsChange?: (cols: number) => void
+  /**
+   * Fires with the widget the user asked to remove. The grid does not drop it:
+   * confirmation and deletion belong to the caller, and the widget disappears
+   * only when it comes back missing from `widgets`.
+   */
+  onDeleteRequest?: (id: string) => void
   className?: string
 }
 
@@ -79,6 +91,7 @@ export function WidgetGrid({
   onTitleChange,
   onMove,
   onColsChange,
+  onDeleteRequest,
   reserve = 0,
   className,
 }: WidgetGridProps) {
@@ -338,12 +351,7 @@ export function WidgetGrid({
                     type="button"
                     title={t('operation.generated.renameWidget')}
                     aria-label={t('operation.generated.renameWidget')}
-                    className={cn(
-                      '-mr-1 shrink-0 rounded-xs p-1 text-fg-subtle opacity-0 transition-opacity',
-                      'hover:bg-surface-hover hover:text-fg',
-                      'group-hover/widget:opacity-100 focus-visible:opacity-100',
-                      'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
-                    )}
+                    className={cn(HEADER_ACTION, 'hover:bg-surface-hover hover:text-fg')}
                     // Without this the header would start a drag instead of
                     // letting the click through to the button.
                     onPointerDown={(event) => event.stopPropagation()}
@@ -351,6 +359,19 @@ export function WidgetGrid({
                   >
                     <Pencil className="size-3" aria-hidden />
                   </button>
+
+                  {onDeleteRequest && (
+                    <button
+                      type="button"
+                      title={t('operation.generated.deleteWidget', { title })}
+                      aria-label={t('operation.generated.deleteWidget', { title })}
+                      className={cn(HEADER_ACTION, 'hover:bg-danger-subtle hover:text-danger')}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={() => onDeleteRequest(item.id)}
+                    >
+                      <Trash2 className="size-3" aria-hidden />
+                    </button>
+                  )}
                 </>
               )}
             </header>

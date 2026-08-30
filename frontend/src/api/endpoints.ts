@@ -11,9 +11,7 @@ export const endpoints = {
 
   companies: {
     list: '/companies',
-    /** Idempotent by name: 200 if it already exists, 201 if it was created. */
     create: '/companies',
-    /** Also how a company is disabled/re-enabled — `{ active: false/true }`. There's no remove. */
     update: (id: string) => `/companies/${id}`,
   },
 
@@ -24,28 +22,17 @@ export const endpoints = {
   },
 
   operations: {
-    /**
-     * El ÚNICO listado. Es POST porque texto libre + estado + salud + rango de
-     * fechas + orden no caben en una query string legible. Un body vacío lista
-     * todo, que es lo que hacía el `GET /operations` que se eliminó.
-     */
     search: '/operations/search',
     detail: (id: string) => `/operations/${id}`,
     components: (id: string) => `/operations/${id}/components`,
     companyConcepts: (id: string, conceptIds: string[]) =>
       `/operations/${id}/company-concepts?ids=${encodeURIComponent(conceptIds.join(','))}`,
-    /**
-     * Mover y renombrar un widget, de a uno. NO hay un PATCH del layout entero:
-     * la posición es un índice en la secuencia, y las coordenadas salen de ahí.
-     */
     componentPlacement: (id: string, componentId: string) =>
       `/operations/${id}/components/${componentId}/placement`,
     componentContent: (id: string, componentId: string) =>
       `/operations/${id}/components/${componentId}`,
-    /**
-     * URL firmada y de vida corta (5 min) para ver un adjunto. No se pide al
-     * listar los archivos: se pide al abrir uno, porque caduca.
-     */
+    componentRemove: (id: string, componentId: string) =>
+      `/operations/${id}/components/${componentId}`,
     documentPreview: (id: string, documentId: string) =>
       `/operations/${id}/documents/${documentId}/preview-url`,
   },
@@ -81,14 +68,9 @@ export const queryKeys = {
   },
   operations: {
     all: ['operations'] as const,
-    /**
-     * La clave ES el cuerpo de la petición. Con eso, dos pantallas que piden
-     * exactamente lo mismo comparten una sola consulta: el punto del menú pide
-     * `{}` y la grilla sin filtros también manda `{}`, así que React Query las
-     * funde en UNA petición en vez de dos idénticas.
-     */
     list: (body?: unknown) => ['operations', 'list', body ?? {}] as const,
     detail: (id: string) => ['operations', 'detail', id] as const,
+    componentsAll: (id: string) => ['operations', 'components', id] as const,
     components: (id: string, cols: number) => ['operations', 'components', id, cols] as const,
     companyConcepts: (id: string, conceptIds: string[]) =>
       ['operations', 'company-concepts', id, conceptIds] as const,

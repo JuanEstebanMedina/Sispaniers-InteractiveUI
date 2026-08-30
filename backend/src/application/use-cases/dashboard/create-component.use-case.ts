@@ -10,9 +10,11 @@ import {
 import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
 import type { ComponentPriority } from "../../../domain/enums/widget-kind.js";
 import type { GridComponentKind } from "../../../domain/enums/widget-kind.js";
+import { OperationNotFoundError } from "../../../domain/model/errors.js";
 import type { ComponentEventPublisher } from "../../../domain/ports/component-event-publisher.port.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
+import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 
 export interface CreateComponentInput {
   operationId: string;
@@ -23,17 +25,24 @@ export interface CreateComponentInput {
 }
 
 export interface CreateComponentDeps {
+  operationRepository: OperationRepository;
   componentRepository: ComponentRepository;
   idGenerator: IdGenerator;
   eventPublisher: ComponentEventPublisher;
 }
 
 export function createCreateComponentUseCase(deps: CreateComponentDeps) {
-  const { componentRepository, idGenerator, eventPublisher } = deps;
+  const { operationRepository, componentRepository, idGenerator, eventPublisher } = deps;
 
   return async function createComponent(input: CreateComponentInput): Promise<Component> {
     validateComponentTree(input.children);
     validateComponentSize(input.size, input.children);
+
+    // A component whose operation does not exist can never be read or deleted
+    // again: both of those resolve the operation first.
+    if ((await operationRepository.findById(input.operationId)) === null) {
+      throw new OperationNotFoundError(input.operationId);
+    }
 
     const siblings = await componentRepository.findByOperationId(input.operationId);
 

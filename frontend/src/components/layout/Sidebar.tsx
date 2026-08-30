@@ -7,22 +7,6 @@ import { cn } from '@/lib/cn'
 import { SidebarFooter } from './SidebarFooter'
 import { SidebarNav } from './SidebarNav'
 
-/**
- * SIDEBAR
- *
- * Tres formas del mismo componente según el espacio:
- *
- *   < md   cajón que entra desde la izquierda, con overlay
- *   md–lg  columna sólo de iconos
- *   ≥ lg   columna completa con etiquetas, colapsable a mano
- *
- * El cajón y la columna son el MISMO markup: mantener dos árboles separados
- * garantiza que uno de los dos se quede viejo.
- *
- * Este archivo sólo arma el armazón. La navegación vive en SidebarNav y la
- * cuenta + preferencias en SidebarFooter.
- */
-
 interface SidebarProps {
   collapsed: boolean
   onToggleCollapse: () => void

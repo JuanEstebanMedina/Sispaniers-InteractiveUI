@@ -110,6 +110,13 @@ export class ContainerNotFoundError extends Error {
   }
 }
 
+export class InvalidMilestoneTypeError extends Error {
+  constructor(reason: string) {
+    super(`Invalid milestone type: ${reason}`);
+    this.name = "InvalidMilestoneTypeError";
+  }
+}
+
 export class CompanyReferenceRequiredError extends Error {
   constructor() {
     super("Either company_id or company must be provided");
