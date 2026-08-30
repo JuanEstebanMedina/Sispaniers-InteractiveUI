@@ -11,7 +11,11 @@ export function useSse(path: string, onEvent: SseHandler): SseStatus {
   handler.current = onEvent
   const [status, setStatus] = useState<SseStatus>('connecting')
   const [retry, setRetry] = useState(0)
-  const token = useSyncExternalStore(tokenStore.subscribe, tokenStore.getAccessToken, () => null)
+  const token = useSyncExternalStore(
+    tokenStore.subscribe,
+    () => tokenStore.getAccessToken(),
+    () => null,
+  )
 
   useEffect(() => {
     if (!path || !token) return
