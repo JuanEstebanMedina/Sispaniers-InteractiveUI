@@ -348,6 +348,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   commandRegistry.register(
     createUpdateComponentCommand({
       updateComponentContent,
+      updateComponentPlacement,
       skill: UPDATE_COMPONENT_SKILL,
     }),
   );

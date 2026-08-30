@@ -2,12 +2,16 @@ import type { Command, CommandContext } from "../../domain/commands/command.js";
 import type { JsonSchema } from "../../domain/commands/json-schema.js";
 import { validateComponentTree } from "../../domain/components/component-node.js";
 import type { Component, ComponentNode } from "../../domain/components/component.js";
+import type { WidgetSizeName } from "../../domain/components/widget-size.js";
 import { InvalidComponentPathError } from "../../domain/model/errors.js";
 import type { UpdateComponentContentInput } from "../use-cases/dashboard/update-component-content.use-case.js";
-import { componentNodeSchema, replySchema } from "./component-node-schema.js";
+import type { UpdateComponentPlacementInput } from "../use-cases/dashboard/update-component-placement.use-case.js";
+import { componentNodeSchema, layoutSchema, replySchema } from "./component-node-schema.js";
+import { nearestSize } from "./create-component.command.js";
 
 export interface UpdateComponentCommandDeps {
   updateComponentContent: (input: UpdateComponentContentInput) => Promise<Component>;
+  updateComponentPlacement: (input: UpdateComponentPlacementInput) => Promise<Component>;
   skill?: string;
 }
 
@@ -16,6 +20,8 @@ export interface UpdateComponentCommandInput {
   path?: string;
   value?: string;
   componentId: string;
+  layout?: { cols: number; rows: number };
+  position?: number;
   reply: string;
 }
 
@@ -41,21 +47,23 @@ const inputSchema: JsonSchema = {
         "reorders nodes. Anything left out is deleted.",
     },
     componentId: { type: "string" },
+    layout: layoutSchema,
+    position: { type: "number" },
     reply: replySchema,
   },
   required: ["componentId", "reply"],
 };
 
 export function createUpdateComponentCommand(deps: UpdateComponentCommandDeps): Command {
-  const { updateComponentContent, skill } = deps;
+  const { updateComponentContent, updateComponentPlacement, skill } = deps;
 
   return {
     name: "update_component",
     description:
-      "Edit an existing dashboard component identified by componentId. The component " +
-      "keeps its size and its place on the grid, and no other component is touched. " +
+      "Update exactly one dashboard component: its content, size, or grid order. " +
       "Rewrite one field with path and value; send children only when the set of nodes " +
-      "itself has to change, because children replaces the whole tree.",
+      "itself has to change, because children replaces the whole tree. " +
+      "Moving adjusts sibling positions automatically.",
     inputSchema,
     ...(skill === undefined ? {} : { skill }),
 
@@ -66,42 +74,53 @@ export function createUpdateComponentCommand(deps: UpdateComponentCommandDeps): 
       const input = rawInput as UpdateComponentCommandInput;
       const scoped = input.path !== undefined;
 
-      // Both shapes at once is not a richer edit, it is two edits that disagree
-      // about what the component ends up as. Refusing is the only reading that
-      // cannot silently discard one of them.
+      // Both content shapes at once is not a richer edit, it is two edits that
+      // disagree about what the component ends up as. Refusing is the only
+      // reading that cannot silently discard one of them.
       if (scoped && input.children !== undefined) {
         throw new InvalidComponentPathError("send either path and value, or children, never both");
       }
-
-      if (!scoped && input.children === undefined) {
-        throw new InvalidComponentPathError("an update needs either path and value, or children");
+      if (
+        !scoped &&
+        input.children === undefined &&
+        input.layout === undefined &&
+        input.position === undefined
+      ) {
+        throw new Error("update_component needs path, children, layout, or position");
       }
+      if (input.children !== undefined) validateComponentTree(input.children);
 
-      // No size is passed on purpose: editing a widget's content is not a
-      // request to resize it, and a reflow of the board is not what the user
-      // asked for when they corrected one number.
+      const size: WidgetSizeName | undefined =
+        input.layout === undefined ? undefined : nearestSize(input.layout.cols, input.layout.rows);
+      let component!: Component;
+      // A narrow edit writes one field and nothing else, so a size that came
+      // with it travels the placement path below, same as a resize on its own.
       if (scoped) {
         if (typeof input.value !== "string") {
           throw new InvalidComponentPathError("path needs a string value to write");
         }
-
-        const component = await updateComponentContent({
+        component = await updateComponentContent({
           operationId: context.operationId,
           componentId: input.componentId,
           path: input.path as string,
           value: input.value,
         });
-        return { component, reply: input.reply };
+      } else if (input.children !== undefined) {
+        component = await updateComponentContent({
+          operationId: context.operationId,
+          componentId: input.componentId,
+          children: input.children,
+          ...(size === undefined ? {} : { size }),
+        });
       }
-
-      const children = input.children as ComponentNode[];
-      validateComponentTree(children);
-
-      const component = await updateComponentContent({
-        operationId: context.operationId,
-        componentId: input.componentId,
-        children,
-      });
+      if (input.position !== undefined || (input.children === undefined && size !== undefined)) {
+        component = await updateComponentPlacement({
+          operationId: context.operationId,
+          componentId: input.componentId,
+          ...(input.children === undefined && size !== undefined ? { size } : {}),
+          ...(input.position === undefined ? {} : { position: input.position }),
+        });
+      }
       return { component, reply: input.reply };
     },
   };

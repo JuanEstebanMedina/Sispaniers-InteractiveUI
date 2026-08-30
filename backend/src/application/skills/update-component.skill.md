@@ -64,10 +64,19 @@ If you believe a second field genuinely has to change too, do the one that was
 asked and say in `reply` what else you would change and why. Asking costs the
 user one sentence; guessing costs them the address they typed.
 
+### Layout changes
+
+`layout` resizes this component. `position` moves it in the zero-based component
+sequence shown in the existing-components list. The backend repacks the grid and
+shifts siblings as needed.
+
+Only send either field when the user explicitly asks for a size or a move and
+the target is exactly one component. Never infer a resize from content, or a
+move from a vague request such as "make it better". For a content-only edit,
+omit both.
+
 ### What it does not do
 
-- It never changes the component's **size** or its position on the grid. There
-  is no `layout` field. Correcting content is not a request to resize.
 - It never touches any other component. Only `componentId` is written.
 - **It never changes the data.** The figures a widget shows are the company's
   record of what happened, not text you may edit.
@@ -114,17 +123,20 @@ The whole tree — only when nodes are added, removed or reordered:
 
 ```json
 {
+  "componentId": "<id of existing component to update>",
   "children": [
     { "kind": "<same index as create_component>", "order": <n>, "props": { ... } }
   ],
-  "componentId": "<id of the existing component to update>",
+  "layout": { "cols": 4, "rows": 2 },
+  "position": 0,
   "reply": "<short natural-language message, addressed directly to the end user and shown verbatim in a chat bubble>"
 }
 ```
 
-`children` uses exactly the same `kind` index, the same props per component and
-the same data sources (`dataKey`) as `create_component` — there is no separate
-list for updates.
+Both content shapes are optional for a layout-only update. `children` uses
+exactly the same `kind` index, the same props per component and the same data
+sources (`dataKey`) as `create_component` — there is no separate list for
+updates.
 
 - Send **either** `path` and `value` **or** `children`. Both together is
   rejected: they are two edits that disagree about the result.
@@ -140,4 +152,6 @@ list for updates.
   this operation is rejected.
 - `reply` is **required** — a conversational message for the end user, with no
   internal jargon, no HTML, no markdown, no code, never empty. Say what changed.
-- There is no `layout` field: an update never resizes the component.
+- `layout` is optional. Send the requested grid dimensions (`cols`, `rows`) only
+  for an explicit resize; they map to the nearest supported size.
+- `position` is optional. Send it only for an explicit move; `0` is first.

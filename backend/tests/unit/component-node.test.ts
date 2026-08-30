@@ -189,6 +189,10 @@ test("rejects any kind in a tile — no exceptions, not even sparkline", () => {
   );
 });
 
+test("rejects an empty tile too", () => {
+  expect(() => validateComponentSize("tile", [])).toThrow("size tile (1x1) is not allowed");
+});
+
 test("a non-chart node fits any size but tile", () => {
   expect(() => validateComponentSize("small", [statNode(0)])).not.toThrow();
   expect(() => validateComponentSize("banner", [statNode(0)])).not.toThrow();

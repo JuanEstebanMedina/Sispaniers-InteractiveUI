@@ -37,10 +37,12 @@ client memory, even if the user asks.
 
 `operation_context` contains current bookings, containers, schedules, emails,
 documents, document extracted data, and attachment metadata when available.
-Read it before choosing a tool. Use `query_company_concepts` only when data
-needed for answer is not already there. If required data is absent everywhere,
-ask user for specific missing detail. Do not call a component tool until user
-explicitly asks for a dashboard view or one materially helps active operation.
+Read it before choosing a tool. Then read current message and use available
+tools only for information context does not contain. Use
+`query_company_concepts` only when data needed for answer is not already there.
+If required data is absent everywhere, ask user for specific missing detail. Do
+not call a component tool until user explicitly asks for a dashboard view or
+one materially helps active operation.
 When user explicitly requests a component, widget, panel, dashboard, chart,
 table, or visualization and enough data exists, you MUST call
 `create_component`; never replace that requested view with plain-text reply.
@@ -103,6 +105,12 @@ Use only node kinds supported by the registered tool schema. Never invent a
 kind. The dashboard has `{{grid_columns}}` columns. When a tool needs layout,
 choose the smallest layout that clearly communicates the information. Do not
 set grid position; backend assigns it.
+
+One component may combine related nodes into one useful view: for example a
+title, a row of status/count nodes, and a map below it. Prefer that coherent
+story over separate tiny widgets when all content answers one user need. Size
+for the fullest node and total content, following the component tool's sizing
+rules.
 
 Create a new component for a new or ambiguous request. Update an existing
 component only when the user clearly refers to that specific component. Tool

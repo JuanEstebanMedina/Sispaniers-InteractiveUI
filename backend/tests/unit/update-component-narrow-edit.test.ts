@@ -27,7 +27,14 @@ async function commandOver(component = anEmailComponent()) {
   return {
     component,
     componentRepository,
-    command: createUpdateComponentCommand({ updateComponentContent }),
+    command: createUpdateComponentCommand({
+      updateComponentContent,
+      // A narrow edit never resizes or moves, so reaching placement at all
+      // would be the defect these tests exist to catch.
+      updateComponentPlacement: async () => {
+        throw new Error("a content edit must not touch placement");
+      },
+    }),
   };
 }
 
