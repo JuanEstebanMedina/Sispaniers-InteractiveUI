@@ -1,4 +1,4 @@
-import { Building2, Container, Settings, Sparkles, Users, Wrench, type LucideIcon } from 'lucide-react'
+import { Building2, Container, Users, Wrench, type LucideIcon } from 'lucide-react'
 
 import type { Role } from '@/auth/roles'
 
@@ -29,15 +29,10 @@ export const navigation: NavSection[] = [
     ],
   },
   {
-    labelKey: 'intelligence',
-    items: [{ labelKey: 'assistant', to: '/assistant', icon: Sparkles }],
-  },
-  {
     labelKey: 'admin',
     items: [
       { labelKey: 'companies', to: '/companies', icon: Building2, minRole: 'superadmin' },
       { labelKey: 'users', to: '/users', icon: Users, minRole: 'admin' },
-      { labelKey: 'settings', to: '/settings', icon: Settings, minRole: 'admin' },
     ],
   },
   {

@@ -6,6 +6,7 @@ import { CompanyNotFoundError } from "../../src/domain/model/errors.js";
 import { InMemoryOperationEventPublisher } from "../../src/infrastructure/adapters/outbound/events/in-memory-operation-event-publisher.js";
 import { InMemoryCompanyRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-company-repository.js";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
+import { InMemoryComponentRepository } from "../support/component-fixtures.js";
 import { aCompany } from "../support/operation-fixtures.js";
 
 async function useCaseOver(
@@ -21,6 +22,7 @@ async function useCaseOver(
 
   return createCreateOperationUseCase({
     operationRepository,
+    componentRepository: new InMemoryComponentRepository(),
     resolveCompany,
     idGenerator,
     operationEventPublisher,

@@ -25,21 +25,26 @@ export function isValidWidgetWidth(width: number, cols: GridCols): boolean {
 }
 
 /**
- * Kinds that need real estate to say anything: axes, a legend and a grid.
+ * Sizes forbidden for a given kind — a quality floor, not a grid-geometry
+ * rule. One cell is about 132px: a `stat`, a `badge`, a `sparkline`, anything
+ * in that little space is unreadable, not "compact" — so `tile` (1x1) is off
+ * limits for every kind, no exceptions.
  *
- * `sparkline` is deliberately absent. It is the axis-less version that exists
- * precisely so a trend fits in a tile, so subjecting it to the minimum would
- * defeat the reason it was added.
+ * Charts and the live map also lose `banner` (4x1): one row tall is enough
+ * area on paper, but there is no room for an axis, a legend or a marker to
+ * read.
  */
-const CHART_NODE_KINDS = new Set(["trend-chart", "category-chart", "breakdown-chart"]);
+const FORBIDDEN_SIZES_BY_KIND: Partial<Record<string, ReadonlySet<WidgetSizeName>>> = {
+  "trend-chart": new Set<WidgetSizeName>(["tile", "banner"]),
+  "category-chart": new Set<WidgetSizeName>(["tile", "banner"]),
+  "breakdown-chart": new Set<WidgetSizeName>(["tile", "banner"]),
+  map: new Set<WidgetSizeName>(["tile", "banner"]),
+};
 
-/** Sizes too short to render a chart legibly — one cell is about 132px. */
-const SIZES_TOO_SMALL_FOR_CHARTS = new Set<WidgetSizeName>(["tile", "banner"]);
+const DEFAULT_FORBIDDEN_SIZES = new Set<WidgetSizeName>(["tile"]);
 
-export function isChartNodeKind(kind: string): boolean {
-  return CHART_NODE_KINDS.has(kind);
-}
-
-export function fitsChart(size: WidgetSizeName): boolean {
-  return !SIZES_TOO_SMALL_FOR_CHARTS.has(size);
+/** Whether `kind` may legibly render at `size`. */
+export function fitsKind(size: WidgetSizeName, kind: string): boolean {
+  const forbidden = FORBIDDEN_SIZES_BY_KIND[kind] ?? DEFAULT_FORBIDDEN_SIZES;
+  return !forbidden.has(size);
 }

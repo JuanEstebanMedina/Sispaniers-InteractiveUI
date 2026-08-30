@@ -37,6 +37,10 @@ export const endpoints = {
       `/operations/${id}/documents/${documentId}/preview-url`,
   },
 
+  emails: {
+    send: '/emails/send',
+  },
+
   notifications: {
     list: '/notifications',
     markRead: (id: string) => `/notifications/${id}/read`,

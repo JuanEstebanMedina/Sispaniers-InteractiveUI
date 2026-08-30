@@ -1,8 +1,10 @@
+import { buildWelcomeComponent } from "../../../domain/components/welcome-component.js";
 import type { ContainerState } from "../../../domain/enums/container-state.js";
 import type { OperationHealth } from "../../../domain/enums/operation-health.js";
 import { deriveOperationStatus } from "../../../domain/logistics/operation-status.js";
 import type { Operation } from "../../../domain/logistics/operation.js";
 import { CompanyReferenceRequiredError } from "../../../domain/model/errors.js";
+import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
 import type { OperationEventPublisher } from "../../../domain/ports/operation-event-publisher.port.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
@@ -21,13 +23,20 @@ export interface CreateOperationResult {
 
 export interface CreateOperationDeps {
   operationRepository: OperationRepository;
+  componentRepository: ComponentRepository;
   resolveCompany: ResolveCompany;
   idGenerator: IdGenerator;
   operationEventPublisher: OperationEventPublisher;
 }
 
 export function createCreateOperationUseCase(deps: CreateOperationDeps) {
-  const { operationRepository, resolveCompany, idGenerator, operationEventPublisher } = deps;
+  const {
+    operationRepository,
+    componentRepository,
+    resolveCompany,
+    idGenerator,
+    operationEventPublisher,
+  } = deps;
 
   return async function createOperation(
     input: CreateOperationInput,
@@ -58,6 +67,7 @@ export function createCreateOperationUseCase(deps: CreateOperationDeps) {
     };
 
     await operationRepository.save(operation);
+    await componentRepository.save(buildWelcomeComponent(operation.id, operation.createdAt));
     operationEventPublisher.publish(operation.id, "operation-created", operation);
 
     return { operation, status: deriveOperationStatus(operation) };

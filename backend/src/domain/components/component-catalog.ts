@@ -8,7 +8,7 @@ import {
   NESTABLE_ATOMIC_NODE_KINDS,
 } from "../enums/widget-kind.js";
 import { MAX_COMPONENT_NODE_DEPTH } from "./component-node.js";
-import { WIDGET_SIZES, type WidgetSizeName, fitsChart } from "./widget-size.js";
+import { WIDGET_SIZES, type WidgetSizeName, fitsKind } from "./widget-size.js";
 
 const STATUS_TONES = "neutral | brand | accent | success | warning | danger | info";
 
@@ -18,6 +18,8 @@ export interface NodeSpec {
   example: Record<string, unknown>;
   nestable: boolean;
   action?: ActionKind;
+  /** Sizes this kind may never be created at — see `fitsKind`. */
+  forbiddenSizes: WidgetSizeName[];
 }
 
 /**
@@ -31,7 +33,7 @@ export interface NodeSpec {
  */
 const DATA_KEY_PROP = `string — one of ${DATA_SOURCE_NAMES.join(", ")}; it carries no rows itself`;
 
-const NODE_SPECS: Record<AtomicNodeKind, Omit<NodeSpec, "nestable">> = {
+const NODE_SPECS: Record<AtomicNodeKind, Omit<NodeSpec, "nestable" | "forbiddenSizes">> = {
   title: {
     purpose: "Heading of a widget. One per widget at most.",
     props: { text: "string — required", tone: "default | muted | agent | accent" },
@@ -167,7 +169,8 @@ const NODE_SPECS: Record<AtomicNodeKind, Omit<NodeSpec, "nestable">> = {
     example: {},
   },
   sparkline: {
-    purpose: "The shape of a trend, with no axes. For a size too small to hold a chart.",
+    purpose:
+      "A trend with a light grid and a value axis but no legend — quieter than a full chart.",
     props: {
       dataKey: `${DATA_KEY_PROP} — required`,
       valueKey: "string — the row field to plot, defaults to 'value'",
@@ -185,22 +188,48 @@ const NODE_SPECS: Record<AtomicNodeKind, Omit<NodeSpec, "nestable">> = {
     },
     example: { name: "booking-confirmation.pdf", type: "pdf", size: "284 KB" },
   },
+  map: {
+    purpose: "A live map with one marker per vessel that has a reported position.",
+    props: {
+      dataKey: `${DATA_KEY_PROP} — required, best source: "vessel-positions"`,
+      title: "string",
+    },
+    example: { dataKey: "vessel-positions", title: "Vessel positions" },
+  },
+  "email-action": {
+    purpose:
+      "A proposed outbound email the end user reviews, edits and sends themselves. Never sent " +
+      "automatically — this is the one interactive kind, everything else in this system is inert.",
+    props: {
+      to: "string — proposed recipient; leave empty if unknown, the user fills it in",
+      subject: "string — proposed subject",
+      body: "string — proposed message body",
+    },
+    example: {
+      to: "ops@andestextiles.co",
+      subject: "Update on your shipment's ETA",
+      body: "Hi, we wanted to let you know the ETA moved from Aug 14 to Aug 18 due to port congestion.",
+    },
+  },
 };
+
+const WIDGET_SIZE_NAMES = Object.keys(WIDGET_SIZES) as WidgetSizeName[];
 
 export const COMPONENT_CATALOG = {
   nodes: Object.fromEntries(
     ATOMIC_NODE_KINDS.map((kind) => [
       kind,
-      { ...NODE_SPECS[kind], nestable: NESTABLE_ATOMIC_NODE_KINDS.has(kind) },
+      {
+        ...NODE_SPECS[kind],
+        nestable: NESTABLE_ATOMIC_NODE_KINDS.has(kind),
+        forbiddenSizes: WIDGET_SIZE_NAMES.filter((size) => !fitsKind(size, kind)),
+      },
     ]),
   ) as Record<AtomicNodeKind, NodeSpec>,
 
   sizes: Object.fromEntries(
-    (Object.keys(WIDGET_SIZES) as WidgetSizeName[]).map((name) => [
-      name,
-      { ...WIDGET_SIZES[name], fitsChart: fitsChart(name) },
-    ]),
-  ) as Record<WidgetSizeName, { w: number; h: number; fitsChart: boolean }>,
+    WIDGET_SIZE_NAMES.map((name) => [name, { ...WIDGET_SIZES[name] }]),
+  ) as Record<WidgetSizeName, { w: number; h: number }>,
 
   actions: ACTION_KINDS,
   maxDepth: MAX_COMPONENT_NODE_DEPTH,
@@ -214,6 +243,7 @@ function renderNode(kind: AtomicNodeKind, spec: NodeSpec): string {
   const notes = [
     spec.action ? `requires a top-level "action" (one of ${ACTION_KINDS.join(", ")})` : null,
     spec.nestable ? 'may carry "children"' : 'must NOT carry "children"',
+    spec.forbiddenSizes.length > 0 ? `never fits: ${spec.forbiddenSizes.join(", ")}` : null,
   ]
     .filter((note) => note !== null)
     .join("; ");
@@ -236,12 +266,10 @@ export function renderComponentCatalog(): string {
     renderNode(kind, COMPONENT_CATALOG.nodes[kind]),
   ).join("\n\n");
 
-  const sizes = (Object.keys(COMPONENT_CATALOG.sizes) as WidgetSizeName[])
-    .map((name) => {
-      const { w, h, fitsChart: chartable } = COMPONENT_CATALOG.sizes[name];
-      return `- ${name}: ${w} columns x ${h} rows${chartable ? "" : " — too small to hold a chart"}`;
-    })
-    .join("\n");
+  const sizes = WIDGET_SIZE_NAMES.map((name) => {
+    const { w, h } = COMPONENT_CATALOG.sizes[name];
+    return `- ${name}: ${w} columns x ${h} rows`;
+  }).join("\n");
 
   return `## Component catalogue
 
@@ -258,6 +286,7 @@ ${nodes}
 
 ${sizes}
 
-A chart in a size marked above as too small is rejected outright.
+Each node kind's "never fits" list above names the sizes rejected outright
+for that kind.
 `;
 }
