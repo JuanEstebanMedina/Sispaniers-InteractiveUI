@@ -207,7 +207,7 @@ test("chat includes operation emails and extracted document data", async () => {
             documents: [{ id: "doc-1", extractedData: { container: "ABC123" } }],
           },
           createdAt: new Date("2026-08-30T00:00:00.000Z"),
-        }) as Operation,
+        }) as unknown as Operation,
       findAll: async () => [],
       save: async () => {},
     },
