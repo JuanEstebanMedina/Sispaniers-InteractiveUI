@@ -174,8 +174,12 @@ test("chat carries each component's size and packed position", async () => {
 
   await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "ordénalos" });
 
-  expect(capture.systemPrompt).toContain('"id":"cmp-first","label":null,"size":"small","position":0,"col":0,"row":0,"w":2,"h":2');
-  expect(capture.systemPrompt).toContain('"id":"cmp-second","label":null,"size":"wide","position":1,"col":0,"row":2,"w":4,"h":2');
+  expect(capture.systemPrompt).toContain(
+    '"id":"cmp-first","label":null,"size":"small","position":0,"col":0,"row":0,"w":2,"h":2',
+  );
+  expect(capture.systemPrompt).toContain(
+    '"id":"cmp-second","label":null,"size":"wide","position":1,"col":0,"row":2,"w":4,"h":2',
+  );
 });
 
 test("chat includes prior conversation on later messages", async () => {

@@ -1,5 +1,5 @@
-import { type Component, bySequence } from "../../../domain/components/component.js";
 import { validateComponentSize } from "../../../domain/components/component-node.js";
+import { type Component, bySequence } from "../../../domain/components/component.js";
 import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
 import { ComponentNotFoundError, OperationNotFoundError } from "../../../domain/model/errors.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";

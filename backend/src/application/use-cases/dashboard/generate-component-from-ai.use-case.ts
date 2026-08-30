@@ -2,7 +2,7 @@ import type { CommandRegistry } from "../../../domain/commands/command-registry.
 import { componentLabel } from "../../../domain/components/component-label.js";
 import { type Component, bySequence } from "../../../domain/components/component.js";
 import { packDefaultLayout } from "../../../domain/components/layout-packer.js";
-import { type WidgetSizeName, WIDGET_SIZES } from "../../../domain/components/widget-size.js";
+import { WIDGET_SIZES, type WidgetSizeName } from "../../../domain/components/widget-size.js";
 import {
   InvalidAiComponentError,
   InvalidCommandInputError,

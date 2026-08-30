@@ -5,8 +5,8 @@ import type { Component, ComponentNode } from "../../domain/components/component
 import type { WidgetSizeName } from "../../domain/components/widget-size.js";
 import type { UpdateComponentContentInput } from "../use-cases/dashboard/update-component-content.use-case.js";
 import type { UpdateComponentPlacementInput } from "../use-cases/dashboard/update-component-placement.use-case.js";
-import { nearestSize } from "./create-component.command.js";
 import { componentNodeSchema, layoutSchema, replySchema } from "./component-node-schema.js";
+import { nearestSize } from "./create-component.command.js";
 
 export interface UpdateComponentCommandDeps {
   updateComponentContent: (input: UpdateComponentContentInput) => Promise<Component>;
@@ -50,7 +50,11 @@ export function createUpdateComponentCommand(deps: UpdateComponentCommandDeps): 
       context: CommandContext,
     ): Promise<{ component: Component; reply: string }> {
       const input = rawInput as UpdateComponentCommandInput;
-      if (input.children === undefined && input.layout === undefined && input.position === undefined) {
+      if (
+        input.children === undefined &&
+        input.layout === undefined &&
+        input.position === undefined
+      ) {
         throw new Error("update_component needs children, layout, or position");
       }
       if (input.children !== undefined) validateComponentTree(input.children);
