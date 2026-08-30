@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod, ZodTypeProvider } from "fastify-type-provider-zod";
 import type { EnrollOperationInSimulationInput } from "../../../../../application/use-cases/dashboard/enroll-operation-in-simulation.use-case.js";
+import type { GenerateComponentFromAiInput } from "../../../../../application/use-cases/dashboard/generate-component-from-ai.use-case.js";
 import type { ReceiveEmailResult } from "../../../../../application/use-cases/email/receive-email.use-case.js";
 import type {
   SendEmailInput,
@@ -26,6 +27,9 @@ export interface EmailsRouteDeps {
     input: UpsertOperationFromEmailInput,
   ) => Promise<UpsertOperationFromEmailResult | undefined>;
   enrollOperationInSimulation: (input: EnrollOperationInSimulationInput) => Promise<void>;
+  generateComponentFromAi: (
+    input: GenerateComponentFromAiInput,
+  ) => Promise<{ component: unknown; reply: string }>;
 }
 
 const ATTACHMENT_PREVIEW_LENGTH = 300;
@@ -48,6 +52,26 @@ function attachmentLogSummary(attachments: ReceiveEmailResult["attachments"]) {
     ...(attachment.storagePath !== undefined ? { storage_path: attachment.storagePath } : {}),
     ...(attachment.storageError !== undefined ? { storage_error: attachment.storageError } : {}),
   }));
+}
+
+function toInboundAiInput(email: NormalizedEmail, attachments: ReceiveEmailResult["attachments"]) {
+  return JSON.stringify({
+    event: "email_received",
+    email: {
+      from: email.from,
+      ...(email.to === undefined ? {} : { to: email.to }),
+      subject: email.subject,
+      receivedAt: email.receivedAt,
+      ...(email.bodyText === undefined ? {} : { bodyText: email.bodyText }),
+    },
+    attachments: attachments
+      .filter((attachment) => attachment.format !== "image" && attachment.content !== undefined)
+      .map((attachment) => ({
+        filename: attachment.filename,
+        format: attachment.format,
+        content: attachment.content,
+      })),
+  });
 }
 
 export const emailsRoutes: FastifyPluginAsyncZod<EmailsRouteDeps> = async (fastify, deps) => {
@@ -97,6 +121,23 @@ export const emailsRoutes: FastifyPluginAsyncZod<EmailsRouteDeps> = async (fasti
         status: "queued" as const,
         ...(operationResult !== undefined ? { operation_id: operationResult.operationId } : {}),
       });
+
+      if (operationResult !== undefined) {
+        // ponytail: no durable job queue yet. Failed work is logged but lost
+        // on process restart; add one when inbound delivery guarantees matter.
+        void deps
+          .generateComponentFromAi({
+            operationId: operationResult.operationId,
+            trigger: "auto",
+            input: toInboundAiInput(email, attachments),
+          })
+          .catch((error: unknown) => {
+            request.log.error(
+              { err: error, operation_id: operationResult.operationId },
+              "inbound AI processing failed",
+            );
+          });
+      }
     },
   );
 

@@ -132,3 +132,20 @@ test("extractOperationIdFromSubject still recognizes the existing pattern", () =
   expect(extractOperationIdFromSubject("Re: Orden de compra #OP-42")).toBe("OP-42");
   expect(extractOperationIdFromSubject("no id here")).toBeUndefined();
 });
+
+test("an email without an order number still creates a stable inbound operation", async () => {
+  const { upsertOperationFromEmail, operationRepository } = useCaseOver();
+
+  const first = await upsertOperationFromEmail({
+    email: anEmail({ subject: "Booking Confirmation", messageId: "email-no-order" }),
+    attachments: [],
+  });
+  const second = await upsertOperationFromEmail({
+    email: anEmail({ subject: "Booking Confirmation", messageId: "email-no-order" }),
+    attachments: [],
+  });
+
+  expect(first?.operationId).toMatch(/^inbound-[a-f0-9]{16}$/);
+  expect(second).toEqual({ operationId: first?.operationId, created: false });
+  expect(await operationRepository.findById(first?.operationId ?? "")).not.toBeNull();
+});

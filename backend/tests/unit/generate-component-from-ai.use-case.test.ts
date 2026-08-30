@@ -8,6 +8,7 @@ import {
   InvalidComponentTreeError,
 } from "../../src/domain/model/errors.js";
 import type { AiCompletionPort } from "../../src/domain/ports/ai-completion-port.js";
+import type { AiCompletionResult } from "../../src/domain/ports/ai-completion-port.js";
 import type { ComponentRepository } from "../../src/domain/ports/component.repository.js";
 import type { OperationRepository } from "../../src/domain/ports/operation.repository.js";
 
@@ -249,6 +250,64 @@ test("chat includes durable company knowledge", async () => {
   expect(systemPrompt).toContain("Salida semanal desde Cartagena.");
 });
 
+test("auto flow can ingest, query, then create a component", async () => {
+  const commandRegistry = new CommandRegistry();
+  commandRegistry.register({
+    name: "ingest_company_concepts",
+    description: "stub",
+    inputSchema: { type: "object", properties: {} },
+    execute: async () => ({ definitions: 1, observations: 1 }),
+  });
+  commandRegistry.register({
+    name: "query_company_concepts",
+    description: "stub",
+    inputSchema: { type: "object", properties: {} },
+    execute: async () => ({
+      concepts: [{ id: "monthly-volume", name: "Monthly volume", values: [] }],
+    }),
+  });
+  commandRegistry.register({
+    name: "create_component",
+    description: "stub",
+    inputSchema: { type: "object", properties: {} },
+    execute: async () => ({ component: { id: "component-1" }, reply: "Created." }),
+  });
+  const responses: AiCompletionResult[] = [
+    { kind: "tool_call", toolName: "ingest_company_concepts", input: {} },
+    { kind: "tool_call", toolName: "query_company_concepts", input: {} },
+    { kind: "tool_call", toolName: "create_component", input: {} },
+  ];
+  const prompts: string[] = [];
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async ({ prompt }) => {
+        prompts.push(prompt);
+        return responses.shift() ?? { kind: "text", text: "unexpected" };
+      },
+    },
+    commandRegistry,
+    promptTemplate: "{{trigger}}",
+  });
+
+  await expect(
+    generateComponentFromAi({ operationId: OPERATION_ID, trigger: "auto", input: "email" }),
+  ).resolves.toEqual({ component: { id: "component-1" }, reply: "Created." });
+  expect(prompts).toHaveLength(3);
+  expect(prompts[2]).toContain("query_company_concepts result");
+});
+
 test("chat can query company concepts before answering without creating a component", async () => {
   const prompts: string[] = [];
   const commandRegistry = new CommandRegistry();
@@ -290,11 +349,11 @@ test("chat can query company concepts before answering without creating a compon
         calls += 1;
         return calls === 1
           ? {
-              kind: "tool_call",
+              kind: "tool_call" as const,
               toolName: "query_company_concepts",
               input: { conceptIds: ["monthly-volume"] },
             }
-          : { kind: "text", text: "Volumen mensual registrado: 42 contenedores." };
+          : { kind: "text" as const, text: "Volumen mensual registrado: 42 contenedores." };
       },
     },
     commandRegistry,
