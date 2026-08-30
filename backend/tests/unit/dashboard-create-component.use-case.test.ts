@@ -91,6 +91,15 @@ test("an invalid tree is rejected before anything is stored", async () => {
   expect(await componentRepository.findByOperationId(OPERATION_ID)).toHaveLength(0);
 });
 
+test("a 1x1 component is rejected before anything is stored", async () => {
+  const { componentRepository, createComponent } = buildUseCase();
+
+  await expect(createComponent({ ...aRequest(), size: "tile" })).rejects.toThrow(
+    "size tile (1x1) is not allowed",
+  );
+  expect(await componentRepository.findByOperationId(OPERATION_ID)).toHaveLength(0);
+});
+
 /**
  * A component saved against an operation that does not exist is unreachable:
  * every read and the delete filter by a real operation, so nothing can ever
