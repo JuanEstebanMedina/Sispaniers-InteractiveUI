@@ -159,6 +159,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     overrides.operationEventPublisher ?? new InMemoryOperationEventPublisher();
   const simulationRegistry = overrides.simulationRegistry ?? new InMemorySimulationRegistry();
   const createComponent = createCreateComponentUseCase({
+    operationRepository,
     componentRepository,
     idGenerator,
     eventPublisher: componentEventPublisher,

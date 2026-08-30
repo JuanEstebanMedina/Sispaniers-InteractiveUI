@@ -186,6 +186,7 @@ export const operationComponentsRoutes: FastifyPluginAsyncZod<
         response: {
           201: componentResponseSchema,
           400: errorResponseSchema,
+          404: errorResponseSchema,
         },
       },
     },
@@ -197,6 +198,10 @@ export const operationComponentsRoutes: FastifyPluginAsyncZod<
         const component = await deps.createComponent({ operationId: id, kind, size, children });
         reply.code(201).send(toComponentWireShape(component));
       } catch (error) {
+        if (error instanceof OperationNotFoundError) {
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
+          return;
+        }
         if (error instanceof InvalidComponentTreeError) {
           reply.code(400).send({ error: "invalid_component_tree", message: error.message });
           return;
