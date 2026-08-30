@@ -1,0 +1,115 @@
+{
+  "app": {
+    "name": "Yuno × Nauta",
+    "tagline": "Front-end base for Module 05"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close",
+    "back": "Back",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "search": "Search",
+    "filter": "Filter",
+    "clearFilters": "Clear filters",
+    "export": "Export",
+    "import": "Import",
+    "copy": "Copy",
+    "copied": "Copied to clipboard",
+    "viewDetails": "View details",
+    "seeData": "See data",
+    "seeChart": "See chart",
+    "loadMore": "Load more",
+    "reload": "Reload the page",
+    "goToDashboard": "Go to dashboard"
+  },
+  "states": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "empty": "Nothing here yet",
+    "emptyHint": "Once the first record is created, it will show up in this list.",
+    "noResults": "No results",
+    "noResultsHint": "No record matches the current filters. Try widening them.",
+    "checkingSession": "Checking session…",
+    "checkingPermissions": "Checking permissions…",
+    "loadingSection": "Loading section…",
+    "offline": "Offline",
+    "mockData": "Mock data",
+    "mock": "Mock",
+    "mockTooltip": "Data comes from Mock Service Worker, not from a real backend"
+  },
+  "table": {
+    "sortAscending": "Sort ascending",
+    "sortDescending": "Sort descending",
+    "rowsPerPage": "Per page",
+    "range": "{{from}}–{{to}} of {{total}}",
+    "page": "Page {{page}}",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "pagination": "Pagination",
+    "selectAll": "Select all",
+    "selectRow": "Select row",
+    "selectedCount_one": "{{count}} selected",
+    "selectedCount_other": "{{count}} selected",
+    "columns": "Columns",
+    "noColumns": "No visible columns"
+  },
+  "chart": {
+    "total": "Total",
+    "other": "Other",
+    "noDataForPeriod": "No data for this period",
+    "noDataHint": "Try widening the date range or removing filters."
+  },
+  "theme": {
+    "appearance": "Appearance",
+    "brand": "Visual identity",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "density": "Density",
+    "comfortable": "Comfortable",
+    "compact": "Compact",
+    "change": "change",
+    "toLight": "Switch to light theme",
+    "toDark": "Switch to dark theme"
+  },
+  "language": {
+    "label": "Language",
+    "es": "Español",
+    "en": "English",
+    "pt-BR": "Português (BR)"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "collapse": "Collapse",
+    "expand": "Expand menu",
+    "notifications": "Notifications",
+    "userMenu": "User menu",
+    "breadcrumbs": "Breadcrumbs",
+    "sections": {
+      "intelligence": "Intelligence",
+      "admin": "Administration"
+    },
+    "items": {
+      "operations": "Operations",
+      "assistant": "Assistant",
+      "users": "Users",
+      "settings": "Settings",
+      "components": "Components",
+      "profile": "My profile"
+    }
+  },
+  "placeholder": {
+    "title": "Section ready to wire up",
+    "description": "Route, permissions and layout are in place. The content depends on the challenge brief.",
+    "planned": "Planned"
+  }
+}

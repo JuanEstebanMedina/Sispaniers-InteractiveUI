@@ -1,16 +1,29 @@
 import { expect, test } from "vitest";
 import { createListOperationsUseCase } from "../../src/application/use-cases/dashboard/list-operations.use-case.js";
+import type { Company } from "../../src/domain/logistics/company.js";
 import type { Operation } from "../../src/domain/logistics/operation.js";
-import { InvalidFilterCombinationError } from "../../src/domain/model/errors.js";
+import {
+  CompanyNotFoundError,
+  InvalidFilterCombinationError,
+} from "../../src/domain/model/errors.js";
+import { InMemoryCompanyRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-company-repository.js";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
-import { anOperation, withAllContainersDelivered } from "../support/operation-fixtures.js";
+import {
+  aCompany,
+  anOperation,
+  withAllContainersDelivered,
+} from "../support/operation-fixtures.js";
 
-async function listOver(operations: Operation[]) {
+async function listOver(operations: Operation[], companies: Company[] = []) {
   const operationRepository = new InMemoryOperationRepository();
+  const companyRepository = new InMemoryCompanyRepository();
   for (const operation of operations) {
     await operationRepository.save(operation);
   }
-  return createListOperationsUseCase({ operationRepository });
+  for (const company of companies) {
+    await companyRepository.save(company);
+  }
+  return createListOperationsUseCase({ operationRepository, companyRepository });
 }
 
 test("without filters every operation comes back with its derived status", async () => {
@@ -36,15 +49,31 @@ test("the status filter keeps only the operations that derive to it", async () =
   ]);
 });
 
-test("search matches a fragment of the client id, ignoring case", async () => {
-  const andes = anOperation({ clientId: "client-Andes-Textiles" });
-  const cafe = anOperation({ clientId: "client-cafe-del-valle" });
+test("companyId narrows the listing to the operation ids the company owns", async () => {
+  const andes = anOperation();
+  const cafe = anOperation();
+  const company = aCompany({ id: "company-andes", operationIds: [andes.id] });
 
-  const listOperations = await listOver([andes, cafe]);
+  const listOperations = await listOver([andes, cafe], [company]);
 
-  expect(await listOperations({ search: "ANDES" })).toEqual([
+  expect(await listOperations({ companyId: "company-andes" })).toEqual([
     { operation: andes, status: "in_transit" },
   ]);
+});
+
+test("a company without operations lists nothing instead of everything", async () => {
+  const listOperations = await listOver(
+    [anOperation()],
+    [aCompany({ id: "company-empty", operationIds: [] })],
+  );
+
+  expect(await listOperations({ companyId: "company-empty" })).toEqual([]);
+});
+
+test("an unknown company id is rejected", async () => {
+  const listOperations = await listOver([anOperation()]);
+
+  await expect(listOperations({ companyId: "ghost" })).rejects.toThrow(CompanyNotFoundError);
 });
 
 test("the health filter narrows to operations carrying that health", async () => {

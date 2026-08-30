@@ -1,11 +1,8 @@
-import { deriveOperationStatus } from "../../../../domain/logistics/operation-status.js";
 import type { Operation } from "../../../../domain/logistics/operation.js";
 import type {
   OperationQueryFilter,
   OperationRepository,
 } from "../../../../domain/ports/operation.repository.js";
-
-const DELIVERED = "delivered";
 
 export class InMemoryOperationRepository implements OperationRepository {
   private readonly operations = new Map<string, Operation>();
@@ -14,22 +11,12 @@ export class InMemoryOperationRepository implements OperationRepository {
     return this.operations.get(id) ?? null;
   }
 
-  async findActiveByClient(clientId: string): Promise<Operation[]> {
-    return [...this.operations.values()].filter(
-      (operation) =>
-        operation.clientId === clientId && deriveOperationStatus(operation) !== DELIVERED,
-    );
-  }
-
   async findAll(filter: OperationQueryFilter = {}): Promise<Operation[]> {
     return [...this.operations.values()].filter((operation) => {
-      if (filter.health !== undefined && operation.health !== filter.health) {
+      if (filter.ids !== undefined && !filter.ids.includes(operation.id)) {
         return false;
       }
-      if (
-        filter.clientIdContains !== undefined &&
-        !operation.clientId.toLowerCase().includes(filter.clientIdContains.toLowerCase())
-      ) {
+      if (filter.health !== undefined && operation.health !== filter.health) {
         return false;
       }
       if (

@@ -1,8 +1,8 @@
-import type { EmailAttachment, NormalizedEmail } from "../../../../../domain/model/email.js";
+import type { IncomingAttachment, NormalizedEmail } from "../../../../../domain/model/email.js";
 import type { ReceiveEmailBody } from "../schemas/receive-email.schema.js";
 
 export function toNormalizedEmail(dto: ReceiveEmailBody): NormalizedEmail {
-  const attachments: EmailAttachment[] | undefined = dto.attachments?.map((attachment) => ({
+  const attachments: IncomingAttachment[] | undefined = dto.attachments?.map((attachment) => ({
     ...(attachment.filename !== undefined ? { filename: attachment.filename } : {}),
     ...(attachment.mimetype !== undefined ? { mimetype: attachment.mimetype } : {}),
     ...(attachment.data !== undefined ? { data: attachment.data } : {}),

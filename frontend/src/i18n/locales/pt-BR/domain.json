@@ -1,0 +1,71 @@
+{
+  "operation": {
+    "title": "Operações",
+    "subtitle": "Tudo o que os agentes estão executando agora. O que se moveu por último, primeiro.",
+    "emptyTitle": "Nenhuma operação aberta",
+    "emptyHint": "Quando um agente receber um booking confirmation e criar a primeira, ela vai aparecer aqui.",
+    "containers_one": "{{count}} contêiner",
+    "containers_other": "{{count}} contêineres",
+    "updatedAgo": "Atualizado {{when}}",
+    "trackIdCopied": "Track Id copiado",
+    "status": {
+      "booking_confirmed": "Booking confirmado",
+      "in_transit": "Em trânsito",
+      "arrived_port": "No porto",
+      "customs": "Na alfândega",
+      "delivered": "Entregue",
+      "unknown": "Desconhecido"
+    },
+    "health": {
+      "on_track": "No prazo",
+      "at_risk": "Em risco",
+      "critical": "Crítico"
+    },
+    "fields": {
+      "trackId": "Track Id · id do trajeto",
+      "shipper": "Empresa remetente",
+      "origin": "Origem",
+      "destination": "Destino",
+      "containers": "Contêineres",
+      "eta": "ETA",
+      "etd": "ETD",
+      "updatedAt": "Última atualização",
+      "agent": "Agente"
+    },
+    "filters": {
+      "status": "Filtrar por estado",
+      "health": "Filtrar por saúde",
+      "sort": "Ordenar",
+      "allStatuses": "Todos os estados",
+      "allHealth": "Toda a saúde",
+      "newestFirst": "Atualizadas primeiro",
+      "oldestFirst": "Mais antigas primeiro",
+      "byShipper": "Por empresa (A–Z)",
+      "byTrackId": "Por Track Id",
+      "searchPlaceholder": "Buscar por Track Id, empresa ou porto…",
+      "results_one": "{{count}} operação",
+      "results_other": "{{count}} operações"
+    },
+    "rail": {
+      "title": "Operações ativas",
+      "backToGrid": "Ver todas",
+      "show": "Ver as outras operações",
+      "hide": "Ocultar o painel"
+    },
+    "generated": {
+      "label": "Interface gerada",
+      "byAgent": "Gerado por {{agent}}",
+      "emptyTitle": "Ainda não há interface para esta execução",
+      "emptyHint": "Quando o agente executar o fluxo, a interface desta execução será construída aqui e vai se reorganizar sozinha conforme avança.",
+      "moveWidget": "Mover {{title}}",
+      "renameWidget": "Renomear widget",
+      "widgetName": "Nome do widget"
+    },
+    "chat": {
+      "title": "Falar com o agente",
+      "empty": "Peça algo que a interface não cobre: enviar um e-mail, segurar o despacho, solicitar um documento.",
+      "placeholder": "Escreva o que precisa…",
+      "send": "Enviar"
+    }
+  }
+}

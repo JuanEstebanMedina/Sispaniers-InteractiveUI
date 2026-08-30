@@ -15,77 +15,65 @@ import type {
 import type { ContainerState } from "../../../../../../domain/enums/container-state.js";
 import type { Operation } from "../../../../../../domain/logistics/operation.js";
 import {
+  CompanyNotFoundError,
   InvalidFilterCombinationError,
   OperationNotFoundError,
 } from "../../../../../../domain/model/errors.js";
 import { errorResponseSchema } from "../../schemas/error.schema.js";
 import {
-  createFlowBodySchema,
-  flowResponseSchema,
-  listFlowsQuerySchema,
-  listFlowsResponseSchema,
-} from "../../schemas/flow.schema.js";
+  createOperationBodySchema,
+  listOperationsQuerySchema,
+  listOperationsResponseSchema,
+  operationResponseSchema,
+} from "../../schemas/operation.schema.js";
 
-const flowParamsSchema = z.object({ id: z.string().min(1) });
+const operationParamsSchema = z.object({ id: z.string().min(1) });
 
-export interface FlowsRouteDeps {
+export interface OperationsRouteDeps {
   createOperation: (input: CreateOperationInput) => Promise<CreateOperationResult>;
   getOperation: (input: GetOperationInput) => Promise<GetOperationResult>;
   listOperations: (input: ListOperationsInput) => Promise<ListOperationsResultItem[]>;
 }
 
-function toFlowResponse(operation: Operation, status: ContainerState) {
+function toOperationResponse(operation: Operation, status: ContainerState) {
   return {
     id: operation.id,
-    client_id: operation.clientId,
+    company_ids: [...new Set(operation.bookings.flatMap((booking) => booking.companyIds))],
     status,
     health: operation.health ?? "ok",
     created_at: operation.createdAt.toISOString(),
     bookings: operation.bookings,
-    documents: operation.documents,
-  } as const;
+    context: operation.context,
+  };
 }
 
-export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify, deps) => {
+export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = async (
+  fastify,
+  deps,
+) => {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
   app.post(
-    "/flows",
+    "/operations",
     {
       schema: {
-        body: createFlowBodySchema,
-        response: { 201: flowResponseSchema },
+        body: createOperationBodySchema,
+        response: { 201: operationResponseSchema, 404: errorResponseSchema },
       },
     },
     async (request, reply) => {
       const dto = request.body;
 
-      const result = await deps.createOperation({
-        clientId: dto.client_id,
-        ...(dto.health !== undefined ? { health: dto.health } : {}),
-      });
-
-      reply.code(201).send(toFlowResponse(result.operation, result.status));
-    },
-  );
-
-  app.get(
-    "/flows/:id",
-    {
-      schema: {
-        params: flowParamsSchema,
-        response: { 200: flowResponseSchema, 404: errorResponseSchema },
-      },
-    },
-    async (request, reply) => {
-      const { id } = request.params;
-
       try {
-        const result = await deps.getOperation({ id });
-        reply.code(200).send(toFlowResponse(result.operation, result.status));
+        const result = await deps.createOperation({
+          companyId: dto.company_id,
+          ...(dto.health !== undefined ? { health: dto.health } : {}),
+        });
+
+        reply.code(201).send(toOperationResponse(result.operation, result.status));
       } catch (error) {
-        if (error instanceof OperationNotFoundError) {
-          reply.code(404).send({ error: "flow_not_found", message: error.message });
+        if (error instanceof CompanyNotFoundError) {
+          reply.code(404).send({ error: "company_not_found", message: error.message });
           return;
         }
         throw error;
@@ -94,11 +82,39 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
   );
 
   app.get(
-    "/flows",
+    "/operations/:id",
     {
       schema: {
-        querystring: listFlowsQuerySchema,
-        response: { 200: listFlowsResponseSchema, 400: errorResponseSchema },
+        params: operationParamsSchema,
+        response: { 200: operationResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+
+      try {
+        const result = await deps.getOperation({ id });
+        reply.code(200).send(toOperationResponse(result.operation, result.status));
+      } catch (error) {
+        if (error instanceof OperationNotFoundError) {
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
+          return;
+        }
+        throw error;
+      }
+    },
+  );
+
+  app.get(
+    "/operations",
+    {
+      schema: {
+        querystring: listOperationsQuerySchema,
+        response: {
+          200: listOperationsResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+        },
       },
     },
     async (request, reply) => {
@@ -108,18 +124,24 @@ export const flowsRoutes: FastifyPluginAsyncZod<FlowsRouteDeps> = async (fastify
         const results = await deps.listOperations({
           ...(query.status !== undefined ? { status: query.status } : {}),
           ...(query.health !== undefined ? { health: query.health } : {}),
-          ...(query.search !== undefined ? { search: query.search } : {}),
+          ...(query.company_id !== undefined ? { companyId: query.company_id } : {}),
           ...(query.from !== undefined ? { from: new Date(query.from) } : {}),
           ...(query.to !== undefined ? { to: new Date(query.to) } : {}),
           ...(query.date !== undefined ? { date: new Date(query.date) } : {}),
         });
 
         reply.code(200).send({
-          flows: results.map(({ operation, status }) => toFlowResponse(operation, status)),
+          operations: results.map(({ operation, status }) =>
+            toOperationResponse(operation, status),
+          ),
         });
       } catch (error) {
         if (error instanceof InvalidFilterCombinationError) {
           reply.code(400).send({ error: "invalid_filter_combination", message: error.message });
+          return;
+        }
+        if (error instanceof CompanyNotFoundError) {
+          reply.code(404).send({ error: "company_not_found", message: error.message });
           return;
         }
         throw error;

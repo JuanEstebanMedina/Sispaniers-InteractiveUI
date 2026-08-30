@@ -1,0 +1,10 @@
+{
+  "required": "Este campo es obligatorio",
+  "email": "Ingresá un correo válido",
+  "min": "Debe tener al menos {{count}} caracteres",
+  "max": "No puede superar {{count}} caracteres",
+  "number": "Debe ser un número",
+  "positive": "Debe ser mayor que cero",
+  "invalid": "Valor inválido",
+  "passwordMin": "La contraseña debe tener al menos {{count}} caracteres"
+}

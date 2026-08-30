@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Painted by themeStore on startup: tints the browser chrome on mobile -->
+    <meta name="theme-color" content="#efece4" />
+    <meta name="description" content="Front-end base for Module 05 — Yuno × Nauta" />
+    <title>Sispaniers</title>
+  </head>
+  <body>
+    <!--
+      The background is painted here and not only in CSS: between the HTML
+      loading and React booting there is a blank moment that reads as a white
+      flash in dark mode. This inline style prevents it.
+    -->
+    <style>
+      /* --sem-canvas, duplicado a mano: este <style> corre antes de que
+         exista el CSS, así que no puede usar var(). */
+      html[data-theme='dark'] body { background-color: #14120e; }
+      html[data-theme='light'] body { background-color: #efece4; }
+    </style>
+    <div id="root"></div>
+    <noscript>This application requires JavaScript to run.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

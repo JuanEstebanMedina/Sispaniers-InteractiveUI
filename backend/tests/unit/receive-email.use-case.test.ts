@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { createReceiveEmailUseCase } from "../../src/application/use-cases/email/receive-email.use-case.js";
-import type { ExtractedAttachment } from "../../src/domain/model/attachment-content.js";
 import type { NormalizedEmail } from "../../src/domain/model/email.js";
+import type { ExtractedContent } from "../../src/domain/model/extracted-content.js";
 import type { AttachmentExtractor } from "../../src/domain/ports/attachment-extractor.port.js";
 import { FakeAttachmentStorage } from "../support/fakes.js";
 
@@ -14,7 +14,7 @@ const email: NormalizedEmail = {
 };
 
 const noopExtractor: AttachmentExtractor = {
-  extract: () => Promise.resolve({ kind: "unsupported" }),
+  extract: () => Promise.resolve({ format: "other" as const }),
 };
 
 test("returns a run id for the incoming email", async () => {
@@ -43,7 +43,7 @@ test("generates a fresh run id for each call", async () => {
 });
 
 test("extracts every attachment via the AttachmentExtractor port", async () => {
-  const extracted: ExtractedAttachment = { kind: "text", content: "hello" };
+  const extracted: ExtractedContent = { format: "document", content: "hello" };
   const receiveEmail = createReceiveEmailUseCase({
     idGenerator: { newId: () => "id-1" },
     attachmentExtractor: { extract: () => Promise.resolve(extracted) },

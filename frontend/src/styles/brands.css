@@ -1,0 +1,210 @@
+/* Colour carries meaning here, so the axes are not interchangeable:
+     brand / agent      the machine's voice — what the agent said or inferred
+     accent / decision  a human's turn — only on screen when the flow is waiting
+     success / warning / danger   the cargo's health, never the agent's
+
+   `inline` makes the utilities point at var(--sem-*) instead of copying the
+   value, which is what lets the theme switch at runtime without recompiling. */
+
+@theme inline {
+  --color-canvas: var(--sem-canvas);
+  --color-surface: var(--sem-surface);
+  --color-surface-raised: var(--sem-surface-raised);
+  --color-surface-sunken: var(--sem-surface-sunken);
+  --color-surface-hover: var(--sem-surface-hover);
+  --color-surface-active: var(--sem-surface-active);
+  --color-overlay: var(--sem-overlay);
+
+  --color-fg: var(--sem-fg);
+  --color-fg-muted: var(--sem-fg-muted);
+  --color-fg-subtle: var(--sem-fg-subtle);
+  --color-fg-inverted: var(--sem-fg-inverted);
+
+  --color-line: var(--sem-line);
+  --color-line-subtle: var(--sem-line-subtle);
+  --color-line-strong: var(--sem-line-strong);
+
+  --color-brand: var(--sem-brand);
+  --color-brand-hover: var(--sem-brand-hover);
+  --color-brand-active: var(--sem-brand-active);
+  --color-brand-subtle: var(--sem-brand-subtle);
+  --color-brand-muted: var(--sem-brand-muted);
+  --color-brand-fg: var(--sem-brand-fg);
+
+  --color-accent: var(--sem-accent);
+  --color-accent-hover: var(--sem-accent-hover);
+  --color-accent-subtle: var(--sem-accent-subtle);
+  --color-accent-fg: var(--sem-accent-fg);
+
+  --color-agent: var(--sem-agent);
+  --color-agent-subtle: var(--sem-agent-subtle);
+  --color-agent-fg: var(--sem-agent-fg);
+
+  --color-decision: var(--sem-decision);
+  --color-decision-subtle: var(--sem-decision-subtle);
+  --color-decision-fg: var(--sem-decision-fg);
+
+  --color-success: var(--sem-success);
+  --color-success-subtle: var(--sem-success-subtle);
+  --color-success-fg: var(--sem-success-fg);
+
+  --color-warning: var(--sem-warning);
+  --color-warning-subtle: var(--sem-warning-subtle);
+  --color-warning-fg: var(--sem-warning-fg);
+
+  --color-danger: var(--sem-danger);
+  --color-danger-hover: var(--sem-danger-hover);
+  --color-danger-subtle: var(--sem-danger-subtle);
+  --color-danger-fg: var(--sem-danger-fg);
+
+  --color-info: var(--sem-info);
+  --color-info-subtle: var(--sem-info-subtle);
+  --color-info-fg: var(--sem-info-fg);
+
+  --color-ring: var(--sem-ring);
+
+  --color-chart-1: var(--sem-chart-1);
+  --color-chart-2: var(--sem-chart-2);
+  --color-chart-3: var(--sem-chart-3);
+  --color-chart-4: var(--sem-chart-4);
+  --color-chart-5: var(--sem-chart-5);
+  --color-chart-6: var(--sem-chart-6);
+  --color-chart-7: var(--sem-chart-7);
+  --color-chart-8: var(--sem-chart-8);
+
+  --color-chart-grid: var(--sem-line-subtle);
+  --color-chart-axis: var(--sem-fg-subtle);
+}
+
+:root {
+  --sem-font-sans: 'Inter Variable';
+  --sem-font-display: 'Inter Variable';
+  --sem-font-mono: 'IBM Plex Mono';
+
+  --sem-agent: var(--sem-brand);
+  --sem-agent-subtle: var(--sem-brand-subtle);
+  --sem-agent-fg: var(--sem-brand-fg);
+
+  --sem-decision: var(--sem-accent);
+  --sem-decision-subtle: var(--sem-accent-subtle);
+  --sem-decision-fg: var(--sem-accent-fg);
+}
+
+[data-theme='light'] {
+  --sem-canvas: #efece4;
+  --sem-surface: #faf8f4;
+  --sem-surface-raised: #ffffff;
+  --sem-surface-sunken: #e5dfd3;
+  --sem-surface-hover: #f3f0ea;
+  --sem-surface-active: #e9e4da;
+
+  --sem-fg: #1c1a16;
+  --sem-fg-muted: #55504a;
+  --sem-fg-subtle: #78716a;
+
+  --sem-line: #e0d9cd;
+  --sem-line-subtle: #ede9e1;
+  --sem-line-strong: #b6ac9b;
+
+  --sem-brand: #5b21b6;
+  --sem-brand-hover: #4c1d95;
+  --sem-brand-active: #3b0764;
+  --sem-brand-subtle: #ede9fe;
+  --sem-brand-muted: #f5f3ff;
+  --sem-brand-fg: #ffffff;
+
+  --sem-accent: #5b21b6;
+  --sem-accent-hover: #4c1d95;
+  --sem-accent-subtle: #ddd6fe;
+  --sem-accent-fg: #ffffff;
+
+  --sem-success: #15803d;
+  --sem-success-subtle: #dcfce7;
+  --sem-success-fg: #14532d;
+
+  --sem-warning: #ca8a04;
+  --sem-warning-subtle: #fef9c3;
+  --sem-warning-fg: #713f12;
+
+  --sem-danger: #9f1239;
+  --sem-danger-hover: #881337;
+  --sem-danger-subtle: #ffe4e6;
+  --sem-danger-fg: #881337;
+
+  --sem-info: #5b21b6;
+  --sem-info-subtle: #ede9fe;
+  --sem-info-fg: #4c1d95;
+
+  --sem-ring: #5b21b6;
+
+  --sem-overlay: rgb(28 26 22 / 0.45);
+  --sem-fg-inverted: #ffffff;
+
+  --sem-chart-1: #5b21b6;
+  --sem-chart-2: #a16207;
+  --sem-chart-3: #0f766e;
+  --sem-chart-4: #be123c;
+  --sem-chart-5: #1d4ed8;
+  --sem-chart-6: #c2410c;
+  --sem-chart-7: #15803d;
+  --sem-chart-8: #7e22ce;
+}
+
+[data-theme='dark'] {
+  --sem-canvas: #14120e;
+  --sem-surface: #1e1b15;
+  --sem-surface-raised: #29251d;
+  --sem-surface-sunken: #0c0a07;
+  --sem-surface-hover: #29251d;
+  --sem-surface-active: #353026;
+
+  --sem-fg: #f5f1e8;
+  --sem-fg-muted: #b2a996;
+  --sem-fg-subtle: #8f8674;
+
+  --sem-line: #322c22;
+  --sem-line-subtle: #241f18;
+  --sem-line-strong: #4a4234;
+
+  --sem-brand: #a78bfa;
+  --sem-brand-hover: #c4b5fd;
+  --sem-brand-active: #8b5cf6;
+  --sem-brand-subtle: #2e1065;
+  --sem-brand-muted: #1e0b44;
+  --sem-brand-fg: #14120e;
+
+  --sem-accent: #a78bfa;
+  --sem-accent-hover: #c4b5fd;
+  --sem-accent-subtle: #341079;
+  --sem-accent-fg: #14120e;
+
+  --sem-success: #4ade80;
+  --sem-success-subtle: #052e16;
+  --sem-success-fg: #86efac;
+
+  --sem-warning: #facc15;
+  --sem-warning-subtle: #422006;
+  --sem-warning-fg: #fde047;
+
+  --sem-danger: #f43f5e;
+  --sem-danger-subtle: #4c0519;
+  --sem-danger-fg: #fda4af;
+
+  --sem-info: #a78bfa;
+  --sem-info-subtle: #2e1065;
+  --sem-info-fg: #c4b5fd;
+
+  --sem-ring: #c4b5fd;
+
+  --sem-overlay: rgb(6 5 3 / 0.72);
+  --sem-fg-inverted: #14120e;
+
+  --sem-chart-1: #a78bfa;
+  --sem-chart-2: #facc15;
+  --sem-chart-3: #2dd4bf;
+  --sem-chart-4: #fb7185;
+  --sem-chart-5: #60a5fa;
+  --sem-chart-6: #fb923c;
+  --sem-chart-7: #4ade80;
+  --sem-chart-8: #e879f9;
+}

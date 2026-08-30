@@ -1,0 +1,115 @@
+{
+  "app": {
+    "name": "Yuno × Nauta",
+    "tagline": "Base de front para el Módulo 05"
+  },
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "close": "Cerrar",
+    "back": "Volver",
+    "retry": "Reintentar",
+    "refresh": "Actualizar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "clearFilters": "Limpiar filtros",
+    "export": "Exportar",
+    "import": "Importar",
+    "copy": "Copiar",
+    "copied": "Copiado al portapapeles",
+    "viewDetails": "Ver detalle",
+    "seeData": "Ver datos",
+    "seeChart": "Ver gráfico",
+    "loadMore": "Cargar más",
+    "reload": "Recargar la página",
+    "goToDashboard": "Ir al panel"
+  },
+  "states": {
+    "loading": "Cargando…",
+    "saving": "Guardando…",
+    "empty": "Todavía no hay nada acá",
+    "emptyHint": "Cuando se cree el primer registro, va a aparecer en esta lista.",
+    "noResults": "Sin resultados",
+    "noResultsHint": "Ningún registro coincide con los filtros aplicados. Probá ampliarlos.",
+    "checkingSession": "Verificando sesión…",
+    "checkingPermissions": "Verificando permisos…",
+    "loadingSection": "Cargando sección…",
+    "offline": "Sin conexión",
+    "mockData": "Datos simulados",
+    "mock": "Mock",
+    "mockTooltip": "Los datos vienen de Mock Service Worker, no de un backend real"
+  },
+  "table": {
+    "sortAscending": "Orden ascendente",
+    "sortDescending": "Orden descendente",
+    "rowsPerPage": "Por página",
+    "range": "{{from}}–{{to}} de {{total}}",
+    "page": "Página {{page}}",
+    "previousPage": "Página anterior",
+    "nextPage": "Página siguiente",
+    "pagination": "Paginación",
+    "selectAll": "Seleccionar todo",
+    "selectRow": "Seleccionar fila",
+    "selectedCount_one": "{{count}} seleccionado",
+    "selectedCount_other": "{{count}} seleccionados",
+    "columns": "Columnas",
+    "noColumns": "Ninguna columna visible"
+  },
+  "chart": {
+    "total": "Total",
+    "other": "Otros",
+    "noDataForPeriod": "Sin datos para este período",
+    "noDataHint": "Probá ampliar el rango de fechas o quitar filtros."
+  },
+  "theme": {
+    "appearance": "Apariencia",
+    "brand": "Identidad visual",
+    "theme": "Tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema",
+    "density": "Densidad",
+    "comfortable": "Cómoda",
+    "compact": "Compacta",
+    "change": "cambiar",
+    "toLight": "Cambiar a tema claro",
+    "toDark": "Cambiar a tema oscuro"
+  },
+  "language": {
+    "label": "Idioma",
+    "es": "Español",
+    "en": "English",
+    "pt-BR": "Português (BR)"
+  },
+  "nav": {
+    "main": "Navegación principal",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "collapse": "Colapsar",
+    "expand": "Expandir menú",
+    "notifications": "Notificaciones",
+    "userMenu": "Menú de usuario",
+    "breadcrumbs": "Migas de pan",
+    "sections": {
+      "intelligence": "Inteligencia",
+      "admin": "Administración"
+    },
+    "items": {
+      "operations": "Operaciones",
+      "assistant": "Asistente",
+      "users": "Usuarios",
+      "settings": "Configuración",
+      "components": "Componentes",
+      "profile": "Mi perfil"
+    }
+  },
+  "placeholder": {
+    "title": "Sección lista para conectar",
+    "description": "La ruta, los permisos y el layout ya están. Falta el contenido, que depende del enunciado del reto.",
+    "planned": "Previsto"
+  }
+}

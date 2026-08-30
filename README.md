@@ -85,36 +85,66 @@ Employees, emails, documents, vessels and data can all be invented.
 ## Structure
 
 ```
-frontend/    # runtime-generated UI
-backend/     # agents, flows and orchestration
+frontend/    # runtime-generated UI — not started yet
+backend/     # agents, flows and orchestration — see backend/README.md
 .githooks/   # versioned git hooks, shared by every clone
+docker-compose.yml
+.env.example # single env file for the whole repo; copy to .env at the root
 ```
 
 ## Getting started
 
+**1. Configure the environment.** One `.env` for the whole repo, at the root:
+
 ```bash
-cd backend
-make install     # pnpm install
-make hooks       # REQUIRED once per clone — see below
-make dev         # API on http://127.0.0.1:8000
+cp .env.example .env   # MONGO_PASSWORD is required, compose refuses to start without it
 ```
 
-The backend runs on Node.js 22 with pnpm. Enable pnpm with `corepack enable` if you do
+**2. Bring up the stack.**
+
+```bash
+docker compose up -d --build     # API + MongoDB
+curl http://127.0.0.1:8000/health
+```
+
+Or, for the fast development loop, run only the database in Docker and the API on the
+host with autoreload:
+
+```bash
+docker compose up -d mongo
+cd backend
+make install
+make dev                          # http://127.0.0.1:8000
+```
+
+The backend needs Node.js 22 and pnpm 8. Enable pnpm with `corepack enable` if you do
 not have it.
 
-### Enable the git hooks — once per clone
-
-Git hooks live in `.git/hooks/`, which is **never committed**. Cloning the repo does not
-give you the hooks; every contributor has to opt in once:
+**3. Enable the git hooks — required once per clone.**
 
 ```bash
 make -C backend hooks
 ```
 
-That points `core.hooksPath` at the versioned `.githooks/` directory. From then on
-`git commit` runs `make -C backend check` automatically whenever the commit touches
-`backend/`, so lint, types and tests are verified before the commit is created. To skip
-it in a genuine emergency: `git commit --no-verify`.
+**4. Load the seed data.** The database starts empty; this loads three companies and
+four synthetic operations covering every container state:
+
+```bash
+make -C backend seed
+curl http://127.0.0.1:8000/api/operations
+```
+
+The full environment-variable table, the API reference, the data model and
+troubleshooting live in [`backend/README.md`](backend/README.md).
+
+### Why the git hooks need opting in
+
+Git hooks live in `.git/hooks/`, which is **never committed**. Cloning the repo does not
+give you the hooks; every contributor has to opt in once. `make -C backend hooks` points
+`core.hooksPath` at the versioned `.githooks/` directory. From then on `git commit` runs
+`make -C backend check` automatically whenever the commit touches `backend/`, so lint,
+types and tests are verified before the commit is created. To skip it in a genuine
+emergency: `git commit --no-verify`.
 
 Verify it is active with `git config core.hooksPath` — it should print `.githooks`.
 
