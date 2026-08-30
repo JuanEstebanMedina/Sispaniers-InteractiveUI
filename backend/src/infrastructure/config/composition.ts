@@ -21,6 +21,7 @@ import type { OperationRepository } from "../../domain/ports/operation.repositor
 import { buildApp } from "../adapters/inbound/http/app.js";
 import { MultiFormatAttachmentExtractor } from "../adapters/outbound/attachment/multi-format-attachment-extractor.js";
 import { NodemailerEmailSender } from "../adapters/outbound/email/nodemailer-email-sender.js";
+import { InMemoryComponentEventPublisher } from "../adapters/outbound/events/in-memory-component-event-publisher.js";
 import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.js";
 import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repository.js";
 import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
@@ -130,7 +131,12 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     companyRepository,
     idGenerator,
   });
-  const createComponent = createCreateComponentUseCase({ componentRepository, idGenerator });
+  const componentEventPublisher = new InMemoryComponentEventPublisher();
+  const createComponent = createCreateComponentUseCase({
+    componentRepository,
+    idGenerator,
+    eventPublisher: componentEventPublisher,
+  });
   const getOperation = createGetOperationUseCase({ operationRepository });
   const getDocumentPreviewUrl = createGetDocumentPreviewUrlUseCase({
     operationRepository,
@@ -155,6 +161,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const updateComponentContent = createUpdateComponentContentUseCase({
     operationRepository,
     componentRepository,
+    eventPublisher: componentEventPublisher,
   });
 
   const app = buildApp({
@@ -169,6 +176,8 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     getOperationComponents,
     updateOperationLayout,
     updateComponentContent,
+    createComponent,
+    componentEventPublisher,
   });
 
   app.decorate("createComponent", createComponent);

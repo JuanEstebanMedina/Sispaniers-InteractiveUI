@@ -53,3 +53,17 @@ export class DocumentUploadError extends Error {
     this.name = "DocumentUploadError";
   }
 }
+
+export class InvalidComponentTreeError extends Error {
+  constructor(reason: string) {
+    super(`Invalid component tree: ${reason}`);
+    this.name = "InvalidComponentTreeError";
+  }
+}
+
+export class InvalidComponentPathError extends Error {
+  constructor(reason: string) {
+    super(`Invalid component path: ${reason}`);
+    this.name = "InvalidComponentPathError";
+  }
+}

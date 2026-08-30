@@ -3,12 +3,17 @@ import {
   type OperationComponentsRouteDeps,
   operationComponentsRoutes,
 } from "./dashboard/operation-components.routes.js";
+import {
+  type OperationEventsRouteDeps,
+  operationEventsRoutes,
+} from "./dashboard/operation-events.routes.js";
 import { type OperationsRouteDeps, operationsRoutes } from "./dashboard/operations.routes.js";
 import { type EmailsRouteDeps, emailsRoutes } from "./emails.routes.js";
 
 export type RouteDependencies = EmailsRouteDeps &
   OperationsRouteDeps &
-  OperationComponentsRouteDeps;
+  OperationComponentsRouteDeps &
+  OperationEventsRouteDeps;
 
 export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastify, deps) => {
   const {
@@ -23,6 +28,8 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     getOperationComponents,
     updateOperationLayout,
     updateComponentContent,
+    createComponent,
+    componentEventPublisher,
   } = deps;
 
   await fastify.register(emailsRoutes, { receiveEmail, sendEmail, upsertOperationFromEmail });
@@ -37,5 +44,7 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     getOperationComponents,
     updateOperationLayout,
     updateComponentContent,
+    createComponent,
   });
+  await fastify.register(operationEventsRoutes, { componentEventPublisher });
 };

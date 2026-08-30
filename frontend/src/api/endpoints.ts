@@ -19,12 +19,9 @@ export const endpoints = {
   },
 
   operations: {
-    list: '/flows',
-    detail: (id: string) => `/flows/${id}`,
-    /** ⚠️ El backend todavía NO implementa esto: la posición de los widgets
-     *  no se persiste. El PATCH sale y devuelve 404, que la mutación ignora
-     *  a propósito (fire-and-forget). */
-    layout: (id: string) => `/flows/${id}/layout`,
+    list: '/operations',
+    detail: (id: string) => `/operations/${id}`,
+    layout: (id: string) => `/operations/${id}/layout`,
   },
 
   notifications: {
