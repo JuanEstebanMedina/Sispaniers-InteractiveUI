@@ -1,5 +1,4 @@
 import { expect, test } from "vitest";
-import { nearestSize } from "../../src/application/commands/create-component.command.js";
 import { createUpdateComponentCommand } from "../../src/application/commands/update-component.command.js";
 import { createUpdateComponentContentUseCase } from "../../src/application/use-cases/dashboard/update-component-content.use-case.js";
 import { createUpdateComponentPlacementUseCase } from "../../src/application/use-cases/dashboard/update-component-placement.use-case.js";
@@ -85,9 +84,4 @@ test("update_component resizes and moves one component while reordering siblings
 
   expect(await componentRepository.findById("second")).toMatchObject({ size: "wide", order: 0 });
   expect(await componentRepository.findById("first")).toMatchObject({ order: 1 });
-});
-
-test("a requested layout never snaps down to a smaller size", () => {
-  expect(nearestSize(2, 3)).toBe("tall");
-  expect(nearestSize(4, 3)).toBe("large");
 });

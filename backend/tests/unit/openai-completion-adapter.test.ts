@@ -22,7 +22,15 @@ async function payloadFor(model: string): Promise<Record<string, unknown>> {
   return sentPayload;
 }
 
-test("never sends reasoning_effort", async () => {
+/**
+ * gpt-4o rejects the whole request with a 400 when reasoning_effort is present,
+ * so sending it unconditionally takes the chat down for every non-reasoning
+ * model the deployment happens to be configured with.
+ */
+test("omits reasoning_effort for a model that does not support it", async () => {
   expect(await payloadFor("gpt-4o-mini")).not.toHaveProperty("reasoning_effort");
-  expect(await payloadFor("gpt-5.6-terra")).not.toHaveProperty("reasoning_effort");
+});
+
+test("keeps reasoning_effort for a reasoning model", async () => {
+  expect(await payloadFor("gpt-5.6-luna")).toHaveProperty("reasoning_effort", "none");
 });

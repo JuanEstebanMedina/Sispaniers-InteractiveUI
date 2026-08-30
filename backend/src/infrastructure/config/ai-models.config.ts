@@ -1,4 +1,4 @@
-const DEFAULT_OPENAI_MODEL = "gpt-5.6-terra";
+const DEFAULT_OPENAI_MODEL = "gpt-5.6-luna";
 const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
 
 export const aiModelsConfig = {

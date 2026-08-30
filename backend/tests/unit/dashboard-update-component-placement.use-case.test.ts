@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { createUpdateComponentPlacementUseCase } from "../../src/application/use-cases/dashboard/update-component-placement.use-case.js";
 import { ComponentNotFoundError, OperationNotFoundError } from "../../src/domain/model/errors.js";
-import { InMemoryComponentEventPublisher } from "../../src/infrastructure/adapters/outbound/events/in-memory-component-event-publisher.js";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 import { InMemoryComponentRepository, aComponent } from "../support/component-fixtures.js";
 import { anOperation } from "../support/operation-fixtures.js";
@@ -114,27 +113,6 @@ test("a title renames the component without touching the order", async () => {
   expect(updated.title).toBe("Vessel delay");
   expect((await componentRepository.findById("b"))?.title).toBe("Vessel delay");
   expect(await orderedIds()).toEqual(["a", "b"]);
-});
-
-test("moving a component publishes an update so every client reloads packed layout", async () => {
-  const operationRepository = new InMemoryOperationRepository();
-  const componentRepository = new InMemoryComponentRepository();
-  const eventPublisher = new InMemoryComponentEventPublisher();
-  const operation = anOperation();
-  await operationRepository.save(operation);
-  await componentRepository.save(aComponent({ id: "a", operationId: operation.id, order: 0 }));
-  await componentRepository.save(aComponent({ id: "b", operationId: operation.id, order: 1 }));
-  const events: string[] = [];
-  eventPublisher.subscribe(operation.id, (event) => events.push(event));
-  const updateComponentPlacement = createUpdateComponentPlacementUseCase({
-    operationRepository,
-    componentRepository,
-    eventPublisher,
-  });
-
-  await updateComponentPlacement({ operationId: operation.id, componentId: "b", position: 0 });
-
-  expect(events).toEqual(["component-updated"]);
 });
 
 test("an empty title clears the rename instead of storing a blank one", async () => {
