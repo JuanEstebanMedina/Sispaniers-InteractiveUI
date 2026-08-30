@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { GenerateComponentFromAiInput } from "../../../../../../application/use-cases/dashboard/generate-component-from-ai.use-case.js";
 import type { Component } from "../../../../../../domain/components/component.js";
 import {
+  AiCompletionError,
   InvalidAiComponentError,
   OperationNotFoundError,
 } from "../../../../../../domain/model/errors.js";
@@ -58,6 +59,10 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
           reply.code(502).send({ error: "invalid_ai_component", message: error.message });
           return;
         }
+        if (error instanceof AiCompletionError) {
+          reply.code(502).send({ error: "ai_service_unavailable", message: error.message });
+          return;
+        }
         throw error;
       }
     },
@@ -96,6 +101,10 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
         }
         if (error instanceof InvalidAiComponentError) {
           reply.code(502).send({ error: "invalid_ai_component", message: error.message });
+          return;
+        }
+        if (error instanceof AiCompletionError) {
+          reply.code(502).send({ error: "ai_service_unavailable", message: error.message });
           return;
         }
         throw error;

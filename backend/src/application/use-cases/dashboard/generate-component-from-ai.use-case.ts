@@ -2,6 +2,7 @@ import { validateComponentTree } from "../../../domain/components/component-node
 import type { Component, ComponentNode } from "../../../domain/components/component.js";
 import { WIDGET_SIZES, type WidgetSizeName } from "../../../domain/components/widget-size.js";
 import {
+  AiCompletionError,
   InvalidAiComponentError,
   InvalidComponentTreeError,
   OperationNotFoundError,
@@ -65,6 +66,18 @@ function buildPrompt(
     .replaceAll("{{grid_columns}}", String(GRID_COLUMNS));
 
   return `${base}\n\n${buildOutputContractOverride(existingComponents)}`;
+}
+
+async function completeOrThrow(
+  aiCompletionPort: AiCompletionPort,
+  prompt: string,
+): Promise<{ text: string }> {
+  try {
+    return await aiCompletionPort.complete({ prompt });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new AiCompletionError(reason);
+  }
 }
 
 function stripMarkdownCodeFence(text: string): string {
@@ -174,7 +187,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     );
 
     const prompt = buildPrompt(promptTemplate, input.trigger, input.input, existingComponents);
-    const response = await aiCompletionPort.complete({ prompt });
+    const response = await completeOrThrow(aiCompletionPort, prompt);
 
     let parsed: ParsedAiComponent;
     try {
@@ -184,7 +197,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         throw error;
       }
       console.warn("generateComponentFromAi: retrying after invalid AI response");
-      const retryResponse = await aiCompletionPort.complete({ prompt });
+      const retryResponse = await completeOrThrow(aiCompletionPort, prompt);
       parsed = parseAiResponse(retryResponse.text);
     }
 

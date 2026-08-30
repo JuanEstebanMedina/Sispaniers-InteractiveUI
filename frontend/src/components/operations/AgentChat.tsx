@@ -1,18 +1,16 @@
-import { Paperclip, SendHorizonal, Sparkles, X } from 'lucide-react'
+import { SendHorizonal, Sparkles } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { http } from '@/api/client'
 import { endpoints } from '@/api/endpoints'
 import { cn } from '@/lib/cn'
-import { formatBytes } from '@/lib/format'
 import { toast } from '@/lib/toast'
 
 interface ChatMessage {
   id: string
   author: 'agent' | 'human'
   body: string
-  files: { name: string; size: number }[]
 }
 
 interface AgentChatProps {
@@ -32,9 +30,7 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
   const { t } = useTranslation('domain')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
-  const [attached, setAttached] = useState<File[]>([])
   const endRef = useRef<HTMLDivElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
   const draftRef = useRef<HTMLTextAreaElement>(null)
 
   // Grow with the content up to the CSS max-height, then let it scroll.
@@ -51,29 +47,18 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [messages])
 
-  // An attachment on its own is a valid message: dropping in a Bill of Lading
-  // with no covering note is the common case.
   function appendAgentMessage(body: string) {
-    setMessages((current) => [
-      ...current,
-      { id: `msg-${current.length}`, author: 'agent', body, files: [] },
-    ])
+    setMessages((current) => [...current, { id: `msg-${current.length}`, author: 'agent', body }])
   }
 
   async function send() {
     const body = draft.trim()
-    if (!body && attached.length === 0) return
+    if (!body) return
     setMessages((current) => [
       ...current,
-      {
-        id: `msg-${current.length}`,
-        author: 'human',
-        body,
-        files: attached.map((file) => ({ name: file.name, size: file.size })),
-      },
+      { id: `msg-${current.length}`, author: 'human', body },
     ])
     setDraft('')
-    setAttached([])
 
     try {
       await http.post(endpoints.ai.chat(operationId), { message: body })
@@ -81,14 +66,6 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
     } catch {
       toast.error(t('operation.chat.sendError'))
     }
-  }
-
-  function attach(picked: FileList | null) {
-    if (!picked?.length) return
-    setAttached((current) => [...current, ...Array.from(picked)])
-    // Reset the input so picking the same file twice in a row still fires
-    // onChange — the value would otherwise be unchanged and the event skipped.
-    if (fileRef.current) fileRef.current.value = ''
   }
 
   return (
@@ -121,17 +98,6 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
               )}
             >
               {message.body}
-
-              {message.files.map((file) => (
-                <span
-                  key={file.name}
-                  className="mt-1 flex items-center gap-1.5 text-2xs text-fg-muted"
-                >
-                  <Paperclip className="size-3 shrink-0" aria-hidden />
-                  <span className="truncate">{file.name}</span>
-                  <span className="shrink-0 text-fg-subtle">{formatBytes(file.size)}</span>
-                </span>
-              ))}
             </div>
           ))
         )}
@@ -139,53 +105,7 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
       </div>
 
       <div className="shrink-0 border-t border-line">
-        {attached.length > 0 && (
-          <ul className="space-y-1 px-card pt-2">
-            {attached.map((file, index) => (
-              <li
-                key={`${file.name}-${index}`}
-                className="flex items-center gap-1.5 rounded-md bg-surface px-2 py-1 text-2xs"
-              >
-                <Paperclip className="size-3 shrink-0 text-fg-subtle" aria-hidden />
-                <span className="min-w-0 flex-1 truncate text-fg-muted">{file.name}</span>
-                <span className="shrink-0 text-fg-subtle">{formatBytes(file.size)}</span>
-                <button
-                  type="button"
-                  onClick={() => setAttached((current) => current.filter((_, i) => i !== index))}
-                  aria-label={t('operation.chat.removeFile', { name: file.name })}
-                  className="shrink-0 rounded-xs text-fg-subtle hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                >
-                  <X className="size-3" aria-hidden />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
         <div className="flex items-end gap-2 px-card py-3">
-          <input
-            ref={fileRef}
-            type="file"
-            multiple
-            className="sr-only"
-            onChange={(event) => attach(event.currentTarget.files)}
-          />
-
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            aria-label={t('operation.chat.attach')}
-            title={t('operation.chat.attach')}
-            className={cn(
-              'flex size-control-sm shrink-0 items-center justify-center rounded-md',
-              'border border-line text-fg-muted transition-colors',
-              'hover:bg-surface-hover hover:text-fg',
-              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-            )}
-          >
-            <Paperclip className="size-3.5" aria-hidden />
-          </button>
-
           <textarea
             ref={draftRef}
             rows={1}
@@ -210,7 +130,7 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
           <button
             type="button"
             onClick={send}
-            disabled={!draft.trim() && attached.length === 0}
+            disabled={!draft.trim()}
             aria-label={t('operation.chat.send')}
             title={t('operation.chat.send')}
             className={cn(
