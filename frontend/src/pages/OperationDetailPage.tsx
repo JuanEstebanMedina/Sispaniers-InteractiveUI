@@ -6,9 +6,12 @@ import { api, api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
 import { SectionBoundary } from '@/components/feedback/ErrorBoundary'
 import { ErrorState } from '@/components/feedback/ErrorState'
+import { ComponentDataProvider } from '@/components/generated/ComponentData'
 import { WidgetGrid } from '@/components/generated/WidgetGrid'
 import { demoWidgets } from '@/components/generated/demoWidgets'
+import { sampleDatasets } from '@/components/generated/sampleComponents'
 import { toWidgets } from '@/components/generated/toWidgets'
+import { useComponentStream } from '@/components/generated/useComponentStream'
 import { GeneratedSurface } from '@/components/operations/GeneratedSurface'
 import { OperationDetailHeader } from '@/components/operations/OperationDetailHeader'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -90,6 +93,10 @@ export default function OperationDetailPage() {
   const railOpen = useRailStore((state) => state.open)
   const railWidth = useRailStore((state) => state.width)
 
+  // Live updates: the agent writes a component and the grid restructures
+  // without anyone reloading.
+  const stream = useComponentStream(trackId, cols)
+
   const operation = detail.data
   const generated = components.data
 
@@ -125,7 +132,7 @@ export default function OperationDetailPage() {
 
   return (
     <div className="flex h-dvh flex-col gap-3 px-2 py-4 sm:px-4">
-      {detail.isSuccess && <OperationDetailHeader operation={detail.data} waiting={waiting} />}
+      {detail.isSuccess && <OperationDetailHeader operation={detail.data} waiting={waiting} stream={stream} />}
 
       {detail.isPending && (
         <div className="grid grid-cols-4 gap-3">
@@ -144,6 +151,7 @@ export default function OperationDetailPage() {
       {detail.isSuccess && !components.isError && (
         <GeneratedSurface className="flex-1">
           <SectionBoundary name="generated-ui">
+            <ComponentDataProvider operation={operation} datasets={sampleDatasets}>
             <WidgetGrid
               widgets={widgets}
               onMove={handleMove}
@@ -151,6 +159,7 @@ export default function OperationDetailPage() {
               onColsChange={setCols}
               reserve={railOpen ? railWidth : 0}
             />
+            </ComponentDataProvider>
           </SectionBoundary>
         </GeneratedSurface>
       )}

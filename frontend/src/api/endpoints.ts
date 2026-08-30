@@ -35,6 +35,12 @@ export const endpoints = {
       `/operations/${id}/components/${componentId}/placement`,
     componentContent: (id: string, componentId: string) =>
       `/operations/${id}/components/${componentId}`,
+    /**
+     * URL firmada y de vida corta (5 min) para ver un adjunto. No se pide al
+     * listar los archivos: se pide al abrir uno, porque caduca.
+     */
+    documentPreview: (id: string, documentId: string) =>
+      `/operations/${id}/documents/${documentId}/preview-url`,
   },
 
   notifications: {

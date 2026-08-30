@@ -75,9 +75,32 @@
       "componentGenerated": "Component updated in the panel.",
       "sendError": "Could not send the message to the agent."
     },
+    "files": {
+      "title": "Files",
+      "emptyTitle": "Nothing has arrived yet",
+      "empty": "Documents the agent received by email show up here: BLs, invoices, packing lists.",
+      "ask": "Ask the AI",
+      "alreadyAttached": "Already in the chat",
+      "open": "Open the file",
+      "openError": "The file could not be opened.",
+      "types": {
+        "PO": "Purchase order",
+        "BookingConfirmation": "Booking confirmation",
+        "BillOfLading": "Bill of lading",
+        "Invoice": "Invoice",
+        "PackingList": "Packing list",
+        "ArrivalNotice": "Arrival notice"
+      }
+    },
     "events": {
       "componentCreated": "A new component was generated",
       "componentUpdated": "A component was updated"
+    },
+    "stream": {
+      "live": "Live",
+      "connecting": "Connecting…",
+      "offline": "Offline",
+      "ended": "Flow finished"
     }
   }
 }

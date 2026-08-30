@@ -130,7 +130,7 @@ function Node({ node }: { node: ComponentNode }): ReactNode {
 /** Pinta el árbol que escribió el agente dentro del cuerpo de un widget. */
 export function ComponentNodeView({ nodes }: { nodes: ComponentNode[] }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex h-full min-h-0 flex-col gap-2">
       {byOrder(nodes).map((node, index) => (
         <Node key={`${node.kind}-${node.order}-${index}`} node={node} />
       ))}

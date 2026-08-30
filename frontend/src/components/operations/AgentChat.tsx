@@ -1,4 +1,4 @@
-import { Paperclip, SendHorizonal, Sparkles, X } from 'lucide-react'
+import { FileText, Paperclip, SendHorizonal, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -7,12 +7,35 @@ import { endpoints } from '@/api/endpoints'
 import { cn } from '@/lib/cn'
 import { formatBytes } from '@/lib/format'
 import { toast } from '@/lib/toast'
+import type { LogisticsDocument } from '@/schemas'
+import { useChatAttachStore } from '@/stores/chatAttachStore'
+
+/**
+ * Los documentos citados van DENTRO del texto del mensaje.
+ *
+ * `POST /operations/:id/chat` acepta un único campo, `message: string` — no
+ * tiene canal para adjuntos. Nombrar el documento por id y tipo es lo que hay:
+ * el agente ya tiene la operación entera en su contexto, así que con el id
+ * puede encontrar el que se le señala.
+ *
+ * Si el backend abre un campo de adjuntos, esto se borra y se manda estructurado.
+ */
+function withDocs(body: string, docs: LogisticsDocument[]): string {
+  if (docs.length === 0) return body
+
+  const cited = docs.map((document) => `${document.type} (${document.id})`).join(', ')
+  const question = body || 'Resume estos documentos.'
+
+  return `${question}\n\nDocumentos de esta operación a los que me refiero: ${cited}`
+}
 
 interface ChatMessage {
   id: string
   author: 'agent' | 'human'
   body: string
   files: { name: string; size: number }[]
+  /** Documentos ya en el backend que este mensaje citó. */
+  docs: string[]
 }
 
 interface AgentChatProps {
@@ -33,6 +56,9 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [attached, setAttached] = useState<File[]>([])
+  const docs = useChatAttachStore((state) => state.documents)
+  const detachDoc = useChatAttachStore((state) => state.detach)
+  const clearDocs = useChatAttachStore((state) => state.clear)
   const endRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const draftRef = useRef<HTMLTextAreaElement>(null)
@@ -56,13 +82,15 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
   function appendAgentMessage(body: string) {
     setMessages((current) => [
       ...current,
-      { id: `msg-${current.length}`, author: 'agent', body, files: [] },
+      { id: `msg-${current.length}`, author: 'agent', body, files: [], docs: [] },
     ])
   }
 
   async function send() {
     const body = draft.trim()
-    if (!body && attached.length === 0) return
+    if (!body && attached.length === 0 && docs.length === 0) return
+
+    const cited = docs.map((document) => document.type)
     setMessages((current) => [
       ...current,
       {
@@ -70,13 +98,15 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
         author: 'human',
         body,
         files: attached.map((file) => ({ name: file.name, size: file.size })),
+        docs: cited,
       },
     ])
     setDraft('')
     setAttached([])
+    clearDocs()
 
     try {
-      await http.post(endpoints.ai.chat(operationId), { message: body })
+      await http.post(endpoints.ai.chat(operationId), { message: withDocs(body, docs) })
       appendAgentMessage(t('operation.chat.componentGenerated'))
     } catch {
       toast.error(t('operation.chat.sendError'))
@@ -132,6 +162,15 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
                   <span className="shrink-0 text-fg-subtle">{formatBytes(file.size)}</span>
                 </span>
               ))}
+
+              {message.docs.map((type) => (
+                <span key={type} className="mt-1 flex items-center gap-1.5 text-2xs text-fg-muted">
+                  <FileText className="size-3 shrink-0" aria-hidden />
+                  <span className="truncate">
+                    {t(`operation.files.types.${type}`, { defaultValue: type })}
+                  </span>
+                </span>
+              ))}
             </div>
           ))
         )}
@@ -139,6 +178,36 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
       </div>
 
       <div className="shrink-0 border-t border-line">
+        {/* Los que llegaron desde Archivos. Van arriba de los subidos porque
+            son de la operación, no de esta sesión. */}
+        {docs.length > 0 && (
+          <ul className="space-y-1 px-card pt-2">
+            {docs.map((document) => {
+              const label = t(`operation.files.types.${document.type}`, {
+                defaultValue: document.type,
+              })
+
+              return (
+                <li
+                  key={document.id}
+                  className="flex items-center gap-1.5 rounded-md bg-brand-subtle px-2 py-1 text-2xs"
+                >
+                  <FileText className="size-3 shrink-0 text-brand" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate text-fg-muted">{label}</span>
+                  <button
+                    type="button"
+                    onClick={() => detachDoc(document.id)}
+                    aria-label={t('operation.chat.removeFile', { name: label })}
+                    className="shrink-0 rounded-xs text-fg-subtle hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                  >
+                    <X className="size-3" aria-hidden />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
         {attached.length > 0 && (
           <ul className="space-y-1 px-card pt-2">
             {attached.map((file, index) => (
@@ -210,7 +279,7 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
           <button
             type="button"
             onClick={send}
-            disabled={!draft.trim() && attached.length === 0}
+            disabled={!draft.trim() && attached.length === 0 && docs.length === 0}
             aria-label={t('operation.chat.send')}
             title={t('operation.chat.send')}
             className={cn(

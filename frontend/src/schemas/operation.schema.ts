@@ -83,16 +83,34 @@ const bookingSchema = z.object({
 
 export type Booking = z.infer<typeof bookingSchema>
 
+/**
+ * Formatos que declara el backend. `catch('other')` y no un enum estricto: un
+ * formato nuevo debe salir con icono genérico, nunca tumbar la lista entera de
+ * archivos de la operación.
+ */
+export const DOCUMENT_FORMATS = ['pdf', 'spreadsheet', 'document', 'image', 'other'] as const
+export type DocumentFormat = (typeof DOCUMENT_FORMATS)[number]
+
 const documentSchema = z.object({
   id: idSchema,
   type: z.string(),
+  format: z.enum(DOCUMENT_FORMATS).catch('other'),
+  /** Ruta en el bucket. No es una URL: para verlo hay que pedir una firmada. */
+  bucketKey: z.string().default(''),
   bookingId: z.string().optional(),
   sourceEmailId: z.string().optional(),
+  /** Lo que el agente leyó del documento. Es el valor real del archivo acá. */
   extractedData: z.record(z.string(), z.unknown()).default({}),
   receivedAt: isoDateSchema,
 })
 
 export type LogisticsDocument = z.infer<typeof documentSchema>
+
+/** `{ url, expires_in_seconds }` — la firma dura 5 minutos. */
+export const documentPreviewSchema = z.object({
+  url: z.string(),
+  expires_in_seconds: z.number(),
+})
 
 /* ---------------------------------------------------------------------------
  * MODELO DE VISTA
