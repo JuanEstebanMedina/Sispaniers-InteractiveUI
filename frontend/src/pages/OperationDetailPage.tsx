@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { api, api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
@@ -56,11 +56,23 @@ export default function OperationDetailPage() {
       ),
   })
 
+  // Moves have to reach the backend in the order the user made them. Each one
+  // renumbers the whole sequence, so a request that overtakes the one before it
+  // renumbers from a position the user has already left — and the stored order
+  // ends up matching neither drag. Chaining them here is what makes the order
+  // on the wire the order on the screen.
+  const inFlight = useRef<Promise<unknown>>(Promise.resolve())
+
   // Fire-and-forget on purpose: moving or renaming a widget must never block
   // the run or steal the screen with an error toast.
   const savePlacement = useMutation({
-    mutationFn: ({ id, ...body }: { id: string; position?: number; title?: string }) =>
-      api.patch(endpoints.operations.componentPlacement(trackId, id), body),
+    mutationFn: ({ id, ...body }: { id: string; position?: number; title?: string }) => {
+      const sent = inFlight.current.then(() =>
+        api.patch(endpoints.operations.componentPlacement(trackId, id), body),
+      )
+      inFlight.current = sent.catch(() => undefined)
+      return sent
+    },
   })
 
   // Same key the layout and the grid use, so this is a cache read, not a fetch.
@@ -79,13 +91,16 @@ export default function OperationDetailPage() {
   const railWidth = useRailStore((state) => state.width)
 
   const operation = detail.data
-  
   const generated = components.data
 
-  // Mientras el agente no haya escrito nada para esta operación, la pantalla
-  // sigue mostrando los bloques de demostración en vez de quedarse en blanco.
+  // Los bloques de demostración son para una operación que el agente todavía no
+  // ha tocado, NO para una que no se pudo leer: son datos fabricados y en una
+  // pantalla logística se leen igual que los de verdad. Por eso hacen falta los
+  // `generated`: sin respuesta buena no se pinta nada y la página muestra el
+  // error o el esqueleto.
   const widgets = useMemo(() => {
-    if (generated && generated.components.length > 0) {
+    if (!generated) return []
+    if (generated.components.length > 0) {
       return toWidgets(generated.components, generated.layout)
     }
     return operation ? demoWidgets(operation) : []
@@ -122,7 +137,11 @@ export default function OperationDetailPage() {
 
       {detail.isError && <ErrorState error={detail.error} onRetry={() => void detail.refetch()} />}
 
-      {detail.isSuccess && (
+      {detail.isSuccess && components.isError && (
+        <ErrorState error={components.error} onRetry={() => void components.refetch()} />
+      )}
+
+      {detail.isSuccess && !components.isError && (
         <GeneratedSurface className="flex-1">
           <SectionBoundary name="generated-ui">
             <WidgetGrid
