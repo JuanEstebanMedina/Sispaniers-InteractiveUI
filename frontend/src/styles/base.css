@@ -1,0 +1,212 @@
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    font-size: 105.5%;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transition:
+      background-color var(--duration-normal) var(--ease-out-quart),
+      color var(--duration-normal) var(--ease-out-quart);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--color-fg);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  table,
+  code,
+  kbd,
+  samp,
+  pre,
+  time,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--color-fg);
+    -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
+    caret-color: var(--color-fg);
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  ::selection {
+    background-color: var(--color-brand);
+    color: var(--color-brand-fg);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 0.625rem;
+    height: 0.625rem;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-line-strong);
+    border-radius: var(--radius-full);
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-fg-subtle);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+@utility data-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9375em;
+  letter-spacing: -0.01em;
+}
+
+@utility focus-ring {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+@utility surface-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+}
+
+@utility glass {
+  background-color: color-mix(in oklab, var(--color-surface) 78%, transparent);
+  backdrop-filter: blur(0.75rem) saturate(1.4);
+  -webkit-backdrop-filter: blur(0.75rem) saturate(1.4);
+}
+
+@utility skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-surface-sunken) 25%,
+    var(--color-surface-hover) 37%,
+    var(--color-surface-sunken) 63%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+  border-radius: var(--radius-sm);
+}
+
+@utility clamp-* {
+  display: -webkit-box;
+  -webkit-line-clamp: --value(integer);
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@utility scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@utility sr-only-focusable {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+
+  &:focus-visible {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+}
+
+/* ============================================================================
+ * Z-INDEX
+ * ----------------------------------------------------------------------------
+ * Tailwind v4 NO tiene un namespace `--z-*` en @theme, así que los tokens de
+ * tokens.css no generaban ninguna clase: `z-sidebar`, `z-dropdown`, `z-modal`
+ * y `z-toast` eran clases MUERTAS en toda la app. Todo se apilaba por orden del
+ * DOM, y por eso el cajón del sidebar quedaba debajo de los filtros de la
+ * página — los <Select> llevan un wrapper `relative`, y un elemento posicionado
+ * que viene después en el DOM gana contra un `fixed` sin z-index.
+ *
+ * Declararlas con @utility es lo que las convierte en utilidades reales, con
+ * soporte de variantes incluido.
+ * ========================================================================= */
+@utility z-base { z-index: var(--z-base); }
+@utility z-raised { z-index: var(--z-raised); }
+@utility z-sticky { z-index: var(--z-sticky); }
+@utility z-sidebar { z-index: var(--z-sidebar); }
+@utility z-dropdown { z-index: var(--z-dropdown); }
+@utility z-overlay { z-index: var(--z-overlay); }
+@utility z-modal { z-index: var(--z-modal); }
+@utility z-toast { z-index: var(--z-toast); }
+@utility z-tooltip { z-index: var(--z-tooltip); }

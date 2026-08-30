@@ -1,0 +1,13 @@
+@import 'tailwindcss';
+
+@import './styles/tokens.css';
+@import './styles/brands.css';
+@import './styles/base.css';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+@custom-variant light (&:where([data-theme='light'], [data-theme='light'] *));
+
+@custom-variant pointer-fine (@media (hover: hover) and (pointer: fine));
+@custom-variant pointer-coarse (@media (pointer: coarse));
+
+@custom-variant dense (&:where([data-density='compact'], [data-density='compact'] *));

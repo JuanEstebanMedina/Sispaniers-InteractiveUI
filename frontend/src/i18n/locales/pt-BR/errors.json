@@ -1,0 +1,46 @@
+{
+  "kinds": {
+    "network": "Não conseguimos conectar ao servidor. Verifique sua conexão.",
+    "timeout": "O servidor demorou demais para responder. Tente de novo.",
+    "canceled": "Solicitação cancelada.",
+    "unauthorized": "Sua sessão expirou. Entre novamente.",
+    "forbidden": "Você não tem permissão para fazer isso.",
+    "notFound": "Não encontramos o que você procurava.",
+    "validation": "Confira os dados: há campos com erros.",
+    "conflict": "Esta ação conflita com o estado atual do recurso.",
+    "rateLimit": "Muitas solicitações. Aguarde alguns segundos.",
+    "server": "Algo falhou do nosso lado. Já estamos verificando.",
+    "unknown": "Ocorreu um erro inesperado.",
+    "parse": "O servidor respondeu em um formato inesperado."
+  },
+  "titles": {
+    "network": "Sem conexão com o servidor",
+    "timeout": "O servidor demorou demais",
+    "server": "Erro do servidor",
+    "rateLimit": "Muitas solicitações",
+    "forbidden": "Sem acesso",
+    "unauthorized": "Sessão expirada",
+    "notFound": "Não encontrado",
+    "validation": "Dados inválidos",
+    "conflict": "Conflito de estado",
+    "canceled": "Cancelado",
+    "unknown": "Algo deu errado",
+    "parse": "Resposta inesperada"
+  },
+  "reference": "ref: {{traceId}}",
+  "technicalDetail": "Detalhe técnico (apenas em desenvolvimento)",
+  "boundary": {
+    "title": "Algo deu errado nesta tela",
+    "body": "Você pode voltar ao painel e continuar usando o resto do app."
+  },
+  "notFoundPage": {
+    "title": "Esta página não existe",
+    "body": "O link pode estar errado, ou a seção mudou de lugar."
+  },
+  "forbiddenPage": {
+    "title": "Você não tem acesso a esta seção",
+    "bodyWithRole": "Você entrou com o papel <1>{{role}}</1>, e esta seção pede permissões que ele não inclui.",
+    "bodyNoRole": "Esta seção exige permissões que sua conta não tem.",
+    "hint": "Se acha que é um engano, peça a um administrador para revisar seu papel."
+  }
+}
