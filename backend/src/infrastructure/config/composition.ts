@@ -39,8 +39,8 @@ import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repos
 import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
 import { MongoOperationLayoutRepository } from "../adapters/outbound/mongo/operation-layout.repository.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
-import { InMemorySimulationRegistry } from "../adapters/outbound/simulation/in-memory-simulation-registry.js";
 import { OpenAiCompletionAdapter } from "../adapters/outbound/openai-completion-adapter.js";
+import { InMemorySimulationRegistry } from "../adapters/outbound/simulation/in-memory-simulation-registry.js";
 import { SupabaseAttachmentStorage } from "../adapters/outbound/storage/supabase-attachment-storage.js";
 import { connectMongo } from "./mongo.js";
 
