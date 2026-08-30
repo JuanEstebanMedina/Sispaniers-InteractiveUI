@@ -4,6 +4,7 @@ import type { DocumentType } from "../enums/document-type.js";
 export interface Document {
   id: string;
   type: DocumentType;
+  filename?: string;
   format: DocumentFormat;
   bucketKey: string;
   bookingId?: string;

@@ -173,6 +173,10 @@ export default function OperationDetailPage() {
         setPending((current) => current.slice(1))
         const component = payload as GeneratedComponent | null
         if (!component) return
+        // A refetch already in flight (mount, window focus) can resolve after
+        // this patch and clobber it with a pre-creation snapshot. Cancel it
+        // first so a late response never overwrites the newer SSE data.
+        void queryClient.cancelQueries({ queryKey: queryKeys.operations.componentsAll(trackId) })
         queryClient.setQueriesData<ComponentsResponse>(
           { queryKey: queryKeys.operations.componentsAll(trackId) },
           (cached) => {

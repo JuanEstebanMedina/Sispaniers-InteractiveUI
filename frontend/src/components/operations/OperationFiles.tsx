@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import {
   ExternalLink,
   File,
@@ -7,15 +8,19 @@ import {
   Inbox,
   Loader2,
   Sparkles,
+  Upload,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { api$ } from '@/api/client'
-import { endpoints } from '@/api/endpoints'
+import { endpoints, queryKeys } from '@/api/endpoints'
 import { cn } from '@/lib/cn'
+import { documentFilename } from '@/lib/document'
+import { MAX_UPLOAD_BYTES, mimetypeOf, toBase64 } from '@/lib/file'
 import { formatCalendarDate } from '@/lib/format'
 import { toast } from '@/lib/toast'
+import { uploadDocumentResponseSchema } from '@/schemas'
 import {
   documentPreviewSchema,
   type DocumentFormat,
@@ -85,7 +90,9 @@ function FileRow({
   const openSection = useRailStore((state) => state.openSection)
 
   const Icon = FORMAT_ICONS[document.format]
-  const label = t(`operation.files.types.${document.type}`, { defaultValue: document.type })
+  const kind = t(`operation.files.types.${document.type}`, { defaultValue: document.type })
+  const filename = documentFilename(document)
+  const label = filename
 
   async function open() {
     if (!operation) return
@@ -114,7 +121,9 @@ function FileRow({
     openSection('chat')
   }
 
-  const facts = Object.entries(document.extractedData).slice(0, 4)
+  const { text, ...structured } = document.extractedData
+  const facts = Object.entries(structured).slice(0, 4)
+  const bodyText = typeof text === 'string' ? text.trim() : ''
 
   return (
     <article className="rounded-md px-2 py-2 transition-colors hover:bg-surface-hover">
@@ -122,9 +131,13 @@ function FileRow({
         <Icon className="mt-0.5 size-4 shrink-0 text-fg-subtle" aria-hidden />
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-fg">{label}</p>
-          <p className="mt-0.5 text-xs text-fg-subtle">
-            {formatCalendarDate(document.receivedAt)}
+          <p className="truncate text-sm font-medium text-fg" title={label}>
+            {label}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-fg-subtle">
+            {filename
+              ? `${kind} · ${formatCalendarDate(document.receivedAt)}`
+              : formatCalendarDate(document.receivedAt)}
           </p>
         </div>
 
@@ -158,13 +171,35 @@ function FileRow({
               className="flex items-baseline gap-1 rounded bg-surface px-1.5 py-0.5 text-xs"
             >
               <dt className="text-fg-subtle">{key}</dt>
-              <dd className="font-medium tabular text-fg-muted">{String(value)}</dd>
+              <dd className="max-w-40 truncate font-medium tabular text-fg-muted">
+                {factValue(value)}
+              </dd>
             </div>
           ))}
         </dl>
       )}
+
+      {bodyText && (
+        <p
+          className="mt-1.5 pl-6 text-xs leading-relaxed text-fg-subtle"
+          style={{
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 2,
+            overflow: 'hidden',
+          }}
+          title={bodyText.slice(0, 2000)}
+        >
+          {bodyText}
+        </p>
+      )}
     </article>
   )
+}
+
+function factValue(value: unknown): string {
+  const text = typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)
+  return text.length > 60 ? `${text.slice(0, 60)}…` : text
 }
 
 function IconButton({
@@ -197,5 +232,92 @@ function IconButton({
     >
       {children}
     </button>
+  )
+}
+
+export function DirectUploadButton({ operationId }: { operationId: string }) {
+  const { t } = useTranslation('domain')
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const queryClient = useQueryClient()
+  const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(
+    () => () => {
+      if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current)
+    },
+    [],
+  )
+
+  async function upload(files: FileList) {
+    setUploading(true)
+    let uploadedAny = false
+    try {
+      for (const file of Array.from(files)) {
+        if (file.size > MAX_UPLOAD_BYTES) {
+          toast.error(t('operation.chat.fileTooLarge', { name: file.name }))
+          continue
+        }
+        await api$.post(endpoints.operations.documents(operationId), uploadDocumentResponseSchema, {
+          filename: file.name,
+          mimetype: mimetypeOf(file),
+          data: await toBase64(file),
+        })
+        uploadedAny = true
+      }
+      // `operations.all`, no sólo `.detail`: esta misma sección de Archivos se
+      // alimenta de `.list()` a través de `OperationsLayout` — invalidar sólo
+      // `.detail` no la refresca.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.operations.all })
+
+      if (uploadedAny) {
+        refetchTimerRef.current = setTimeout(() => {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.operations.all })
+        }, 15_000)
+      }
+    } catch {
+      toast.error(t('operation.chat.uploadError'))
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={fileRef}
+        type="file"
+        multiple
+        className="sr-only"
+        onChange={(event) => {
+          const { files } = event.currentTarget
+          if (files?.length) void upload(files)
+          event.currentTarget.value = ''
+        }}
+      />
+
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          fileRef.current?.click()
+        }}
+        disabled={uploading}
+        aria-label={t('operation.files.upload')}
+        title={t('operation.files.upload')}
+        className={cn(
+          'flex size-control-xs shrink-0 items-center justify-center rounded-md',
+          'text-fg-subtle transition-colors hover:bg-surface-hover hover:text-fg',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+        )}
+      >
+        {uploading ? (
+          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+        ) : (
+          <Upload className="size-3.5" aria-hidden />
+        )}
+      </button>
+    </>
   )
 }

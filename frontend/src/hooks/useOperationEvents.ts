@@ -77,7 +77,8 @@ function parsePayload(
       return operationResponseSchema.parse(json)
     }
     return componentSchema.parse(json)
-  } catch {
+  } catch (error) {
+    console.error('[sse] failed to parse event payload', name, data, error)
     return null
   }
 }

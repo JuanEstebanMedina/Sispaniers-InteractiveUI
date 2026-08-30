@@ -62,7 +62,12 @@ export function createUploadOperationDocumentUseCase(deps: UploadOperationDocume
 
     const document: Document = {
       id: idGenerator.newId(),
-      type: input.type ?? "PO",
+      // "Other", not "PO": a manual upload is an arbitrary attachment (a scan,
+      // an ID, anything), and defaulting it into a specific logistics document
+      // type is a false claim, not a harmless placeholder. `PO` used to be the
+      // default here, and everything uploaded without an explicit type showed
+      // up labelled "Purchase order" regardless of what it actually was.
+      type: input.type ?? "Other",
       format: extracted.format,
       bucketKey,
       extractedData: extracted.format === "image" ? {} : { text: extracted.content ?? null },

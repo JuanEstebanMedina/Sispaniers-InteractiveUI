@@ -161,10 +161,13 @@
       "componentGenerated": "Componente actualizado en el panel.",
       "sendError": "No se pudo enviar el mensaje al agente.",
       "referencing": "Widgets a los que apunta este mensaje",
-      "removeReference": "Dejar de apuntar a {{title}}"
+      "removeReference": "Dejar de apuntar a {{title}}",
+      "uploadError": "No se pudo subir el archivo",
+      "fileTooLarge": "{{name}} pesa más de 8 MB"
     },
     "files": {
       "title": "Archivos",
+      "upload": "Subir archivo",
       "emptyTitle": "Todavía no llegó nada",
       "empty": "Acá aparecen los documentos que el agente recibió por correo: BLs, facturas, listas de empaque.",
       "ask": "Preguntarle a la IA",
@@ -177,7 +180,8 @@
         "BillOfLading": "Conocimiento de embarque",
         "Invoice": "Factura",
         "PackingList": "Lista de empaque",
-        "ArrivalNotice": "Aviso de llegada"
+        "ArrivalNotice": "Aviso de llegada",
+        "Other": "Documento"
       }
     },
     "events": {

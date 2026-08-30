@@ -33,6 +33,7 @@ export const endpoints = {
       `/operations/${id}/components/${componentId}`,
     componentRemove: (id: string, componentId: string) =>
       `/operations/${id}/components/${componentId}`,
+    documents: (id: string) => `/operations/${id}/documents`,
     documentPreview: (id: string, documentId: string) =>
       `/operations/${id}/documents/${documentId}/preview-url`,
   },
