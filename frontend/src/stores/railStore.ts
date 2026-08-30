@@ -17,6 +17,8 @@ interface RailStore {
   setOpen: (open: boolean) => void
   setWidth: (width: number) => void
   toggleSection: (id: string) => void
+  /** Como `toggleSection` pero sólo abre: llamarlo sobre la abierta no la cierra. */
+  openSection: (id: string) => void
 }
 
 /**
@@ -31,7 +33,14 @@ export const isOpen = (
 ) => sections[id] ?? fallback
 
 /** The one section that earns the panel's height before anyone touches it. */
-export const DEFAULT_SECTIONS: Record<string, boolean> = { chat: true }
+export const DEFAULT_SECTIONS: Record<string, boolean> = { chat: true, files: false }
+
+/** Every known section closed except `id`. The accordion's one move. */
+function onlyOpen(sections: Record<string, boolean>, id: string): Record<string, boolean> {
+  const known = { ...DEFAULT_SECTIONS, ...sections }
+  const closed = Object.fromEntries(Object.keys(known).map((key) => [key, false]))
+  return { ...closed, [id]: true }
+}
 
 const clamp = (width: number) => Math.min(Math.max(width, RAIL_MIN_WIDTH), RAIL_MAX_WIDTH)
 
@@ -63,10 +72,15 @@ export const useRailStore = create<RailStore>()(
           if (isOpen(state.sections, id, DEFAULT_SECTIONS[id])) {
             return { sections: { ...state.sections, [id]: false } }
           }
-          const known = { ...DEFAULT_SECTIONS, ...state.sections }
-          const sections = Object.fromEntries(Object.keys(known).map((key) => [key, false]))
-          return { sections: { ...sections, [id]: true } }
+          return { sections: onlyOpen(state.sections, id) }
         }),
+
+      openSection: (id) =>
+        set((state) =>
+          isOpen(state.sections, id, DEFAULT_SECTIONS[id])
+            ? state
+            : { sections: onlyOpen(state.sections, id) },
+        ),
     }),
     {
       name: 'sp.rail',

@@ -1,71 +1,90 @@
-import { useEffect, useRef } from 'react'
+import { useCallback } from 'react'
+import { z } from 'zod'
 
 import { endpoints } from '@/api/endpoints'
-import { env } from '@/config/env'
-import { componentSchema, type GeneratedComponent } from '@/schemas/component.schema'
+import { operationResponseSchema, type Operation } from '@/schemas/operation.schema'
+import {
+  WIDGET_SIZE_NAMES,
+  componentSchema,
+  type GeneratedComponent,
+} from '@/schemas/component.schema'
+import { useSse } from './useSse'
 
 /**
- * EL CANAL DEL AGENTE — `GET /api/operations/:id/events`
+ * `GET /api/operations/:id/events` — todo lo que pasa en UNA operación: sus
+ * componentes Y la operación misma. No habla de la lista, así que no
+ * reemplaza el sondeo de la grilla ni del riel.
  *
- * El backend abre un `text/event-stream` y publica dos eventos con nombre,
- * `component-created` y `component-updated`, cada uno con el componente ya
- * serializado en `data`.
+ * El backend abre un `text/event-stream` y publica cinco eventos con nombre:
+ * `component-pending` (antes de saber qué construirá el agente, con un
+ * tamaño estimado), `component-created`/`component-updated` (el componente ya
+ * serializado en `data`), y `operation-updated`/`simulation-completed` (la
+ * operación completa, para que la cabecera se entere sin sondear).
  *
- * Ojo con el alcance: este canal habla de LOS COMPONENTES de UNA operación.
- * No dice nada de la lista de operaciones, así que no reemplaza el sondeo de
- * la grilla ni el del riel — sirve para que la superficie generada se
- * reordene sola mientras la mirás, que es justo lo que pide el reto.
- *
- * `EventSource` reconecta solo cuando el servidor corta. Lo que NO queremos es
- * reconectar porque el componente de React se volvió a pintar: por eso el
- * callback vive en un ref y el efecto sólo depende del id.
+ * `useSse` usa fetch para poder enviar el JWT; `EventSource` no admite headers.
  */
 
-export type OperationEventName = 'component-created' | 'component-updated'
+export type OperationEventName =
+  | 'component-created'
+  | 'component-updated'
+  | 'component-pending'
+  | 'operation-updated'
+  | 'simulation-completed'
+
+const componentPendingSchema = z.object({
+  operationId: z.string(),
+  tempId: z.string(),
+  estimatedSize: z.enum(WIDGET_SIZE_NAMES),
+})
+
+export type ComponentPendingEvent = z.infer<typeof componentPendingSchema>
 
 export type OperationEventHandler = (
   event: OperationEventName,
-  component: GeneratedComponent | null,
+  payload: GeneratedComponent | ComponentPendingEvent | Operation | null,
 ) => void
 
-export function useOperationEvents(operationId: string, onEvent: OperationEventHandler): void {
-  const handler = useRef(onEvent)
-  handler.current = onEvent
+/** Estado de la conexión, para que un contenido viejo nunca pase por en vivo. */
+export type StreamStatus = 'connecting' | 'live' | 'offline' | 'ended'
 
-  useEffect(() => {
-    // Sin operación abierta no hay nada que escuchar. Abrir el stream con un
-    // id vacío deja una conexión colgada contra una ruta que da 404.
-    if (!operationId) return
+export function useOperationEvents(
+  operationId: string,
+  onEvent: OperationEventHandler,
+): StreamStatus {
+  const handleSseEvent = useCallback(
+    (name: string, data: string) => {
+      if (!isOperationEventName(name)) return
+      onEvent(name, parsePayload(name, data))
+    },
+    [onEvent],
+  )
 
-    const url = `${env.VITE_API_URL}${endpoints.ai.events(operationId)}`
-    const source = new EventSource(url)
-
-    const listen = (name: OperationEventName) => {
-      const listener = (event: MessageEvent<string>) => {
-        // El componente es un extra: si el backend cambia la forma, el aviso de
-        // "algo se movió" tiene que llegar igual para poder refrescar.
-        const parsed = safeParse(event.data)
-        handler.current(name, parsed)
-      }
-      source.addEventListener(name, listener)
-      return () => source.removeEventListener(name, listener)
-    }
-
-    const stop = [listen('component-created'), listen('component-updated')]
-
-    return () => {
-      for (const off of stop) off()
-      source.close()
-    }
-  }, [operationId])
+  return useSse(operationId ? endpoints.ai.events(operationId) : '', handleSseEvent)
 }
 
-function safeParse(data: string): GeneratedComponent | null {
+function isOperationEventName(value: string): value is OperationEventName {
+  return (
+    value === 'component-created' ||
+    value === 'component-updated' ||
+    value === 'component-pending' ||
+    value === 'operation-updated' ||
+    value === 'simulation-completed'
+  )
+}
+
+function parsePayload(
+  name: OperationEventName,
+  data: string,
+): GeneratedComponent | ComponentPendingEvent | Operation | null {
+  // Un evento ilegible no tumba el stream: el consumidor refresca por HTTP.
   try {
-    return componentSchema.parse(JSON.parse(data))
+    const json = JSON.parse(data)
+    if (name === 'component-pending') return componentPendingSchema.parse(json)
+    if (name === 'operation-updated' || name === 'simulation-completed') {
+      return operationResponseSchema.parse(json)
+    }
+    return componentSchema.parse(json)
   } catch {
-    // Un evento ilegible no puede tumbar el stream: el consumidor refresca por
-    // HTTP y se entera igual.
     return null
   }
 }

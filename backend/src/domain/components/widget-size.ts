@@ -24,7 +24,13 @@ export function isValidWidgetWidth(width: number, cols: GridCols): boolean {
   return VALID_WIDTHS.has(width) && cols % width === 0;
 }
 
-/** Kinds that need real estate to say anything. */
+/**
+ * Kinds that need real estate to say anything: axes, a legend and a grid.
+ *
+ * `sparkline` is deliberately absent. It is the axis-less version that exists
+ * precisely so a trend fits in a tile, so subjecting it to the minimum would
+ * defeat the reason it was added.
+ */
 const CHART_NODE_KINDS = new Set(["trend-chart", "category-chart", "breakdown-chart"]);
 
 /** Sizes too short to render a chart legibly — one cell is about 132px. */

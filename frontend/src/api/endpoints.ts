@@ -9,13 +9,18 @@ export const endpoints = {
     resetPassword: '/auth/reset-password',
   },
 
+  companies: {
+    list: '/companies',
+    /** Idempotent by name: 200 if it already exists, 201 if it was created. */
+    create: '/companies',
+    /** Also how a company is disabled/re-enabled — `{ active: false/true }`. There's no remove. */
+    update: (id: string) => `/companies/${id}`,
+  },
+
   users: {
     list: '/users',
-    detail: (id: string) => `/users/${id}`,
     create: '/users',
     update: (id: string) => `/users/${id}`,
-    remove: (id: string) => `/users/${id}`,
-    updateRole: (id: string) => `/users/${id}/role`,
   },
 
   operations: {
@@ -35,6 +40,12 @@ export const endpoints = {
       `/operations/${id}/components/${componentId}/placement`,
     componentContent: (id: string, componentId: string) =>
       `/operations/${id}/components/${componentId}`,
+    /**
+     * URL firmada y de vida corta (5 min) para ver un adjunto. No se pide al
+     * listar los archivos: se pide al abrir uno, porque caduca.
+     */
+    documentPreview: (id: string, documentId: string) =>
+      `/operations/${id}/documents/${documentId}/preview-url`,
   },
 
   notifications: {
@@ -46,6 +57,7 @@ export const endpoints = {
   ai: {
     chat: (operationId: string) => `/operations/${operationId}/chat`,
     events: (operationId: string) => `/operations/${operationId}/events`,
+    operationEvents: '/operations/events',
     components: (operationId: string, cols: 2 | 4 | 8) =>
       `/operations/${operationId}/components?cols=${cols}`,
   },
@@ -57,10 +69,13 @@ export const queryKeys = {
   auth: {
     me: ['auth', 'me'] as const,
   },
+  companies: {
+    all: ['companies'] as const,
+    list: () => ['companies', 'list'] as const,
+  },
   users: {
     all: ['users'] as const,
-    list: (filters?: unknown) => ['users', 'list', filters ?? {}] as const,
-    detail: (id: string) => ['users', 'detail', id] as const,
+    list: () => ['users', 'list'] as const,
   },
   operations: {
     all: ['operations'] as const,

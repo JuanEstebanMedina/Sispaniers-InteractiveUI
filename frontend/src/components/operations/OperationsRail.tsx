@@ -2,9 +2,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { queryKeys } from '@/api/endpoints'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useOperationEvents } from '@/hooks'
+import type { OperationEventName } from '@/hooks/useOperationEvents'
 import { cn } from '@/lib/cn'
 import { toast } from '@/lib/toast'
 import type { Operation } from '@/schemas'
@@ -16,6 +16,7 @@ import {
   useRailStore,
 } from '@/stores/railStore'
 import { AgentChat } from './AgentChat'
+import { OperationFiles } from './OperationFiles'
 import { RailItem } from './RailItem'
 import { RailSection } from './RailSection'
 
@@ -59,19 +60,37 @@ export function OperationsRail({
   const toggleSection = useRailStore((state) => state.toggleSection)
 
   const onOperationEvent = useCallback(
-    (eventName: 'component-created' | 'component-updated') => {
+    (eventName: OperationEventName) => {
+      // Pending placeholders and operation-level events are someone else's
+      // concern — the rail only reacts once a component actually exists to
+      // invalidate the cache for.
+      if (eventName !== 'component-created' && eventName !== 'component-updated') return
       toast.info(
         eventName === 'component-created'
           ? t('operation.events.componentCreated')
           : t('operation.events.componentUpdated'),
       )
+      // `cols` is measured by the grid itself and can be 2, 4 or 8 depending on
+      // the viewport — matching it exactly here would silently miss whichever
+      // width the grid actually settled on. A predicate on the operation id
+      // catches the active query regardless of its column count.
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.operations.components(activeTrackId ?? '', 4),
+        predicate: (query) =>
+          query.queryKey[0] === 'operations' &&
+          query.queryKey[1] === 'components' &&
+          query.queryKey[2] === (activeTrackId ?? ''),
       })
     },
     [t, queryClient, activeTrackId],
   )
   useOperationEvents(activeTrackId ?? '', onOperationEvent)
+  // La operación abierta ya está en la lista que el riel recibe, así que esto
+  // es una lectura de lo que tiene en la mano — no una consulta más.
+  const active = useMemo(
+    () => operations.find((operation) => operation.trackId === activeTrackId),
+    [operations, activeTrackId],
+  )
+  const documents = active?.documents ?? []
 
   const sorted = useMemo(() => {
     const waiting = (operation: Operation) => (operation.health === 'critical' ? 0 : 1)
@@ -117,6 +136,16 @@ export function OperationsRail({
         weight={2}
       >
         <AgentChat operationId={activeTrackId ?? ''} className="min-h-0 flex-1" />
+      </RailSection>
+
+      <RailSection
+        title={t('operation.files.title')}
+        open={isOpen(sections, 'files', DEFAULT_SECTIONS.files)}
+        onToggle={() => toggleSection('files')}
+        badge={documents.length}
+        weight={2}
+      >
+        <OperationFiles operation={active} documents={documents} className="min-h-0 flex-1" />
       </RailSection>
 
       <RailSection

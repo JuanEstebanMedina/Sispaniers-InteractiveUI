@@ -8,7 +8,6 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Dropdown, MenuItem, MenuLabel } from '@/components/ui/Dropdown'
-import { env } from '@/config/env'
 import { LOCALE_LABELS, SUPPORTED_LOCALES, currentLocale, setLocale } from '@/i18n'
 import { cn } from '@/lib/cn'
 import { useThemeStore, type ThemeMode } from '@/stores/themeStore'
@@ -68,17 +67,11 @@ export function SidebarFooter({
 
   return (
     <div className="shrink-0 border-t border-line p-3">
-      {(env.VITE_USE_MOCKS || !isOnline) && (
+      {!isOnline && (
         <div className={cn('mb-3 flex flex-wrap gap-1', collapsed && 'md:justify-center')}>
           {!isOnline && (
             <Badge tone="danger" size="sm" dot pulse icon={<WifiOff className="size-3" />}>
               <span className={labelVisibility}>{t('states.offline')}</span>
-            </Badge>
-          )}
-          {env.VITE_USE_MOCKS && (
-            <Badge tone="warning" size="sm" title={t('states.mockTooltip')}>
-              <span className={labelVisibility}>{t('states.mockData')}</span>
-              <span className={iconOnly}>{t('states.mock')}</span>
             </Badge>
           )}
         </div>

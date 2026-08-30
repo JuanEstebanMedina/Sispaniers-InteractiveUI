@@ -9,6 +9,8 @@
     "confirm": "Confirmar",
     "delete": "Eliminar",
     "edit": "Editar",
+    "disable": "Deshabilitar",
+    "enable": "Habilitar",
     "create": "Crear",
     "close": "Cerrar",
     "back": "Volver",
@@ -101,6 +103,7 @@
     "items": {
       "operations": "Operaciones",
       "assistant": "Asistente",
+      "companies": "Compañías",
       "users": "Usuarios",
       "settings": "Configuración",
       "components": "Componentes",

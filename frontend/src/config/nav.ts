@@ -1,12 +1,13 @@
-import { Container, Settings, Sparkles, Users, Wrench, type LucideIcon } from 'lucide-react'
+import { Building2, Container, Settings, Sparkles, Users, Wrench, type LucideIcon } from 'lucide-react'
 
-import type { Permission } from '@/auth/roles'
+import type { Role } from '@/auth/roles'
 
 export interface NavItem {
   labelKey: string
   to: string
   icon: LucideIcon
-  anyOf?: readonly Permission[]
+  /** Absent → any authenticated role can see it. */
+  minRole?: Role
   badgeKey?: 'decisions' | 'notifications'
   devOnly?: boolean
 }
@@ -23,20 +24,20 @@ export const navigation: NavSection[] = [
         labelKey: 'operations',
         to: '/operations',
         icon: Container,
-        anyOf: ['operations:read'],
         badgeKey: 'decisions',
       },
     ],
   },
   {
     labelKey: 'intelligence',
-    items: [{ labelKey: 'assistant', to: '/assistant', icon: Sparkles, anyOf: ['ai:use'] }],
+    items: [{ labelKey: 'assistant', to: '/assistant', icon: Sparkles }],
   },
   {
     labelKey: 'admin',
     items: [
-      { labelKey: 'users', to: '/users', icon: Users, anyOf: ['users:read'] },
-      { labelKey: 'settings', to: '/settings', icon: Settings, anyOf: ['settings:read'] },
+      { labelKey: 'companies', to: '/companies', icon: Building2, minRole: 'superadmin' },
+      { labelKey: 'users', to: '/users', icon: Users, minRole: 'admin' },
+      { labelKey: 'settings', to: '/settings', icon: Settings, minRole: 'admin' },
     ],
   },
   {

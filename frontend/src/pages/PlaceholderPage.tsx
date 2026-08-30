@@ -9,7 +9,6 @@ import { Card } from '@/components/ui/Card'
 
 const TITLE_BY_PATH: Record<string, string> = {
   '/assistant': 'assistant',
-  '/users': 'users',
   '/settings': 'settings',
   '/profile': 'profile',
 }

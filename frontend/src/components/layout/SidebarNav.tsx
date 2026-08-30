@@ -10,7 +10,7 @@ import { cn } from '@/lib/cn'
  * La lista de navegación del sidebar.
  *
  * Se filtra por permiso: cada ítem declara lo que necesita en config/nav.ts,
- * así un operador sencillamente nunca ve "Usuarios" — no porque alguien se
+ * así un operador sencillamente nunca ve "Compañías" — no porque alguien se
  * acordara de escribir un `if` acá.
  */
 
@@ -24,15 +24,15 @@ interface SidebarNavProps {
 
 export function SidebarNav({ labelVisibility, collapsed, onNavigate, badges }: SidebarNavProps) {
   const { t } = useTranslation()
-  const canAny = useAuthStore((state) => state.canAny)
+  const isAtLeast = useAuthStore((state) => state.isAtLeast)
 
   const sections = navigation
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
         if (item.devOnly && !isDev) return false
-        if (!item.anyOf) return true
-        return canAny(item.anyOf)
+        if (!item.minRole) return true
+        return isAtLeast(item.minRole)
       }),
     }))
     // Una sección sin ítems visibles no puede dejar su encabezado huérfano.

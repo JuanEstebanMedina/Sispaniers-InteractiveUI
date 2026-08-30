@@ -10,7 +10,7 @@ import type {
   UpsertOperationFromEmailResult,
 } from "../../../../../application/use-cases/email/upsert-operation-from-email.use-case.js";
 import type { NormalizedEmail } from "../../../../../domain/model/email.js";
-import { EmailSendError } from "../../../../../domain/model/errors.js";
+import { CompanyDisabledError, EmailSendError } from "../../../../../domain/model/errors.js";
 import { toNormalizedEmail } from "../mappers/email.mapper.js";
 import { errorResponseSchema } from "../schemas/error.schema.js";
 import {
@@ -67,7 +67,12 @@ export const emailsRoutes: FastifyPluginAsyncZod<EmailsRouteDeps> = async (fasti
       const operationResult = await deps.upsertOperationFromEmail({ email, attachments });
 
       if (operationResult?.created === true) {
-        await deps.enrollOperationInSimulation({ operationId: operationResult.operationId });
+        await deps.enrollOperationInSimulation({
+          operationId: operationResult.operationId,
+          ...(operationResult.companyId !== undefined
+            ? { companyId: operationResult.companyId }
+            : {}),
+        });
       }
 
       request.log.warn(
@@ -101,7 +106,11 @@ export const emailsRoutes: FastifyPluginAsyncZod<EmailsRouteDeps> = async (fasti
     {
       schema: {
         body: sendEmailBodySchema,
-        response: { 201: sendEmailResponseSchema, 502: errorResponseSchema },
+        response: {
+          201: sendEmailResponseSchema,
+          403: errorResponseSchema,
+          502: errorResponseSchema,
+        },
       },
     },
     async (request, reply) => {
@@ -123,6 +132,11 @@ export const emailsRoutes: FastifyPluginAsyncZod<EmailsRouteDeps> = async (fasti
 
         reply.code(201).send({ email_id: result.emailId, status: "sent" as const });
       } catch (error) {
+        if (error instanceof CompanyDisabledError) {
+          request.log.warn({ run_id: dto.run_id, reason: error.message }, "email send blocked");
+          reply.code(403).send({ error: "company_disabled", message: error.message });
+          return;
+        }
         if (error instanceof EmailSendError) {
           request.log.warn({ run_id: dto.run_id, reason: error.message }, "email send failed");
           reply.code(502).send({ error: "email_send_failed", message: error.message });

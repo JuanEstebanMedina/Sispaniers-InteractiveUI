@@ -1,4 +1,73 @@
 {
+  "company": {
+    "title": "Companies",
+    "subtitle": "Every company the agent works with, matched by name so there are never duplicates.",
+    "emptyTitle": "No companies yet",
+    "emptyHint": "Create the first one, or it will be created automatically the first time an operation names it.",
+    "actions": {
+      "create": "New company"
+    },
+    "modal": {
+      "title": "New company",
+      "editTitle": "Edit company",
+      "description": "Companies are matched by name — creating one with an existing name just reuses it."
+    },
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "e.g. Andes Textiles",
+      "contactEmail": "Contact email",
+      "contactEmailPlaceholder": "ops@company.com",
+      "notificationChannel": "Notification channel",
+      "status": "Status"
+    },
+    "channels": {
+      "email": "Email",
+      "slack": "Slack"
+    },
+    "status": {
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "toasts": {
+      "saved": "{{name}} is ready",
+      "disabled": "{{name}} was disabled",
+      "enabled": "{{name}} was enabled"
+    }
+  },
+  "user": {
+    "title": "Users",
+    "subtitle": "Everyone with access to the platform.",
+    "emptyTitle": "No users yet",
+    "emptyHint": "Create the first one to give someone access.",
+    "actions": {
+      "create": "New user"
+    },
+    "modal": {
+      "title": "New user",
+      "editTitle": "Edit user",
+      "description": "The email can't be changed once the account is created."
+    },
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "passwordEdit": "New password",
+      "passwordPlaceholder": "Leave blank to keep the current password",
+      "role": "Role",
+      "company": "Company",
+      "companyNone": "No company",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "toasts": {
+      "saved": "{{name}} is ready",
+      "disabled": "{{name}} was disabled",
+      "enabled": "{{name}} was enabled"
+    }
+  },
   "operation": {
     "title": "Operations",
     "subtitle": "Everything the agents are running right now. Most recently moved, first.",
@@ -62,7 +131,8 @@
       "moveWidget": "Move {{title}}",
       "renameWidget": "Rename widget",
       "widgetName": "Widget name",
-      "untitledWidget": "AI component"
+      "untitledWidget": "AI component",
+      "pendingTitle": "Generating…"
     },
     "chat": {
       "title": "Talk to the agent",
@@ -75,9 +145,32 @@
       "componentGenerated": "Component updated in the panel.",
       "sendError": "Could not send the message to the agent."
     },
+    "files": {
+      "title": "Files",
+      "emptyTitle": "Nothing has arrived yet",
+      "empty": "Documents the agent received by email show up here: BLs, invoices, packing lists.",
+      "ask": "Ask the AI",
+      "alreadyAttached": "Already in the chat",
+      "open": "Open the file",
+      "openError": "The file could not be opened.",
+      "types": {
+        "PO": "Purchase order",
+        "BookingConfirmation": "Booking confirmation",
+        "BillOfLading": "Bill of lading",
+        "Invoice": "Invoice",
+        "PackingList": "Packing list",
+        "ArrivalNotice": "Arrival notice"
+      }
+    },
     "events": {
       "componentCreated": "A new component was generated",
       "componentUpdated": "A component was updated"
+    },
+    "stream": {
+      "live": "Live",
+      "connecting": "Connecting…",
+      "offline": "Offline",
+      "ended": "Flow finished"
     }
   }
 }

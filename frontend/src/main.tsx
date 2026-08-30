@@ -16,7 +16,6 @@ import { currentLocale } from './i18n'
 
 import { App } from './App'
 import { useAuthStore } from './auth/auth.store'
-import { env } from './config/env'
 import { initTheme } from './stores/themeStore'
 
 initTheme()
@@ -31,11 +30,6 @@ window.addEventListener('error', (event) => {
 })
 
 async function bootstrap() {
-  if (env.VITE_USE_MOCKS) {
-    const { startMocks } = await import('./mocks/browser')
-    await startMocks()
-  }
-
   await useAuthStore.getState().bootstrap()
 
   const container = document.getElementById('root')

@@ -29,6 +29,7 @@ import type { Operation } from "../../../../../../domain/logistics/operation.js"
 import {
   BookingNotFoundError,
   CompanyNotFoundError,
+  CompanyReferenceRequiredError,
   ContainerNotFoundError,
   DocumentNotFoundError,
   DocumentUploadError,
@@ -108,7 +109,11 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
     {
       schema: {
         body: createOperationBodySchema,
-        response: { 201: operationResponseSchema, 404: errorResponseSchema },
+        response: {
+          201: operationResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+        },
       },
     },
     async (request, reply) => {
@@ -116,19 +121,35 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
 
       try {
         const result = await deps.createOperation({
-          companyId: dto.company_id,
+          ...(dto.company_id !== undefined ? { companyId: dto.company_id } : {}),
+          ...(dto.company !== undefined
+            ? {
+                company: {
+                  name: dto.company.name,
+                  ...(dto.company.contact_emails !== undefined
+                    ? { contactEmails: dto.company.contact_emails }
+                    : {}),
+                },
+              }
+            : {}),
           ...(dto.health !== undefined ? { health: dto.health } : {}),
         });
 
         await deps.enrollOperationInSimulation({
           operationId: result.operation.id,
-          companyId: dto.company_id,
+          ...(result.operation.companyId !== undefined
+            ? { companyId: result.operation.companyId }
+            : {}),
         });
 
         reply.code(201).send(toOperationResponse(result.operation, result.status));
       } catch (error) {
         if (error instanceof CompanyNotFoundError) {
           reply.code(404).send({ error: "company_not_found", message: error.message });
+          return;
+        }
+        if (error instanceof CompanyReferenceRequiredError) {
+          reply.code(400).send({ error: "company_reference_required", message: error.message });
           return;
         }
         throw error;
@@ -148,7 +169,13 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
       const { id } = request.params;
 
       try {
-        const result = await deps.getOperation({ id });
+        const { actor } = request;
+        const result = await deps.getOperation({
+          id,
+          ...(actor.role !== "superadmin" && actor.companyId !== undefined
+            ? { requesterCompanyId: actor.companyId }
+            : {}),
+        });
         reply.code(200).send(toOperationResponse(result.operation, result.status));
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
@@ -187,10 +214,13 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
       const body = request.body;
 
       try {
+        const { actor } = request;
+        const companyId = actor.role === "superadmin" ? body.company_id : actor.companyId;
+
         const results = await deps.listOperations({
           ...(body.status !== undefined ? { status: body.status } : {}),
           ...(body.health !== undefined ? { health: body.health } : {}),
-          ...(body.company_id !== undefined ? { companyId: body.company_id } : {}),
+          ...(companyId !== undefined ? { companyId } : {}),
           ...(body.search !== undefined ? { search: body.search } : {}),
           ...(body.from !== undefined ? { from: new Date(body.from) } : {}),
           ...(body.to !== undefined ? { to: new Date(body.to) } : {}),

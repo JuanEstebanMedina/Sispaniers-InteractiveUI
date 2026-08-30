@@ -2,13 +2,15 @@ import type { ContainerState } from "../../../domain/enums/container-state.js";
 import type { OperationHealth } from "../../../domain/enums/operation-health.js";
 import { deriveOperationStatus } from "../../../domain/logistics/operation-status.js";
 import type { Operation } from "../../../domain/logistics/operation.js";
-import { CompanyNotFoundError } from "../../../domain/model/errors.js";
-import type { CompanyRepository } from "../../../domain/ports/company.repository.js";
+import { CompanyReferenceRequiredError } from "../../../domain/model/errors.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
+import type { OperationEventPublisher } from "../../../domain/ports/operation-event-publisher.port.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
+import type { ResolveCompany } from "../shared/resolve-company.use-case.js";
 
 export interface CreateOperationInput {
-  companyId: string;
+  companyId?: string;
+  company?: { name: string; contactEmails?: string[] };
   health?: OperationHealth;
 }
 
@@ -19,20 +21,31 @@ export interface CreateOperationResult {
 
 export interface CreateOperationDeps {
   operationRepository: OperationRepository;
-  companyRepository: CompanyRepository;
+  resolveCompany: ResolveCompany;
   idGenerator: IdGenerator;
+  operationEventPublisher: OperationEventPublisher;
 }
 
 export function createCreateOperationUseCase(deps: CreateOperationDeps) {
-  const { operationRepository, companyRepository, idGenerator } = deps;
+  const { operationRepository, resolveCompany, idGenerator, operationEventPublisher } = deps;
 
   return async function createOperation(
     input: CreateOperationInput,
   ): Promise<CreateOperationResult> {
-    const company = await companyRepository.findById(input.companyId);
+    const company = await resolveCompany({
+      ...(input.companyId !== undefined ? { companyId: input.companyId } : {}),
+      ...(input.company !== undefined
+        ? {
+            companyName: input.company.name,
+            ...(input.company.contactEmails !== undefined
+              ? { contactEmails: input.company.contactEmails }
+              : {}),
+          }
+        : {}),
+    });
 
-    if (company === null) {
-      throw new CompanyNotFoundError(input.companyId);
+    if (company === undefined) {
+      throw new CompanyReferenceRequiredError();
     }
 
     const operation: Operation = {
@@ -45,6 +58,7 @@ export function createCreateOperationUseCase(deps: CreateOperationDeps) {
     };
 
     await operationRepository.save(operation);
+    operationEventPublisher.publish(operation.id, "operation-created", operation);
 
     return { operation, status: deriveOperationStatus(operation) };
   };

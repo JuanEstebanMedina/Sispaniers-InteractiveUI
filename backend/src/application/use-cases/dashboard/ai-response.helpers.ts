@@ -17,6 +17,13 @@ export interface PromptContext {
   componentCatalog: Milestone[];
 }
 
+const EMPTY_PROMPT_CONTEXT: PromptContext = {
+  companyKnowledge: [],
+  clientMemory: [],
+  runHistory: [],
+  componentCatalog: [],
+};
+
 function renderKnowledgeList(entries: string[]): string {
   return entries.length === 0 ? NOT_AVAILABLE : entries.join("\n");
 }
@@ -42,7 +49,7 @@ export function buildBasePrompt(
   trigger: AiTrigger,
   currentInput: string,
   gridColumns: number,
-  context: PromptContext,
+  context: PromptContext = EMPTY_PROMPT_CONTEXT,
 ): string {
   const replacements: Record<string, string> = {
     "{{company_knowledge}}": renderKnowledgeList(context.companyKnowledge),
@@ -61,12 +68,17 @@ export async function completeOrThrow(
   aiCompletionPort: AiCompletionPort,
   prompt: string,
 ): Promise<{ text: string }> {
+  let result: Awaited<ReturnType<AiCompletionPort["complete"]>>;
   try {
-    return await aiCompletionPort.complete({ prompt });
+    result = await aiCompletionPort.complete({ prompt });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     throw new AiCompletionError(reason);
   }
+  if (result.kind !== "text") {
+    throw new AiCompletionError(`unexpected result kind "${result.kind}" from a no-tools request`);
+  }
+  return result;
 }
 
 export function stripMarkdownCodeFence(text: string): string {

@@ -1,7 +1,16 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
+import { createCreateComponentCommand } from "../../application/commands/create-component.command.js";
+import { createUpdateComponentCommand } from "../../application/commands/update-component.command.js";
+import { createCreateUserUseCase } from "../../application/use-cases/auth/create-user.use-case.js";
+import { createGetMeUseCase } from "../../application/use-cases/auth/get-me.use-case.js";
+import { createListUsersUseCase } from "../../application/use-cases/auth/list-users.use-case.js";
+import { createLoginUseCase } from "../../application/use-cases/auth/login.use-case.js";
+import { createRefreshTokenUseCase } from "../../application/use-cases/auth/refresh-token.use-case.js";
+import { createUpdateUserUseCase } from "../../application/use-cases/auth/update-user.use-case.js";
 import { createApplyTrackingEventUseCase } from "../../application/use-cases/dashboard/apply-tracking-event.use-case.js";
+import { createCreateCompanyUseCase } from "../../application/use-cases/dashboard/create-company.use-case.js";
 import { createCreateComponentUseCase } from "../../application/use-cases/dashboard/create-component.use-case.js";
 import { createCreateOperationUseCase } from "../../application/use-cases/dashboard/create-operation.use-case.js";
 import { createDeleteComponentUseCase } from "../../application/use-cases/dashboard/delete-component.use-case.js";
@@ -10,43 +19,44 @@ import { createGenerateComponentFromAiUseCase } from "../../application/use-case
 import { createGetDocumentPreviewUrlUseCase } from "../../application/use-cases/dashboard/get-document-preview-url.use-case.js";
 import { createGetOperationComponentsUseCase } from "../../application/use-cases/dashboard/get-operation-components.use-case.js";
 import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
+import { createListCompaniesUseCase } from "../../application/use-cases/dashboard/list-companies.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
-import { createRespondToChatUseCase } from "../../application/use-cases/dashboard/respond-to-chat.use-case.js";
 import { createRunSimulationTickUseCase } from "../../application/use-cases/dashboard/run-simulation-tick.use-case.js";
+import { createUpdateCompanyUseCase } from "../../application/use-cases/dashboard/update-company.use-case.js";
 import { createUpdateComponentContentUseCase } from "../../application/use-cases/dashboard/update-component-content.use-case.js";
 import { createUpdateComponentPlacementUseCase } from "../../application/use-cases/dashboard/update-component-placement.use-case.js";
 import { createUploadOperationDocumentUseCase } from "../../application/use-cases/dashboard/upload-operation-document.use-case.js";
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import { createUpsertOperationFromEmailUseCase } from "../../application/use-cases/email/upsert-operation-from-email.use-case.js";
+import { createResolveCompanyUseCase } from "../../application/use-cases/shared/resolve-company.use-case.js";
+import { CommandRegistry } from "../../domain/commands/command-registry.js";
 import type { AiCompletionPort } from "../../domain/ports/ai-completion-port.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
 import type { AttachmentStorage } from "../../domain/ports/attachment-storage.port.js";
-import type { ChatHistoryPort } from "../../domain/ports/chat-history.port.js";
-import type { ClientMemoryPort } from "../../domain/ports/client-memory.port.js";
-import type { CompanyKnowledgePort } from "../../domain/ports/company-knowledge.port.js";
+import type { AuthTokenPort } from "../../domain/ports/auth-token.port.js";
 import type { CompanyRepository } from "../../domain/ports/company.repository.js";
 import type { ComponentRepository } from "../../domain/ports/component.repository.js";
 import type { EmailSender } from "../../domain/ports/email-sender.port.js";
-import type { EpisodicMemoryPort } from "../../domain/ports/episodic-memory.port.js";
 import type { OperationEventPublisher } from "../../domain/ports/operation-event-publisher.port.js";
 import type { OperationRepository } from "../../domain/ports/operation.repository.js";
+import type { PasswordHasher } from "../../domain/ports/password-hasher.port.js";
 import type { SimulationRegistry } from "../../domain/ports/simulation-registry.port.js";
+import type { UserRepository } from "../../domain/ports/user.repository.js";
 import { buildApp } from "../adapters/inbound/http/app.js";
 import { MultiFormatAttachmentExtractor } from "../adapters/outbound/attachment/multi-format-attachment-extractor.js";
+import { BcryptPasswordHasher } from "../adapters/outbound/auth/bcrypt-password-hasher.js";
+import { JwtTokenAdapter } from "../adapters/outbound/auth/jwt-token-adapter.js";
 import { NodemailerEmailSender } from "../adapters/outbound/email/nodemailer-email-sender.js";
 import { InMemoryComponentEventPublisher } from "../adapters/outbound/events/in-memory-component-event-publisher.js";
 import { InMemoryOperationEventPublisher } from "../adapters/outbound/events/in-memory-operation-event-publisher.js";
 import { FallbackAiCompletionAdapter } from "../adapters/outbound/fallback-ai-completion-adapter.js";
 import { GeminiCompletionAdapter } from "../adapters/outbound/gemini-completion-adapter.js";
 import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.js";
-import { InMemoryChatHistoryStore } from "../adapters/outbound/memory/in-memory-chat-history-store.js";
-import { StubClientMemoryAdapter } from "../adapters/outbound/memory/stub-client-memory-adapter.js";
-import { StubCompanyKnowledgeAdapter } from "../adapters/outbound/memory/stub-company-knowledge-adapter.js";
 import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repository.js";
 import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
-import { MongoEpisodicMemoryRepository } from "../adapters/outbound/mongo/milestone.repository.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
+import { MongoUserRepository } from "../adapters/outbound/mongo/user.repository.js";
 import { OpenAiCompletionAdapter } from "../adapters/outbound/openai-completion-adapter.js";
 import { InMemorySimulationRegistry } from "../adapters/outbound/simulation/in-memory-simulation-registry.js";
 import { SupabaseAttachmentStorage } from "../adapters/outbound/storage/supabase-attachment-storage.js";
@@ -54,11 +64,20 @@ import { connectMongo } from "./mongo.js";
 
 const DEFAULT_SIMULATION_TICK_INTERVAL_MS = 20_000;
 
-// ponytail: tsc doesn't copy .md assets to dist, so this reads from `src/`
-// relative to process.cwd() (both `pnpm dev` and `pnpm start` run from
-// backend/). Add a build-time asset copy if that assumption ever breaks.
+// ponytail: .md files stay under src/ only — dist/ is pure compiled JS.
+// The Dockerfile's runtime stage copies src/application/{prompts,skills}
+// directly (unrelated to tsc), and pnpm dev/start both run from backend/
+// locally, so process.cwd() + "src/..." resolves in every environment.
 const ARI_SYSTEM_PROMPT = readFileSync(
   join(process.cwd(), "src/application/prompts/ari-system-prompt.md"),
+  "utf-8",
+);
+const CREATE_COMPONENT_SKILL = readFileSync(
+  join(process.cwd(), "src/application/skills/create-component.skill.md"),
+  "utf-8",
+);
+const UPDATE_COMPONENT_SKILL = readFileSync(
+  join(process.cwd(), "src/application/skills/update-component.skill.md"),
   "utf-8",
 );
 
@@ -74,12 +93,11 @@ export interface CreateAppOverrides {
   operationRepository?: OperationRepository;
   companyRepository?: CompanyRepository;
   componentRepository?: ComponentRepository;
+  userRepository?: UserRepository;
   simulationRegistry?: SimulationRegistry;
   operationEventPublisher?: OperationEventPublisher;
-  chatHistoryPort?: ChatHistoryPort;
-  companyKnowledgePort?: CompanyKnowledgePort;
-  clientMemoryPort?: ClientMemoryPort;
-  episodicMemoryPort?: EpisodicMemoryPort;
+  passwordHasher?: PasswordHasher;
+  authTokenPort?: AuthTokenPort;
 }
 
 function buildEmailSender(override: EmailSender | undefined): EmailSender {
@@ -106,28 +124,24 @@ interface RepositorySources {
   operationRepository: OperationRepository;
   companyRepository: CompanyRepository;
   componentRepository: ComponentRepository;
-  episodicMemoryPort: EpisodicMemoryPort;
+  userRepository: UserRepository;
   close?: () => Promise<void>;
 }
 
-async function buildRepositories(
-  overrides: CreateAppOverrides,
-  idGenerator: CryptoIdGenerator,
-): Promise<RepositorySources> {
-  const { operationRepository, companyRepository, componentRepository, episodicMemoryPort } =
-    overrides;
+async function buildRepositories(overrides: CreateAppOverrides): Promise<RepositorySources> {
+  const { operationRepository, companyRepository, componentRepository, userRepository } = overrides;
 
   if (
     operationRepository !== undefined &&
     companyRepository !== undefined &&
     componentRepository !== undefined &&
-    episodicMemoryPort !== undefined
+    userRepository !== undefined
   ) {
     return {
       operationRepository,
       companyRepository,
       componentRepository,
-      episodicMemoryPort,
+      userRepository,
     };
   }
 
@@ -137,8 +151,7 @@ async function buildRepositories(
     operationRepository: operationRepository ?? new MongoOperationRepository(mongo.db),
     companyRepository: companyRepository ?? new MongoCompanyRepository(mongo.db),
     componentRepository: componentRepository ?? new MongoComponentRepository(mongo.db),
-    episodicMemoryPort:
-      episodicMemoryPort ?? new MongoEpisodicMemoryRepository(mongo.db, idGenerator),
+    userRepository: userRepository ?? new MongoUserRepository(mongo.db),
     close: mongo.close,
   };
 }
@@ -148,33 +161,45 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const emailSender = buildEmailSender(overrides.emailSender);
   const attachmentExtractor = overrides.attachmentExtractor ?? new MultiFormatAttachmentExtractor();
   const attachmentStorage = buildAttachmentStorage(overrides.attachmentStorage);
-  const { operationRepository, companyRepository, componentRepository, episodicMemoryPort, close } =
-    await buildRepositories(overrides, idGenerator);
-  const chatHistoryPort: ChatHistoryPort =
-    overrides.chatHistoryPort ?? new InMemoryChatHistoryStore();
-  const companyKnowledgePort: CompanyKnowledgePort =
-    overrides.companyKnowledgePort ?? new StubCompanyKnowledgeAdapter();
-  const clientMemoryPort: ClientMemoryPort =
-    overrides.clientMemoryPort ?? new StubClientMemoryAdapter();
+  const { operationRepository, companyRepository, componentRepository, userRepository, close } =
+    await buildRepositories(overrides);
+
+  const passwordHasher: PasswordHasher = overrides.passwordHasher ?? new BcryptPasswordHasher();
+  const authTokenPort: AuthTokenPort =
+    overrides.authTokenPort ?? new JwtTokenAdapter(process.env.JWT_SECRET ?? "");
+
+  const login = createLoginUseCase({ userRepository, passwordHasher, authTokenPort });
+  const refreshToken = createRefreshTokenUseCase({ userRepository, authTokenPort });
+  const getMe = createGetMeUseCase({ userRepository });
+  const createUser = createCreateUserUseCase({ userRepository, passwordHasher, idGenerator });
+  const listUsers = createListUsersUseCase({ userRepository });
+  const updateUser = createUpdateUserUseCase({ userRepository, passwordHasher });
 
   const receiveEmail = createReceiveEmailUseCase({
     idGenerator,
     attachmentExtractor,
     attachmentStorage,
   });
-  const sendEmail = createSendEmailUseCase({ emailSender, idGenerator });
-  const upsertOperationFromEmail = createUpsertOperationFromEmailUseCase({
-    operationRepository,
-    idGenerator,
-  });
-  const createOperation = createCreateOperationUseCase({
-    operationRepository,
-    companyRepository,
-    idGenerator,
-  });
+  const sendEmail = createSendEmailUseCase({ emailSender, idGenerator, companyRepository });
+  const createCompany = createCreateCompanyUseCase({ companyRepository, idGenerator });
+  const listCompanies = createListCompaniesUseCase({ companyRepository });
+  const updateCompany = createUpdateCompanyUseCase({ companyRepository });
+  const resolveCompany = createResolveCompanyUseCase({ companyRepository, createCompany });
   const componentEventPublisher = new InMemoryComponentEventPublisher();
   const operationEventPublisher =
     overrides.operationEventPublisher ?? new InMemoryOperationEventPublisher();
+  const upsertOperationFromEmail = createUpsertOperationFromEmailUseCase({
+    operationRepository,
+    resolveCompany,
+    idGenerator,
+    operationEventPublisher,
+  });
+  const createOperation = createCreateOperationUseCase({
+    operationRepository,
+    resolveCompany,
+    idGenerator,
+    operationEventPublisher,
+  });
   const simulationRegistry = overrides.simulationRegistry ?? new InMemorySimulationRegistry();
   const createComponent = createCreateComponentUseCase({
     componentRepository,
@@ -240,31 +265,36 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     openAiAdapter,
     geminiAdapter,
   );
+  const commandRegistry = new CommandRegistry();
+  commandRegistry.register(
+    createCreateComponentCommand({ createComponent, skill: CREATE_COMPONENT_SKILL }),
+  );
+  commandRegistry.register(
+    createUpdateComponentCommand({
+      updateComponentContent,
+      skill: UPDATE_COMPONENT_SKILL,
+    }),
+  );
+  const skills = commandRegistry
+    .list()
+    .map((command) => command.skill)
+    .filter((skill): skill is string => skill !== undefined)
+    .join("\n\n---\n\n");
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository,
     componentRepository,
     aiCompletionPort,
-    chatHistoryPort,
-    companyKnowledgePort,
-    clientMemoryPort,
-    episodicMemoryPort,
-    createComponent,
-    updateComponentContent,
-    promptTemplate: ARI_SYSTEM_PROMPT,
+    commandRegistry,
+    promptTemplate: `${ARI_SYSTEM_PROMPT}\n\n---\n\n${skills}`,
+    eventPublisher: componentEventPublisher,
+    idGenerator,
   });
-  const respondToChat = createRespondToChatUseCase({
-    operationRepository,
-    aiCompletionPort,
-    chatHistoryPort,
-    companyKnowledgePort,
-    clientMemoryPort,
-    episodicMemoryPort,
-    promptTemplate: ARI_SYSTEM_PROMPT,
-  });
-
   const app = buildApp({
     receiveEmail,
     sendEmail,
+    createCompany,
+    listCompanies,
+    updateCompany,
     upsertOperationFromEmail,
     createOperation,
     getOperation,
@@ -277,11 +307,17 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     updateComponentPlacement,
     updateComponentContent,
     generateComponentFromAi,
-    respondToChat,
     createComponent,
     deleteComponent,
     componentEventPublisher,
     operationEventPublisher,
+    login,
+    refreshToken,
+    getMe,
+    createUser,
+    listUsers,
+    updateUser,
+    authTokenPort,
   });
 
   app.decorate("createComponent", createComponent);

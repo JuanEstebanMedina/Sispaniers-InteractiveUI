@@ -3,9 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from '@/i18n'
 import { toast } from '@/lib/toast'
 
+export * from './useCompanyDirectory'
 export * from './useDebounce'
 export * from './useMediaQuery'
 export * from './useOperationEvents'
+export * from './useSse'
 
 export function useDisclosure(initial = false) {
   const [isOpen, setIsOpen] = useState(initial)

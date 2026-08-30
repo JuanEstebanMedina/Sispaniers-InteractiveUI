@@ -15,10 +15,8 @@ export const userSchema = z.object({
 
   avatarUrl: z.string().nullish(),
 
-  permissions: z.array(z.string()).optional().default([]),
-
-  organizationId: idSchema.nullish(),
-  organizationName: z.string().nullish(),
+  companyId: idSchema.nullish(),
+  active: z.boolean().optional().default(true),
 
   createdAt: isoDateSchema.nullish(),
   lastLoginAt: isoDateSchema.nullish(),

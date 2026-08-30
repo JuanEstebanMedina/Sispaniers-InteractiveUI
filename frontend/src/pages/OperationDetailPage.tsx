@@ -1,21 +1,27 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { api, api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
 import { SectionBoundary } from '@/components/feedback/ErrorBoundary'
 import { ErrorState } from '@/components/feedback/ErrorState'
+import { ComponentDataProvider } from '@/components/generated/ComponentData'
+import type { Widget } from '@/components/generated/WidgetGrid'
 import { WidgetGrid } from '@/components/generated/WidgetGrid'
-import { demoWidgets } from '@/components/generated/demoWidgets'
 import { toWidgets } from '@/components/generated/toWidgets'
 import { GeneratedSurface } from '@/components/operations/GeneratedSurface'
 import { OperationDetailHeader } from '@/components/operations/OperationDetailHeader'
-import { Skeleton } from '@/components/ui/Skeleton'
+import { Skeleton, SkeletonText } from '@/components/ui/Skeleton'
+import { useOperationEvents } from '@/hooks'
+import type { ComponentPendingEvent, OperationEventName } from '@/hooks/useOperationEvents'
+import { WIDGET_SIZES } from '@/lib/grid'
 import {
   componentsResponseSchema,
   operationListSchema,
   operationResponseSchema,
+  type Operation,
 } from '@/schemas'
 import { useRailStore } from '@/stores/railStore'
 
@@ -34,12 +40,12 @@ import { useRailStore } from '@/stores/railStore'
 const DEFAULT_COLS = 4
 
 export default function OperationDetailPage() {
+  const { t } = useTranslation('domain')
   const { trackId } = useParams({ from: '/app/operations/$trackId' })
 
   const detail = useQuery({
     queryKey: queryKeys.operations.detail(trackId),
     queryFn: () => api$.get(endpoints.operations.detail(trackId), operationResponseSchema),
-    refetchInterval: 15_000,
   })
 
   // El backend empaqueta la grilla para un número de columnas concreto, y quien
@@ -90,21 +96,88 @@ export default function OperationDetailPage() {
   const railOpen = useRailStore((state) => state.open)
   const railWidth = useRailStore((state) => state.width)
 
+  const queryClient = useQueryClient()
   const operation = detail.data
   const generated = components.data
 
-  // Los bloques de demostración son para una operación que el agente todavía no
-  // ha tocado, NO para una que no se pudo leer: son datos fabricados y en una
-  // pantalla logística se leen igual que los de verdad. Por eso hacen falta los
-  // `generated`: sin respuesta buena no se pinta nada y la página muestra el
-  // error o el esqueleto.
+  // Un componente en camino tarda un round-trip completo a la IA en aparecer.
+  // Mientras tanto se pinta un placeholder del tamaño estimado que llegó en
+  // "component-pending"; se retira en cuanto llega el componente real, o solo
+  // por seguridad si nunca llega.
+  const [pending, setPending] = useState<ComponentPendingEvent[]>([])
+
+  // ponytail: si la petición del chat falla, el backend nunca emite
+  // component-created para reemplazar este placeholder. No hay un evento de
+  // fallo dedicado ni una forma simple de enterarse desde este árbol de
+  // componentes (el chat vive en el riel), así que el techo es un timeout: si
+  // nadie lo reclamó en este plazo, se asume que la petición murió. Subir a un
+  // evento "component-pending-failed" si este plazo resulta corto o largo en
+  // la práctica.
+  const PENDING_TIMEOUT_MS = 45_000
+
+  const onOperationEvent = useCallback(
+    (event: OperationEventName, payload: unknown) => {
+      if (event === 'component-pending') {
+        const pendingEvent = payload as ComponentPendingEvent | null
+        if (!pendingEvent) return
+        setPending((current) => [...current, pendingEvent])
+        return
+      }
+
+      if (event === 'component-created' || event === 'component-updated') {
+        // El chat de la operación es de un solo mensaje en vuelo a la vez, así
+        // que el placeholder más viejo es siempre el que este componente real
+        // reemplaza.
+        setPending((current) => current.slice(1))
+        // El backend empaqueta la grilla para `cols`; anexar en el cliente
+        // dejaría un componente en la cache que `toWidgets` nunca ubica.
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.operations.components(trackId, cols),
+        })
+        return
+      }
+
+      // `operation-updated` llega con la operación completa: directo a la
+      // cache, sin reempaquetar nada. El riel ordena por salud y actividad,
+      // así que también le toca enterarse.
+      const nextOperation = payload as Operation | null
+      if (nextOperation) {
+        queryClient.setQueryData(queryKeys.operations.detail(trackId), nextOperation)
+        void queryClient.invalidateQueries({ queryKey: queryKeys.operations.list() })
+      }
+    },
+    [queryClient, trackId, cols],
+  )
+  const stream = useOperationEvents(trackId, onOperationEvent)
+
+  useEffect(() => {
+    if (pending.length === 0) return
+    const timers = pending.map(({ tempId }) =>
+      setTimeout(() => {
+        setPending((current) => current.filter((item) => item.tempId !== tempId))
+      }, PENDING_TIMEOUT_MS),
+    )
+    return () => timers.forEach(clearTimeout)
+  }, [pending])
+
+  const pendingWidgets = useMemo<Widget[]>(
+    () =>
+      pending.map(({ tempId, estimatedSize }) => ({
+        id: `pending-${tempId}`,
+        ...WIDGET_SIZES[estimatedSize],
+        col: 0,
+        row: 0,
+        title: t('operation.generated.pendingTitle'),
+        fromAgent: true,
+        body: <SkeletonText lines={2} />,
+      })),
+    [pending, t],
+  )
+
   const widgets = useMemo(() => {
-    if (!generated) return []
-    if (generated.components.length > 0) {
-      return toWidgets(generated.components, generated.layout)
-    }
-    return operation ? demoWidgets(operation) : []
-  }, [generated, operation])
+    const base = generated ? toWidgets(generated.components, generated.layout) : []
+    return [...base, ...pendingWidgets]
+  }, [generated, pendingWidgets])
 
   const persist = savePlacement.mutate
   const persistable = (generated?.components.length ?? 0) > 0
@@ -125,7 +198,7 @@ export default function OperationDetailPage() {
 
   return (
     <div className="flex h-dvh flex-col gap-3 px-2 py-4 sm:px-4">
-      {detail.isSuccess && <OperationDetailHeader operation={detail.data} waiting={waiting} />}
+      {detail.isSuccess && <OperationDetailHeader operation={detail.data} waiting={waiting} stream={stream} />}
 
       {detail.isPending && (
         <div className="grid grid-cols-4 gap-3">
@@ -144,13 +217,15 @@ export default function OperationDetailPage() {
       {detail.isSuccess && !components.isError && (
         <GeneratedSurface className="flex-1">
           <SectionBoundary name="generated-ui">
-            <WidgetGrid
-              widgets={widgets}
-              onMove={handleMove}
-              onTitleChange={handleTitleChange}
-              onColsChange={setCols}
-              reserve={railOpen ? railWidth : 0}
-            />
+            <ComponentDataProvider operation={operation}>
+              <WidgetGrid
+                widgets={widgets}
+                onMove={handleMove}
+                onTitleChange={handleTitleChange}
+                onColsChange={setCols}
+                reserve={railOpen ? railWidth : 0}
+              />
+            </ComponentDataProvider>
           </SectionBoundary>
         </GeneratedSurface>
       )}
