@@ -53,6 +53,7 @@ import { InMemoryOperationEventPublisher } from "../adapters/outbound/events/in-
 import { FallbackAiCompletionAdapter } from "../adapters/outbound/fallback-ai-completion-adapter.js";
 import { GeminiCompletionAdapter } from "../adapters/outbound/gemini-completion-adapter.js";
 import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.js";
+import { InMemoryChatHistoryStore } from "../adapters/outbound/memory/in-memory-chat-history-store.js";
 import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repository.js";
 import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
@@ -267,6 +268,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     geminiAdapter,
   );
   const commandRegistry = new CommandRegistry();
+  const chatHistoryPort = new InMemoryChatHistoryStore();
   commandRegistry.register(
     createCreateComponentCommand({ createComponent, skill: CREATE_COMPONENT_SKILL }),
   );
@@ -287,6 +289,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     aiCompletionPort,
     commandRegistry,
     promptTemplate: `${ARI_SYSTEM_PROMPT}\n\n---\n\n${skills}`,
+    chatHistoryPort,
     eventPublisher: componentEventPublisher,
     idGenerator,
   });

@@ -3,14 +3,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/cn'
-
-export interface ChatMessage {
-  id: string
-  author: 'agent' | 'human'
-  body: string
-  /** Tipos de documento que este mensaje citó. */
-  docs: string[]
-}
+import type { ChatMessage } from '@/stores/chatStore'
 
 export function ChatHistory({ messages }: { messages: ChatMessage[] }) {
   const endRef = useRef<HTMLDivElement>(null)

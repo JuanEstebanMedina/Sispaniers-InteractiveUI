@@ -11,6 +11,7 @@ interface ChatComposerProps {
   onSend: () => void
   docs: LogisticsDocument[]
   onDetach: (documentId: string) => void
+  disabled?: boolean
 }
 
 export function ChatComposer({
@@ -19,6 +20,7 @@ export function ChatComposer({
   onSend,
   docs,
   onDetach,
+  disabled = false,
 }: ChatComposerProps) {
   const { t } = useTranslation('domain')
   const draftRef = useRef<HTMLTextAreaElement>(null)
@@ -67,7 +69,7 @@ export function ChatComposer({
         <button
           type="button"
           onClick={onSend}
-          disabled={!draft.trim() && docs.length === 0}
+          disabled={disabled || (!draft.trim() && docs.length === 0)}
           aria-label={t('operation.chat.send')}
           title={t('operation.chat.send')}
           className={cn(

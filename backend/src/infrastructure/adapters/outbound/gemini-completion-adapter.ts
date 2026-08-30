@@ -37,7 +37,10 @@ export class GeminiCompletionAdapter implements AiCompletionPort {
 
     const response = await this.getClient().models.generateContent({
       model: this.model,
-      contents: request.prompt,
+      contents:
+        request.systemPrompt === undefined
+          ? request.prompt
+          : `${request.systemPrompt}\n\nUser message:\n${request.prompt}`,
       ...(hasTools
         ? {
             config: {

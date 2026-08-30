@@ -7,13 +7,16 @@ import { cn } from '@/lib/cn'
 import { toast } from '@/lib/toast'
 import type { LogisticsDocument } from '@/schemas'
 import { useChatAttachStore } from '@/stores/chatAttachStore'
+import { useChatStore } from '@/stores/chatStore'
 import { ChatComposer } from './ChatComposer'
-import { ChatHistory, type ChatMessage } from './ChatHistory'
+import { ChatHistory } from './ChatHistory'
 
 interface AgentChatProps {
   operationId: string
   className?: string
 }
+
+const EMPTY_MESSAGES: never[] = []
 
 /**
  * Hablar con el agente para lo que la UI generada no tiene widget — «avisa al
@@ -23,26 +26,26 @@ interface AgentChatProps {
  */
 export function AgentChat({ operationId, className }: AgentChatProps) {
   const { t } = useTranslation('domain')
-  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const messages = useChatStore((state) => state.messagesByOperation[operationId] ?? EMPTY_MESSAGES)
+  const appendMessage = useChatStore((state) => state.append)
   const docs = useChatAttachStore((state) => state.documents)
   const detachDoc = useChatAttachStore((state) => state.detach)
   const clearDocs = useChatAttachStore((state) => state.clear)
 
-  function append(author: ChatMessage['author'], body: string, cited: string[] = []) {
-    setMessages((current) => [
-      ...current,
-      { id: `msg-${current.length}`, author, body, docs: cited },
-    ])
+  function append(author: 'agent' | 'human', body: string, cited: string[] = []) {
+    appendMessage(operationId, { author, body, docs: cited })
   }
 
   async function send() {
     const body = draft.trim()
-    if (!body && docs.length === 0) return
+    if (isSending || (!body && docs.length === 0)) return
 
     append('human', body, docs.map((document) => document.type))
     setDraft('')
     clearDocs()
+    setIsSending(true)
 
     try {
       const { reply } = await http.post<{ reply: string }>(endpoints.ai.chat(operationId), {
@@ -51,6 +54,8 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
       append('agent', reply)
     } catch {
       toast.error(t('operation.chat.sendError'))
+    } finally {
+      setIsSending(false)
     }
   }
 
@@ -66,6 +71,7 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
         onSend={send}
         docs={docs}
         onDetach={detachDoc}
+        disabled={isSending}
       />
     </section>
   )
