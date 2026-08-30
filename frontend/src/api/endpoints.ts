@@ -32,6 +32,8 @@ export const endpoints = {
     search: '/operations/search',
     detail: (id: string) => `/operations/${id}`,
     components: (id: string) => `/operations/${id}/components`,
+    companyConcepts: (id: string, conceptIds: string[]) =>
+      `/operations/${id}/company-concepts?ids=${encodeURIComponent(conceptIds.join(','))}`,
     /**
      * Mover y renombrar un widget, de a uno. NO hay un PATCH del layout entero:
      * la posición es un índice en la secuencia, y las coordenadas salen de ahí.
@@ -88,6 +90,8 @@ export const queryKeys = {
     list: (body?: unknown) => ['operations', 'list', body ?? {}] as const,
     detail: (id: string) => ['operations', 'detail', id] as const,
     components: (id: string, cols: number) => ['operations', 'components', id, cols] as const,
+    companyConcepts: (id: string, conceptIds: string[]) =>
+      ['operations', 'company-concepts', id, conceptIds] as const,
   },
   notifications: {
     all: ['notifications'] as const,

@@ -14,6 +14,7 @@ import type { ComponentEventPublisher } from "../../../domain/ports/component-ev
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
+import type { QueryCompanyConceptsCommandResult } from "../../commands/query-company-concepts.command.js";
 import { buildBasePrompt } from "./ai-response.helpers.js";
 
 export type AiTrigger = "chat" | "auto";
@@ -46,6 +47,7 @@ export interface GenerateComponentFromAiDeps {
 const ESTIMATED_PENDING_SIZE: WidgetSizeName = "small";
 
 const GRID_COLUMNS = 4;
+const MAX_QUERY_TOOL_CALLS = 3;
 
 function buildExistingComponentsHint(
   trigger: AiTrigger,
@@ -97,46 +99,62 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         inputSchema: command.inputSchema,
       }));
 
-    const result = await aiCompletionPort.complete({ prompt, tools });
+    let queryCount = 0;
+    let nextPrompt = prompt;
 
-    if (result.kind === "text") {
-      if (trigger === "chat") {
-        console.log(
-          `generateComponentFromAi: chat trigger returned plain text for operation ${operationId}`,
-        );
-        return { component: null, reply: result.text };
-      }
-      console.warn(
-        `generateComponentFromAi: auto trigger returned plain text instead of a tool call for operation ${operationId}, retrying`,
-      );
-      throw new InvalidAiComponentError(`no tool called: ${result.text}`);
-    }
+    while (true) {
+      const result = await aiCompletionPort.complete({ prompt: nextPrompt, tools });
 
-    console.log(
-      `generateComponentFromAi: dispatching tool "${result.toolName}" for operation ${operationId}`,
-    );
-
-    try {
-      const dispatched = (await commandRegistry.dispatch(result.toolName, result.input, {
-        operationId,
-      })) as { component: Component; reply: string };
-      console.log(
-        `generateComponentFromAi: tool "${result.toolName}" dispatched successfully for operation ${operationId}`,
-      );
-      return dispatched;
-    } catch (error) {
-      if (
-        error instanceof UnknownCommandError ||
-        error instanceof InvalidCommandInputError ||
-        error instanceof InvalidComponentTreeError ||
-        error instanceof InvalidComponentPathError
-      ) {
+      if (result.kind === "text") {
+        if (trigger === "chat") {
+          console.log(
+            `generateComponentFromAi: chat trigger returned plain text for operation ${operationId}`,
+          );
+          return { component: null, reply: result.text };
+        }
         console.warn(
-          `generateComponentFromAi: tool "${result.toolName}" dispatch failed for operation ${operationId}: ${error.message}`,
+          `generateComponentFromAi: auto trigger returned plain text instead of a tool call for operation ${operationId}, retrying`,
         );
-        throw new InvalidAiComponentError(error.message);
+        throw new InvalidAiComponentError(`no tool called: ${result.text}`);
       }
-      throw error;
+
+      console.log(
+        `generateComponentFromAi: dispatching tool "${result.toolName}" for operation ${operationId}`,
+      );
+
+      try {
+        const dispatched = await commandRegistry.dispatch(result.toolName, result.input, {
+          operationId,
+        });
+        console.log(
+          `generateComponentFromAi: tool "${result.toolName}" dispatched successfully for operation ${operationId}`,
+        );
+
+        if (result.toolName !== "query_company_concepts") {
+          return dispatched as { component: Component; reply: string };
+        }
+        if (queryCount >= MAX_QUERY_TOOL_CALLS) {
+          throw new InvalidAiComponentError("too many company concept queries");
+        }
+
+        queryCount += 1;
+        nextPrompt = `${nextPrompt}\n\n---\nCompany concept query result:\n${JSON.stringify(
+          dispatched as QueryCompanyConceptsCommandResult,
+        )}\nUse this result now. Call another tool only when needed.`;
+      } catch (error) {
+        if (
+          error instanceof UnknownCommandError ||
+          error instanceof InvalidCommandInputError ||
+          error instanceof InvalidComponentTreeError ||
+          error instanceof InvalidComponentPathError
+        ) {
+          console.warn(
+            `generateComponentFromAi: tool "${result.toolName}" dispatch failed for operation ${operationId}: ${error.message}`,
+          );
+          throw new InvalidAiComponentError(error.message);
+        }
+        throw error;
+      }
     }
   }
 

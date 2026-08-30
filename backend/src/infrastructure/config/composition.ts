@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { createCreateComponentCommand } from "../../application/commands/create-component.command.js";
+import { createQueryCompanyConceptsCommand } from "../../application/commands/query-company-concepts.command.js";
 import { createUpdateComponentCommand } from "../../application/commands/update-component.command.js";
 import { createCreateUserUseCase } from "../../application/use-cases/auth/create-user.use-case.js";
 import { createGetMeUseCase } from "../../application/use-cases/auth/get-me.use-case.js";
@@ -21,6 +22,7 @@ import { createGetOperationComponentsUseCase } from "../../application/use-cases
 import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
 import { createListCompaniesUseCase } from "../../application/use-cases/dashboard/list-companies.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
+import { createQueryCompanyConceptsUseCase } from "../../application/use-cases/dashboard/query-company-concepts.use-case.js";
 import { createRunSimulationTickUseCase } from "../../application/use-cases/dashboard/run-simulation-tick.use-case.js";
 import { createUpdateCompanyUseCase } from "../../application/use-cases/dashboard/update-company.use-case.js";
 import { createUpdateComponentContentUseCase } from "../../application/use-cases/dashboard/update-component-content.use-case.js";
@@ -35,6 +37,7 @@ import type { AiCompletionPort } from "../../domain/ports/ai-completion-port.js"
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
 import type { AttachmentStorage } from "../../domain/ports/attachment-storage.port.js";
 import type { AuthTokenPort } from "../../domain/ports/auth-token.port.js";
+import type { CompanyConceptRepository } from "../../domain/ports/company-concept.repository.js";
 import type { CompanyRepository } from "../../domain/ports/company.repository.js";
 import type { ComponentRepository } from "../../domain/ports/component.repository.js";
 import type { EmailSender } from "../../domain/ports/email-sender.port.js";
@@ -53,6 +56,7 @@ import { InMemoryOperationEventPublisher } from "../adapters/outbound/events/in-
 import { FallbackAiCompletionAdapter } from "../adapters/outbound/fallback-ai-completion-adapter.js";
 import { GeminiCompletionAdapter } from "../adapters/outbound/gemini-completion-adapter.js";
 import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.js";
+import { MongoCompanyConceptRepository } from "../adapters/outbound/mongo/company-concept.repository.js";
 import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repository.js";
 import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
@@ -80,6 +84,10 @@ const UPDATE_COMPONENT_SKILL = readFileSync(
   join(process.cwd(), "src/application/skills/update-component.skill.md"),
   "utf-8",
 );
+const QUERY_COMPANY_CONCEPTS_SKILL = readFileSync(
+  join(process.cwd(), "src/application/skills/query-company-concepts.skill.md"),
+  "utf-8",
+);
 
 // TODO: sending an email still doesn't persist anything — it's only logged
 // (request.log.warn in the routes). Receiving an email now persists via
@@ -92,6 +100,7 @@ export interface CreateAppOverrides {
   attachmentStorage?: AttachmentStorage;
   operationRepository?: OperationRepository;
   companyRepository?: CompanyRepository;
+  companyConceptRepository?: CompanyConceptRepository;
   componentRepository?: ComponentRepository;
   userRepository?: UserRepository;
   simulationRegistry?: SimulationRegistry;
@@ -123,13 +132,20 @@ function buildAttachmentStorage(override: AttachmentStorage | undefined): Attach
 interface RepositorySources {
   operationRepository: OperationRepository;
   companyRepository: CompanyRepository;
+  companyConceptRepository: CompanyConceptRepository;
   componentRepository: ComponentRepository;
   userRepository: UserRepository;
   close?: () => Promise<void>;
 }
 
 async function buildRepositories(overrides: CreateAppOverrides): Promise<RepositorySources> {
-  const { operationRepository, companyRepository, componentRepository, userRepository } = overrides;
+  const {
+    operationRepository,
+    companyRepository,
+    companyConceptRepository,
+    componentRepository,
+    userRepository,
+  } = overrides;
 
   if (
     operationRepository !== undefined &&
@@ -140,6 +156,12 @@ async function buildRepositories(overrides: CreateAppOverrides): Promise<Reposit
     return {
       operationRepository,
       companyRepository,
+      companyConceptRepository: companyConceptRepository ?? {
+        findForCompany: async () => [],
+        findDefinitions: async () => [],
+        saveDefinitions: async () => {},
+        saveObservations: async () => {},
+      },
       componentRepository,
       userRepository,
     };
@@ -150,6 +172,8 @@ async function buildRepositories(overrides: CreateAppOverrides): Promise<Reposit
   return {
     operationRepository: operationRepository ?? new MongoOperationRepository(mongo.db),
     companyRepository: companyRepository ?? new MongoCompanyRepository(mongo.db),
+    companyConceptRepository:
+      companyConceptRepository ?? new MongoCompanyConceptRepository(mongo.db),
     componentRepository: componentRepository ?? new MongoComponentRepository(mongo.db),
     userRepository: userRepository ?? new MongoUserRepository(mongo.db),
     close: mongo.close,
@@ -161,8 +185,14 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const emailSender = buildEmailSender(overrides.emailSender);
   const attachmentExtractor = overrides.attachmentExtractor ?? new MultiFormatAttachmentExtractor();
   const attachmentStorage = buildAttachmentStorage(overrides.attachmentStorage);
-  const { operationRepository, companyRepository, componentRepository, userRepository, close } =
-    await buildRepositories(overrides);
+  const {
+    operationRepository,
+    companyRepository,
+    companyConceptRepository,
+    componentRepository,
+    userRepository,
+    close,
+  } = await buildRepositories(overrides);
 
   const passwordHasher: PasswordHasher = overrides.passwordHasher ?? new BcryptPasswordHasher();
   const authTokenPort: AuthTokenPort =
@@ -238,6 +268,10 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     operationRepository,
     componentRepository,
   });
+  const queryCompanyConcepts = createQueryCompanyConceptsUseCase({
+    operationRepository,
+    companyConceptRepository,
+  });
   const updateComponentPlacement = createUpdateComponentPlacementUseCase({
     operationRepository,
     componentRepository,
@@ -268,6 +302,12 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const commandRegistry = new CommandRegistry();
   commandRegistry.register(
     createCreateComponentCommand({ createComponent, skill: CREATE_COMPONENT_SKILL }),
+  );
+  commandRegistry.register(
+    createQueryCompanyConceptsCommand({
+      queryCompanyConcepts,
+      skill: QUERY_COMPANY_CONCEPTS_SKILL,
+    }),
   );
   commandRegistry.register(
     createUpdateComponentCommand({
@@ -309,6 +349,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     generateComponentFromAi,
     createComponent,
     deleteComponent,
+    queryCompanyConcepts,
     componentEventPublisher,
     operationEventPublisher,
     login,

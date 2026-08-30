@@ -158,3 +158,10 @@ export class ForbiddenCompanyScopeError extends Error {
     this.name = "ForbiddenCompanyScopeError";
   }
 }
+
+export class InvalidCompanyConceptError extends Error {
+  constructor(reason: string) {
+    super(`Invalid company concept: ${reason}`);
+    this.name = "InvalidCompanyConceptError";
+  }
+}

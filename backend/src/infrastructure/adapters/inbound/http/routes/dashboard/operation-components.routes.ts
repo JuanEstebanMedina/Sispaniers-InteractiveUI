@@ -6,12 +6,15 @@ import type {
   GetOperationComponentsInput,
   GetOperationComponentsResult,
 } from "../../../../../../application/use-cases/dashboard/get-operation-components.use-case.js";
+import type { QueryCompanyConceptsInput } from "../../../../../../application/use-cases/dashboard/query-company-concepts.use-case.js";
 import type { UpdateComponentContentInput } from "../../../../../../application/use-cases/dashboard/update-component-content.use-case.js";
 import type { UpdateComponentPlacementInput } from "../../../../../../application/use-cases/dashboard/update-component-placement.use-case.js";
 import type { Component } from "../../../../../../domain/components/component.js";
 import type { LayoutEntry } from "../../../../../../domain/components/layout.js";
+import type { CompanyConceptResult } from "../../../../../../domain/logistics/company-concept.js";
 import {
   ComponentNotFoundError,
+  ForbiddenCompanyScopeError,
   InvalidComponentPathError,
   InvalidComponentTreeError,
   InvalidLayoutError,
@@ -34,6 +37,16 @@ const operationComponentParamsSchema = z.object({
   id: z.string().min(1),
   componentId: z.string().min(1),
 });
+const conceptQuerySchema = z.object({ ids: z.string().optional() });
+const conceptsResponseSchema = z.object({
+  concepts: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      values: z.array(z.record(z.unknown())),
+    }),
+  ),
+});
 
 export interface OperationComponentsRouteDeps {
   getOperationComponents: (
@@ -43,6 +56,7 @@ export interface OperationComponentsRouteDeps {
   updateComponentContent: (input: UpdateComponentContentInput) => Promise<Component>;
   createComponent: (input: CreateComponentInput) => Promise<Component>;
   deleteComponent: (input: DeleteComponentInput) => Promise<void>;
+  queryCompanyConcepts: (input: QueryCompanyConceptsInput) => Promise<CompanyConceptResult[]>;
 }
 
 function isValidResponseWidth(w: number): w is 1 | 2 | 4 {
@@ -61,6 +75,44 @@ export const operationComponentsRoutes: FastifyPluginAsyncZod<
   OperationComponentsRouteDeps
 > = async (fastify, deps) => {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
+
+  app.get(
+    "/operations/:id/company-concepts",
+    {
+      schema: {
+        params: operationParamsSchema,
+        querystring: conceptQuerySchema,
+        response: {
+          200: conceptsResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const conceptIds = request.query.ids?.split(",").filter(Boolean) ?? [];
+        const concepts = await deps.queryCompanyConcepts({
+          operationId: request.params.id,
+          conceptIds,
+          ...(request.actor.role !== "superadmin" && request.actor.companyId !== undefined
+            ? { requesterCompanyId: request.actor.companyId }
+            : {}),
+        });
+        reply.code(200).send({ concepts });
+      } catch (error) {
+        if (error instanceof OperationNotFoundError) {
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
+          return;
+        }
+        if (error instanceof ForbiddenCompanyScopeError) {
+          reply.code(403).send({ error: "forbidden_company_scope", message: error.message });
+          return;
+        }
+        throw error;
+      }
+    },
+  );
 
   app.get(
     "/operations/:id/components",
