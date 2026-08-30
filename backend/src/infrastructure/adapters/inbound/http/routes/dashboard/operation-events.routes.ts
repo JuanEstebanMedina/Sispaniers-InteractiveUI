@@ -14,12 +14,6 @@ import { toOperationResponse } from "./operations.routes.js";
 
 const operationParamsSchema = z.object({ id: z.string().min(1) });
 
-// Railway's edge proxy (and most reverse proxies) drop an HTTP connection
-// that has carried no bytes for a few minutes, since a silent SSE stream
-// looks idle from the outside. A comment line is a no-op per the SSE spec
-// but keeps bytes flowing, so the proxy never has a reason to close it.
-const HEARTBEAT_INTERVAL_MS = 20_000;
-
 export interface OperationEventsRouteDeps {
   componentEventPublisher: ComponentEventPublisher;
   operationEventPublisher: OperationEventPublisher;
@@ -37,10 +31,6 @@ export const operationEventsRoutes: FastifyPluginAsyncZod<OperationEventsRouteDe
       Connection: "keep-alive",
     });
 
-    const heartbeat = setInterval(() => {
-      reply.raw.write(":heartbeat\n\n");
-    }, HEARTBEAT_INTERVAL_MS);
-
     const unsubscribe = deps.operationEventPublisher.subscribeAll((event, operation) => {
       const companyId = request.actor.companyId;
       if (
@@ -57,7 +47,6 @@ export const operationEventsRoutes: FastifyPluginAsyncZod<OperationEventsRouteDe
     });
 
     request.raw.on("close", () => {
-      clearInterval(heartbeat);
       unsubscribe();
       reply.raw.end();
     });
@@ -89,10 +78,6 @@ export const operationEventsRoutes: FastifyPluginAsyncZod<OperationEventsRouteDe
         Connection: "keep-alive",
       });
 
-      const heartbeat = setInterval(() => {
-        reply.raw.write(":heartbeat\n\n");
-      }, HEARTBEAT_INTERVAL_MS);
-
       const unsubscribeComponents = deps.componentEventPublisher.subscribe(id, (event, payload) => {
         // "component-pending" carries its own wire shape already — it has
         // no Component to map, just the estimated size and a temp id.
@@ -114,7 +99,6 @@ export const operationEventsRoutes: FastifyPluginAsyncZod<OperationEventsRouteDe
           // will ever be published for it, so close the stream instead of
           // leaving the client waiting on a connection that stays silent forever.
           if (event === "simulation-completed") {
-            clearInterval(heartbeat);
             unsubscribeComponents();
             unsubscribeOperations();
             reply.raw.end();
@@ -123,7 +107,6 @@ export const operationEventsRoutes: FastifyPluginAsyncZod<OperationEventsRouteDe
       );
 
       request.raw.on("close", () => {
-        clearInterval(heartbeat);
         unsubscribeComponents();
         unsubscribeOperations();
         reply.raw.end();
