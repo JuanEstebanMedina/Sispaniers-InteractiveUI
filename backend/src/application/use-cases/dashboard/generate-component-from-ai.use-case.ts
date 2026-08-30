@@ -92,9 +92,9 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       .list()
       .filter((command) => trigger !== "chat" || command.name !== "update_component")
       .map((command) => ({
-      name: command.name,
-      description: command.description,
-      inputSchema: command.inputSchema,
+        name: command.name,
+        description: command.description,
+        inputSchema: command.inputSchema,
       }));
 
     const result = await aiCompletionPort.complete({ prompt, tools });

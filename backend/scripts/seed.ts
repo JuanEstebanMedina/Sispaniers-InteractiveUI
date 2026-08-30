@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { z } from "zod";
+import type { Component } from "../src/domain/components/component.js";
 import { CONTAINER_STATES } from "../src/domain/enums/container-state.js";
 import { DOCUMENT_FORMATS } from "../src/domain/enums/document-format.js";
 import { ROLES } from "../src/domain/enums/role.js";
@@ -14,7 +15,6 @@ import { MongoComponentRepository } from "../src/infrastructure/adapters/outboun
 import { MongoOperationRepository } from "../src/infrastructure/adapters/outbound/mongo/operation.repository.js";
 import { MongoUserRepository } from "../src/infrastructure/adapters/outbound/mongo/user.repository.js";
 import { connectMongo } from "../src/infrastructure/config/mongo.js";
-import type { Component } from "../src/domain/components/component.js";
 
 const DATA_FILE = new URL("./seed-data.json", import.meta.url);
 
@@ -191,7 +191,9 @@ function buildComponents(operation: Operation): Component[] {
         {
           kind: "label",
           order: 1,
-          props: { text: `${operation.bookings.length} bookings y ${operation.context.documents.length} documentos` },
+          props: {
+            text: `${operation.bookings.length} bookings y ${operation.context.documents.length} documentos`,
+          },
         },
       ],
       createdAt: operation.createdAt,
