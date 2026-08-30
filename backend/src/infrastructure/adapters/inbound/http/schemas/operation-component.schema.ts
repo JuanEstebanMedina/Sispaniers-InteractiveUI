@@ -25,6 +25,7 @@ export const componentResponseSchema = z.object({
   id: z.string(),
   operation_id: z.string(),
   kind: z.string(),
+  title: z.string().optional(),
   content: z.array(z.unknown()),
   size: z.string(),
   created_at: z.string(),
