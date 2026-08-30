@@ -67,4 +67,36 @@ describe('EmailAction', () => {
 
     expect(draft(container).subject).toBe('Booking — urgent')
   })
+
+  test('an email the server marks as sent can no longer be edited or resent', () => {
+    const node = emailNode({
+      to: 'ops@carrier.co',
+      subject: 'Booking',
+      body: 'Hi,',
+      sentAt: '2026-08-30T12:00:00.000Z',
+    })
+
+    const { container } = render(
+      <NodeProvider node={node}>
+        <EmailAction />
+      </NodeProvider>,
+    )
+
+    const subject = container.querySelectorAll('input')[1] as HTMLInputElement
+    const button = container.querySelector('button') as HTMLButtonElement
+
+    expect(subject.disabled).toBe(true)
+    expect(button.disabled).toBe(true)
+  })
+
+  test('a draft that has not been sent stays editable', () => {
+    const { container } = render(
+      <NodeProvider node={emailNode({ to: 'ops@carrier.co', subject: 'B', body: 'Hi' })}>
+        <EmailAction />
+      </NodeProvider>,
+    )
+
+    const subject = container.querySelectorAll('input')[1] as HTMLInputElement
+    expect(subject.disabled).toBe(false)
+  })
 })

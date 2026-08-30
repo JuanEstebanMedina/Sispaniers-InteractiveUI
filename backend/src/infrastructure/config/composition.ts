@@ -32,6 +32,7 @@ import { createUpdateCompanyUseCase } from "../../application/use-cases/dashboar
 import { createUpdateComponentContentUseCase } from "../../application/use-cases/dashboard/update-component-content.use-case.js";
 import { createUpdateComponentPlacementUseCase } from "../../application/use-cases/dashboard/update-component-placement.use-case.js";
 import { createUploadOperationDocumentUseCase } from "../../application/use-cases/dashboard/upload-operation-document.use-case.js";
+import { createMarkEmailSentUseCase } from "../../application/use-cases/email/mark-email-sent.use-case.js";
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import { createUpsertOperationFromEmailUseCase } from "../../application/use-cases/email/upsert-operation-from-email.use-case.js";
@@ -230,6 +231,10 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const updateCompany = createUpdateCompanyUseCase({ companyRepository });
   const resolveCompany = createResolveCompanyUseCase({ companyRepository, createCompany });
   const componentEventPublisher = new InMemoryComponentEventPublisher();
+  const markEmailSent = createMarkEmailSentUseCase({
+    componentRepository,
+    eventPublisher: componentEventPublisher,
+  });
   const operationEventPublisher =
     overrides.operationEventPublisher ?? new InMemoryOperationEventPublisher();
   const upsertOperationFromEmail = createUpsertOperationFromEmailUseCase({
@@ -370,6 +375,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const app = buildApp({
     receiveEmail,
     sendEmail,
+    markEmailSent,
     createCompany,
     listCompanies,
     updateCompany,

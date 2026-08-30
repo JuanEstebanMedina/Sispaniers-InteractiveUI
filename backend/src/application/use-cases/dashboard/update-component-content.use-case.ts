@@ -1,4 +1,7 @@
-import { assertFactualDataUnchanged } from "../../../domain/components/component-data-integrity.js";
+import {
+  assertFactualDataUnchanged,
+  assertSentEmailsUnchanged,
+} from "../../../domain/components/component-data-integrity.js";
 import {
   setComponentTreePath,
   validateComponentSize,
@@ -45,6 +48,7 @@ export function createUpdateComponentContentUseCase(deps: UpdateComponentContent
     const isPathScoped = "path" in input;
     if (!isPathScoped) {
       assertFactualDataUnchanged(existing.children, input.children);
+      assertSentEmailsUnchanged(existing.children, input.children);
     }
     const updatedChildren = isPathScoped
       ? setComponentTreePath(existing.children, input.path, input.value)

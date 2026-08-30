@@ -32,7 +32,7 @@ import {
   type ColorName,
 } from './colors'
 import { useDataset, useOperation } from './ComponentData'
-import { useNode, useProps, type PropReader } from './NodeContext'
+import { useComponentId, useNode, useProps, type PropReader } from './NodeContext'
 
 /**
  * THE PARTS
@@ -200,6 +200,7 @@ export function EmailAction() {
   const { t } = useTranslation('domain')
   const operation = useOperation()
 
+  const componentId = useComponentId()
   const proposed = {
     to: props.str('to'),
     subject: props.str('subject'),
@@ -209,14 +210,17 @@ export function EmailAction() {
   const [to, setTo] = useState(proposed.to)
   const [subject, setSubject] = useState(proposed.subject)
   const [body, setBody] = useState(proposed.body)
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
+  const [status, setStatus] = useState<'idle' | 'sending'>('idle')
   const [lastProposed, setLastProposed] = useState(proposed)
+
+  // Whether this email left is the backend's to know, not this component's:
+  // the fact outlives the tab that sent it, and the agent has to read it too.
+  const sent = props.str('sentAt') !== ''
 
   // The draft is the user's to edit, so it lives in state rather than reading
   // props every render. That state is seeded once at mount, so an agent
   // rewriting this component would otherwise never reach the screen: the node
-  // stays mounted and the new props are ignored. A different proposal is a
-  // different email — the local "sent" belonged to the text it replaces.
+  // stays mounted and the new props are ignored.
   if (
     lastProposed.to !== proposed.to ||
     lastProposed.subject !== proposed.subject ||
@@ -229,7 +233,8 @@ export function EmailAction() {
     setStatus('idle')
   }
 
-  const canSend = status === 'idle' && to.trim() !== '' && subject.trim() !== '' && body.trim() !== ''
+  const canSend =
+    !sent && status === 'idle' && to.trim() !== '' && subject.trim() !== '' && body.trim() !== ''
 
   async function send() {
     if (!canSend) {
@@ -244,12 +249,13 @@ export function EmailAction() {
         to: to.trim(),
         subject: subject.trim(),
         body_text: body.trim(),
+        ...(componentId !== undefined && { component_id: componentId }),
       })
-      setStatus('sent')
       toast.success(t('operation.emailAction.sent'))
     } catch (error) {
-      setStatus('idle')
       toast.apiError(error)
+    } finally {
+      setStatus('idle')
     }
   }
 
@@ -266,7 +272,7 @@ export function EmailAction() {
         <input
           type="email"
           value={to}
-          disabled={status === 'sent'}
+          disabled={sent}
           onChange={(event) => setTo(event.target.value)}
           className={fieldClass}
         />
@@ -275,7 +281,7 @@ export function EmailAction() {
         {t('operation.emailAction.subject')}
         <input
           value={subject}
-          disabled={status === 'sent'}
+          disabled={sent}
           onChange={(event) => setSubject(event.target.value)}
           className={fieldClass}
         />
@@ -284,7 +290,7 @@ export function EmailAction() {
         {t('operation.emailAction.body')}
         <textarea
           value={body}
-          disabled={status === 'sent'}
+          disabled={sent}
           onChange={(event) => setBody(event.target.value)}
           className={cn(fieldClass, 'min-h-16 flex-1 resize-none')}
         />
@@ -296,14 +302,14 @@ export function EmailAction() {
         className={cn(
           'inline-flex h-control-sm shrink-0 items-center justify-center rounded-md border px-3',
           'text-xs font-medium',
-          status === 'sent' ? SOFT_COLOR.success : SOFT_COLOR.brand,
+          sent ? SOFT_COLOR.success : SOFT_COLOR.brand,
           !canSend && 'cursor-not-allowed opacity-60',
         )}
       >
-        {status === 'sending'
-          ? t('operation.emailAction.sending')
-          : status === 'sent'
-            ? t('operation.emailAction.sent')
+        {sent
+          ? t('operation.emailAction.sent')
+          : status === 'sending'
+            ? t('operation.emailAction.sending')
             : t('operation.emailAction.send')}
       </button>
     </div>

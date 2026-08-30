@@ -53,6 +53,22 @@ data differently instead of restating it.
 
 Dropping a node whole is allowed: removing a chart is not rewriting it.
 
+### A sent email cannot be rewritten
+
+An `email-action` node with a `sentAt` prop already left: somebody has that
+message. Its `to`, `subject`, `body` and `sentAt` are frozen exactly like the
+data above, and you cannot add a `sentAt` yourself — only sending sets it.
+
+You cannot drop it either. Deleting the node and writing a fresh one is the
+same edit with extra steps, and it destroys the only proof the message went
+out — so the sent node has to come back in your `children` exactly as you
+received it.
+
+If the user asks you to change a sent email, say plainly that it was already
+sent and cannot be edited. Then offer the one thing that works: a new email is
+a new component, so call `create_component` with the new draft. A second
+message to the same person is the user's call to make.
+
 When the user asks for a data change, do not call `update_component`. Say in
 plain text that the figure comes from the company's records and that this chat
 does not edit it, and say what you can do instead — restyle it, retitle it, or

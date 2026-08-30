@@ -7,6 +7,7 @@ export const sendEmailBodySchema = z.object({
   body_text: z.string().min(1),
   body_html: z.string().optional(),
   in_reply_to: z.string().optional(),
+  component_id: z.string().min(1).optional(),
 });
 
 export type SendEmailBody = z.infer<typeof sendEmailBodySchema>;
