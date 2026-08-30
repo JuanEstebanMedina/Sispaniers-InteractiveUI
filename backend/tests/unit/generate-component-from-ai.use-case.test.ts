@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { createGenerateComponentFromAiUseCase } from "../../src/application/use-cases/dashboard/generate-component-from-ai.use-case.js";
 import { CommandRegistry } from "../../src/domain/commands/command-registry.js";
+import type { Component } from "../../src/domain/components/component.js";
 import type { Operation } from "../../src/domain/logistics/operation.js";
 import {
   InvalidAiComponentError,
@@ -65,7 +66,40 @@ test("an invalid component tree from a tool call is treated as an invalid AI res
   ).rejects.toThrow(InvalidAiComponentError);
 });
 
-test("chat does not offer update_component to the AI", async () => {
+/**
+ * The retry used to resend the original message untouched, so a model that had
+ * just been told the company's figures are frozen would try the same edit
+ * again and the user got a bare 502. Telling it what the domain rejected lets
+ * it answer in words instead.
+ */
+test("the retry tells the model why the first attempt was rejected", async () => {
+  const prompts: string[] = [];
+  let calls = 0;
+  const generateComponentFromAi = buildUseCase({
+    complete: async ({ prompt }) => {
+      prompts.push(prompt);
+      calls += 1;
+      return calls === 1
+        ? { kind: "tool_call", toolName: "create_component", input: {} }
+        : { kind: "text", text: "Esa cifra viene de los registros de la empresa." };
+    },
+  });
+
+  const result = await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "cambia el 42 por 50",
+  });
+
+  expect(prompts[1]).toContain("unknown node kind: NotificationSent");
+  expect(result.reply).toBe("Esa cifra viene de los registros de la empresa.");
+});
+
+/**
+ * The chat used to be create-only, which made "change the ETA on that panel"
+ * answerable only by building a second panel next to the first.
+ */
+test("chat offers update_component to the AI", async () => {
   const commandRegistry = new CommandRegistry();
   const execute = async () => ({ component: {}, reply: "creado" });
   commandRegistry.register({
@@ -107,7 +141,29 @@ test("chat does not offer update_component to the AI", async () => {
 
   await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "crea uno" });
 
-  expect(offeredTools).toEqual(["create_component"]);
+  expect(offeredTools).toEqual(["create_component", "update_component"]);
+});
+
+/**
+ * Finding the component from a description is the whole point: `id`, `size` and
+ * `childCount` name nothing a user would ever type.
+ */
+test("chat carries the existing components under a name the user could type", async () => {
+  const capture = { systemPrompt: "" };
+  const chart = componentStub({
+    id: "cmp-chart",
+    children: [{ kind: "title", order: 0, props: { text: "Costos por aduana" } }] as never,
+  });
+  const generateComponentFromAi = buildReferencingUseCase([chart], capture);
+
+  await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "cambia el de costos",
+  });
+
+  expect(capture.systemPrompt).toContain("Costos por aduana");
+  expect(capture.systemPrompt).toContain("cmp-chart");
 });
 
 test("chat includes prior conversation on later messages", async () => {
@@ -428,4 +484,91 @@ test("chat can query company concepts before answering without creating a compon
     reply: "Volumen mensual registrado: 42 contenedores.",
   });
   expect(prompts[1]).toContain('"containers":42');
+});
+
+function componentStub(overrides: Partial<Component>): Component {
+  return {
+    id: "cmp-1",
+    operationId: OPERATION_ID,
+    order: 0,
+    size: "small",
+    kind: "container",
+    children: [],
+    createdAt: new Date(0),
+    ...overrides,
+  };
+}
+
+function buildReferencingUseCase(stored: Component[], capture: { systemPrompt: string }) {
+  return createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as unknown as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async (operationId) =>
+        stored.filter((component) => component.operationId === operationId),
+      findById: async (id) => stored.find((component) => component.id === id) ?? null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async ({ systemPrompt }) => {
+        capture.systemPrompt = systemPrompt ?? "";
+        return { kind: "text", text: "Es el total de envíos por mes." };
+      },
+    },
+    commandRegistry: new CommandRegistry(),
+    promptTemplate: "{{trigger}}",
+  });
+}
+
+/**
+ * Asking "no entendí esta gráfica" is unanswerable from the id/size/childCount
+ * summary the prompt already carried — the model needs to read what the widget
+ * actually says.
+ */
+test("a referenced component reaches the prompt with its full content", async () => {
+  const capture = { systemPrompt: "" };
+  const chart = componentStub({
+    id: "cmp-chart",
+    children: [{ kind: "title", order: 0, props: { text: "Envíos por mes" } }] as never,
+  });
+  const generateComponentFromAi = buildReferencingUseCase([chart], capture);
+
+  await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "no entendí esta gráfica",
+    referencedComponentIds: ["cmp-chart"],
+  });
+
+  expect(capture.systemPrompt).toContain("Envíos por mes");
+});
+
+/**
+ * The referenced ids are the first client-supplied input that decides what gets
+ * read into the prompt. An id from another operation would leak that
+ * operation's content back through the reply.
+ */
+test("a referenced id outside the operation never reaches the prompt", async () => {
+  const capture = { systemPrompt: "" };
+  const foreign = componentStub({
+    id: "cmp-foreign",
+    operationId: "op-other",
+    children: [{ kind: "title", order: 0, props: { text: "Carga confidencial" } }] as never,
+  });
+  const generateComponentFromAi = buildReferencingUseCase([foreign], capture);
+
+  await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "no entendí esta gráfica",
+    referencedComponentIds: ["cmp-foreign"],
+  });
+
+  expect(capture.systemPrompt).not.toContain("Carga confidencial");
+  expect(capture.systemPrompt).not.toContain("cmp-foreign");
 });

@@ -3,8 +3,7 @@ import type { JsonSchema } from "../../domain/commands/json-schema.js";
 import { validateComponentTree } from "../../domain/components/component-node.js";
 import type { Component, ComponentNode } from "../../domain/components/component.js";
 import type { UpdateComponentContentInput } from "../use-cases/dashboard/update-component-content.use-case.js";
-import { componentNodeSchema, layoutSchema, replySchema } from "./component-node-schema.js";
-import { nearestSize } from "./create-component.command.js";
+import { componentNodeSchema, replySchema } from "./component-node-schema.js";
 
 export interface UpdateComponentCommandDeps {
   updateComponentContent: (input: UpdateComponentContentInput) => Promise<Component>;
@@ -14,7 +13,6 @@ export interface UpdateComponentCommandDeps {
 export interface UpdateComponentCommandInput {
   children: ComponentNode[];
   componentId: string;
-  layout?: { cols: number; rows: number };
   reply: string;
 }
 
@@ -23,7 +21,6 @@ const inputSchema: JsonSchema = {
   properties: {
     children: { type: "array", items: componentNodeSchema },
     componentId: { type: "string" },
-    layout: layoutSchema,
     reply: replySchema,
   },
   required: ["children", "componentId", "reply"],
@@ -36,8 +33,9 @@ export function createUpdateComponentCommand(deps: UpdateComponentCommandDeps): 
     name: "update_component",
     description:
       "Replace the content of an existing dashboard component identified by componentId. " +
-      "Pass the optional layout field (cols, rows) when the component also needs to be " +
-      "resized or repositioned in the grid; omit it to update content only.",
+      "The component keeps its size and its place on the grid, and no other component is " +
+      "touched. children replaces the whole tree, so it must carry every node the " +
+      "component should still have afterwards.",
     inputSchema,
     ...(skill === undefined ? {} : { skill }),
 
@@ -48,16 +46,13 @@ export function createUpdateComponentCommand(deps: UpdateComponentCommandDeps): 
       const input = rawInput as UpdateComponentCommandInput;
       validateComponentTree(input.children);
 
-      const sizeField =
-        input.layout === undefined
-          ? {}
-          : { size: nearestSize(input.layout.cols, input.layout.rows) };
-
+      // No size is passed on purpose: editing a widget's content is not a
+      // request to resize it, and a reflow of the board is not what the user
+      // asked for when they corrected one number.
       const component = await updateComponentContent({
         operationId: context.operationId,
         componentId: input.componentId,
         children: input.children,
-        ...sizeField,
       });
       return { component, reply: input.reply };
     },

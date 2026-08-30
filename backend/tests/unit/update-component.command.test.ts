@@ -5,7 +5,12 @@ import type { Operation } from "../../src/domain/logistics/operation.js";
 import { InMemoryComponentEventPublisher } from "../../src/infrastructure/adapters/outbound/events/in-memory-component-event-publisher.js";
 import { InMemoryComponentRepository, aComponent } from "../support/component-fixtures.js";
 
-test("update_component persists its requested layout", async () => {
+/**
+ * Editing a widget's content is not a request to resize it. The tool used to
+ * take a `layout` and derive a size from it, which turned "fix the ETA on that
+ * panel" into a silent reflow of the board around it.
+ */
+test("update_component leaves the component's size untouched", async () => {
   const componentRepository = new InMemoryComponentRepository();
   const component = aComponent({ operationId: "op-1" });
   await componentRepository.save(component);
@@ -31,7 +36,7 @@ test("update_component persists its requested layout", async () => {
   );
 
   expect(await componentRepository.findById(component.id)).toMatchObject({
-    size: "wide",
+    size: component.size,
     children: [{ kind: "title", props: { text: "Nuevo ETA" } }],
   });
 });

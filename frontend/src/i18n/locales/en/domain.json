@@ -137,7 +137,8 @@
       "deleteMessage": "“{{title}}” will be removed from this run’s interface. This cannot be undone.",
       "deleteConfirm": "Delete component",
       "deleteError": "The component could not be deleted.",
-      "pendingTitle": "Generating…"
+      "pendingTitle": "Generating…",
+      "referenceWidget": "Ask the agent about {{title}}"
     },
     "emailAction": {
       "to": "To",
@@ -158,7 +159,9 @@
       "removeFile": "Remove {{name}}",
       "emptyTitle": "Something to do by hand?",
       "componentGenerated": "Component updated in the panel.",
-      "sendError": "Could not send the message to the agent."
+      "sendError": "Could not send the message to the agent.",
+      "referencing": "Widgets this message points at",
+      "removeReference": "Stop pointing at {{title}}"
     },
     "files": {
       "title": "Files",

@@ -137,7 +137,8 @@
       "deleteMessage": "«{{title}}» se va a quitar de la interfaz de este run. No se puede deshacer.",
       "deleteConfirm": "Eliminar componente",
       "deleteError": "No se pudo eliminar el componente.",
-      "pendingTitle": "Generando…"
+      "pendingTitle": "Generando…",
+      "referenceWidget": "Preguntarle al agente sobre {{title}}"
     },
     "emailAction": {
       "to": "Para",
@@ -158,7 +159,9 @@
       "removeFile": "Quitar {{name}}",
       "emptyTitle": "¿Algo que hacer a mano?",
       "componentGenerated": "Componente actualizado en el panel.",
-      "sendError": "No se pudo enviar el mensaje al agente."
+      "sendError": "No se pudo enviar el mensaje al agente.",
+      "referencing": "Widgets a los que apunta este mensaje",
+      "removeReference": "Dejar de apuntar a {{title}}"
     },
     "files": {
       "title": "Archivos",

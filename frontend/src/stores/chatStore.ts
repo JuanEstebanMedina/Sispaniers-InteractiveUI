@@ -5,6 +5,8 @@ export interface ChatMessage {
   author: 'agent' | 'human'
   body: string
   docs: string[]
+  /** Titles of the widgets the message pointed the agent at. */
+  refs: string[]
 }
 
 interface ChatStore {

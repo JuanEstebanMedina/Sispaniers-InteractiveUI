@@ -1,4 +1,5 @@
 import type { CommandRegistry } from "../../../domain/commands/command-registry.js";
+import { componentLabel } from "../../../domain/components/component-label.js";
 import type { Component } from "../../../domain/components/component.js";
 import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
 import {
@@ -25,6 +26,7 @@ export interface GenerateComponentFromAiInput {
   operationId: string;
   trigger: AiTrigger;
   input: string;
+  referencedComponentIds?: string[];
 }
 
 export interface GenerateComponentFromAiDeps {
@@ -45,24 +47,50 @@ const MAX_QUERY_TOOL_CALLS = 3;
 const CONTINUATION_COMMANDS = new Set(["ingest_company_concepts", "query_company_concepts"]);
 const BUILDING_COMMANDS = new Set(["create_component", "update_component"]);
 
-function buildExistingComponentsHint(
-  trigger: AiTrigger,
-  existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
-): string {
-  if (trigger === "chat") {
+interface ExistingComponent {
+  id: string;
+  label: string | null;
+  size: WidgetSizeName;
+  childCount: number;
+}
+
+function buildExistingComponentsHint(existing: ExistingComponent[]): string {
+  if (existing.length === 0) {
     return `---
-update_component is not available for chat messages. If a component is warranted, use create_component to add a new one; otherwise answer or ask for clarification without a tool.`;
+This operation has no components yet, so every request that needs one uses create_component.`;
   }
 
   return `---
-Existing components on this operation (use update_component ONLY when a component is warranted and user's message explicitly mentions modifying/updating/replacing an EXISTING component, e.g. it names its current content or purpose, using its "id" as "componentId"; for a requested new view, use create_component):
-${JSON.stringify(existingComponents)}`;
+Existing components of this operation. "label" is the name the user sees on the widget, and it is what they will describe a component by:
+${JSON.stringify(existing)}
+
+Use update_component when the message points at exactly one of them — because it was referenced, or because it names that widget's current content or purpose closely enough to leave no doubt — passing its "id" as "componentId". When the request is new or generic, when it matches more than one, or when nothing here matches, use create_component: adding one component too many is safer than overwriting the wrong one.`;
+}
+
+function buildReferencedComponentsHint(referenced: Component[]): string {
+  if (referenced.length === 0) {
+    return "";
+  }
+
+  const readable = referenced.map(({ id, title, size, children }) => ({
+    id,
+    title,
+    size,
+    children,
+  }));
+
+  return `\n\n---
+The user is pointing at these components of their dashboard, and this is their full content:
+${JSON.stringify(readable)}
+
+When the message is a question about them, answer it in plain text and call no tool. When it asks for a change to one of them, that is the component to update: pass its "id" as "componentId".`;
 }
 
 function buildSystemPrompt(
   template: string,
   trigger: AiTrigger,
-  existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
+  existingComponents: ExistingComponent[],
+  referenced: Component[],
   context?: PromptContext,
 ): string {
   const base = buildBasePrompt(
@@ -72,7 +100,8 @@ function buildSystemPrompt(
     GRID_COLUMNS,
     context,
   );
-  return `${base}\n\n${buildExistingComponentsHint(trigger, existingComponents)}`;
+
+  return `${base}\n\n${buildExistingComponentsHint(existingComponents)}${buildReferencedComponentsHint(referenced)}`;
 }
 
 export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFromAiDeps) {
@@ -94,12 +123,13 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     operationId: string,
     trigger: AiTrigger,
   ): Promise<{ component: Component | null; reply: string }> {
+    // save_company_context is a chat-only tool: a webhook has no user to
+    // confirm what is worth remembering about the company.
     const tools = commandRegistry
       .list()
       .filter(
         (command) =>
-          (trigger !== "chat" ||
-            (command.name !== "update_component" && command.name !== "ingest_company_concepts")) &&
+          (trigger !== "chat" || command.name !== "ingest_company_concepts") &&
           (trigger !== "auto" || command.name !== "save_company_context"),
       )
       .map((command) => ({
@@ -170,13 +200,17 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     const operation = await operationRepository.findById(input.operationId);
     if (operation === null) throw new OperationNotFoundError(input.operationId);
 
-    const existingComponents = (await componentRepository.findByOperationId(input.operationId)).map(
-      (component) => ({
-        id: component.id,
-        size: component.size,
-        childCount: component.children.length,
-      }),
-    );
+    const components = await componentRepository.findByOperationId(input.operationId);
+    const existingComponents: ExistingComponent[] = components.map((component) => ({
+      id: component.id,
+      label: componentLabel(component),
+      size: component.size,
+      childCount: component.children.length,
+    }));
+
+    const referencedIds = new Set(input.referencedComponentIds ?? []);
+    const referencedComponents = components.filter((component) => referencedIds.has(component.id));
+
     const company =
       operation.companyId === undefined || companyRepository === undefined
         ? null
@@ -199,6 +233,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       promptTemplate,
       input.trigger,
       existingComponents,
+      referencedComponents,
       promptContext,
     );
 
@@ -212,9 +247,13 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       );
     } catch (error) {
       if (!(error instanceof InvalidAiComponentError)) throw error;
+      // Resending the untouched message makes the model repeat the rejected
+      // call and the user gets a bare 502. Some rejections are refusals the
+      // model has to relay in words — the company's data is frozen — and it
+      // can only do that if it is told what came back.
       result = await completeAndDispatch(
         systemPrompt,
-        input.input,
+        `${input.input}\n\n---\nYour previous tool call was rejected: ${error.message}\nDo not repeat it. Correct it if you can, or answer in plain text explaining what cannot be done.`,
         input.operationId,
         input.trigger,
       );

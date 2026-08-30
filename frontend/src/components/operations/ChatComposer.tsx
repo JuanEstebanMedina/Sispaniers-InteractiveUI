@@ -1,9 +1,10 @@
-import { FileText, SendHorizonal, X } from 'lucide-react'
+import { AtSign, FileText, SendHorizonal, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/cn'
 import type { LogisticsDocument } from '@/schemas'
+import type { ChatReference } from '@/stores/chatReferenceStore'
 
 interface ChatComposerProps {
   draft: string
@@ -11,6 +12,8 @@ interface ChatComposerProps {
   onSend: () => void
   docs: LogisticsDocument[]
   onDetach: (documentId: string) => void
+  references: ChatReference[]
+  onUnreference: (componentId: string) => void
   disabled?: boolean
 }
 
@@ -20,13 +23,15 @@ export function ChatComposer({
   onSend,
   docs,
   onDetach,
+  references,
+  onUnreference,
   disabled = false,
 }: ChatComposerProps) {
   const { t } = useTranslation('domain')
   const draftRef = useRef<HTMLTextAreaElement>(null)
 
-  // Crece con el contenido hasta el max-height y ahí ya scrollea. `rows` no
-  // sirve: fija la altura y un mensaje largo se esconde bajo el borde.
+  // Grows with the content up to the CSS max-height, then scrolls. `rows`
+  // cannot do this: it fixes the height and a long message hides under the fold.
   useEffect(() => {
     const field = draftRef.current
     if (!field) return
@@ -36,6 +41,21 @@ export function ChatComposer({
 
   return (
     <div className="shrink-0 border-t border-line">
+      {references.length > 0 && (
+        <ul
+          className="flex flex-wrap gap-1 px-card pt-2"
+          aria-label={t('operation.chat.referencing')}
+        >
+          {references.map((reference) => (
+            <ReferencedWidget
+              key={reference.id}
+              reference={reference}
+              onUnreference={onUnreference}
+            />
+          ))}
+        </ul>
+      )}
+
       {docs.length > 0 && (
         <ul className="space-y-1 px-card pt-2">
           {docs.map((document) => (
@@ -57,8 +77,8 @@ export function ChatComposer({
             'bg-surface px-2 py-1.5 text-xs text-fg placeholder:text-fg-subtle',
             'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
           )}
-          // Enter envía, Shift+Enter salta de línea: esto es un chat, no un
-          // documento, y buscar el botón en cada mensaje estorba.
+          // Enter sends, Shift+Enter breaks the line: this is a chat, not a
+          // document, and reaching for the button on every message is friction.
           onKeyDown={(event) => {
             if (event.key !== 'Enter' || event.shiftKey) return
             event.preventDefault()
@@ -69,7 +89,7 @@ export function ChatComposer({
         <button
           type="button"
           onClick={onSend}
-          disabled={disabled || (!draft.trim() && docs.length === 0)}
+          disabled={disabled || (!draft.trim() && docs.length === 0 && references.length === 0)}
           aria-label={t('operation.chat.send')}
           title={t('operation.chat.send')}
           className={cn(
@@ -83,6 +103,31 @@ export function ChatComposer({
         </button>
       </div>
     </div>
+  )
+}
+
+function ReferencedWidget({
+  reference,
+  onUnreference,
+}: {
+  reference: ChatReference
+  onUnreference: (componentId: string) => void
+}) {
+  const { t } = useTranslation('domain')
+
+  return (
+    <li className="flex max-w-full items-center gap-1 rounded-full bg-brand-subtle px-2 py-0.5 text-2xs">
+      <AtSign className="size-3 shrink-0 text-brand" aria-hidden />
+      <span className="min-w-0 truncate text-fg-muted">{reference.title}</span>
+      <button
+        type="button"
+        onClick={() => onUnreference(reference.id)}
+        aria-label={t('operation.chat.removeReference', { title: reference.title })}
+        className="shrink-0 rounded-xs text-fg-subtle hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+      >
+        <X className="size-3" aria-hidden />
+      </button>
+    </li>
   )
 }
 
