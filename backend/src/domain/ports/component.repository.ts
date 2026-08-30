@@ -4,4 +4,5 @@ export interface ComponentRepository {
   findByOperationId(operationId: string): Promise<Component[]>;
   findById(id: string): Promise<Component | null>;
   save(component: Component): Promise<void>;
+  deleteById(id: string): Promise<void>;
 }

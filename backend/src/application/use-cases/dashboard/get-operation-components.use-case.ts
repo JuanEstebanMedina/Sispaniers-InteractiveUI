@@ -1,7 +1,6 @@
 import type { Component } from "../../../domain/components/component.js";
-import { packDefaultLayout } from "../../../domain/components/layout-packer.js";
+import { projectLayout } from "../../../domain/components/layout-projection.js";
 import type { LayoutEntry } from "../../../domain/components/layout.js";
-import { WIDGET_SIZES } from "../../../domain/components/widget-size.js";
 import type { GridCols } from "../../../domain/components/widget-size.js";
 import { OperationNotFoundError } from "../../../domain/model/errors.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
@@ -37,17 +36,9 @@ export function createGetOperationComponentsUseCase(deps: GetOperationComponents
 
     const components = await componentRepository.findByOperationId(input.operationId);
     const operationLayout = await operationLayoutRepository.findByOperationId(input.operationId);
+    const saved =
+      operationLayout?.breakpoints.find((entry) => entry.cols === input.cols)?.layout ?? [];
 
-    const savedBreakpoint = operationLayout?.breakpoints.find((entry) => entry.cols === input.cols);
-    if (savedBreakpoint !== undefined) {
-      return { components, layout: savedBreakpoint.layout };
-    }
-
-    const layout = packDefaultLayout(
-      components.map((component) => ({ id: component.id, ...WIDGET_SIZES[component.size] })),
-      input.cols,
-    );
-
-    return { components, layout };
+    return { components, layout: projectLayout({ components, saved, cols: input.cols }) };
   };
 }

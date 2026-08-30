@@ -10,6 +10,20 @@ export const layoutEntrySchema = z.object({
   h: z.number().int().min(1),
 });
 
+/**
+ * Widgets can be moved but never resized, so `w`/`h` are accepted for wire
+ * compatibility and then ignored: the size comes from the component itself.
+ */
+export const layoutPositionSchema = z
+  .object({
+    id: z.string().min(1),
+    col: z.number().int().min(0),
+    row: z.number().int().min(0),
+    w: z.number().int().min(1).optional(),
+    h: z.number().int().min(1).optional(),
+  })
+  .transform(({ id, col, row }) => ({ id, col, row }));
+
 export const componentResponseSchema = z.object({
   id: z.string(),
   operation_id: z.string(),
@@ -30,7 +44,7 @@ export const getComponentsResponseSchema = z.object({
 
 export const updateLayoutBodySchema = z.object({
   cols: gridColsSchema,
-  layout: z.array(layoutEntrySchema),
+  layout: z.array(layoutPositionSchema),
 });
 
 export const updateLayoutResponseSchema = z.object({

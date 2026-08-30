@@ -29,4 +29,8 @@ export class MongoComponentRepository implements ComponentRepository {
 
     await this.components.replaceOne({ _id: document._id }, document, { upsert: true });
   }
+
+  async deleteById(id: string): Promise<void> {
+    await this.components.deleteOne({ _id: id });
+  }
 }

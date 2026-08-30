@@ -1,5 +1,11 @@
 import type { GridCols } from "./widget-size.js";
 
+export interface LayoutPosition {
+  id: string;
+  col: number;
+  row: number;
+}
+
 export interface LayoutEntry {
   id: string;
   col: number;

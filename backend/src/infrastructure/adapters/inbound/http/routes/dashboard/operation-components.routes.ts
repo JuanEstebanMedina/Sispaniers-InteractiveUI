@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod, ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
+import type { DeleteComponentInput } from "../../../../../../application/use-cases/dashboard/delete-component.use-case.js";
 import type {
   GetOperationComponentsInput,
   GetOperationComponentsResult,
@@ -40,6 +41,7 @@ export interface OperationComponentsRouteDeps {
     input: UpdateOperationLayoutInput,
   ) => Promise<UpdateOperationLayoutResult>;
   updateComponentContent: (input: UpdateComponentContentInput) => Promise<Component>;
+  deleteComponent: (input: DeleteComponentInput) => Promise<void>;
 }
 
 function isValidResponseWidth(w: number): w is 1 | 2 | 4 {
@@ -159,6 +161,33 @@ export const operationComponentsRoutes: FastifyPluginAsyncZod<
           content,
         });
         reply.code(200).send(toComponentResponse(component));
+      } catch (error) {
+        if (error instanceof OperationNotFoundError) {
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
+          return;
+        }
+        if (error instanceof ComponentNotFoundError) {
+          reply.code(404).send({ error: "component_not_found", message: error.message });
+          return;
+        }
+        throw error;
+      }
+    },
+  );
+  app.delete(
+    "/operations/:id/components/:componentId",
+    {
+      schema: {
+        params: operationComponentParamsSchema,
+        response: { 204: z.null(), 404: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const { id, componentId } = request.params;
+
+      try {
+        await deps.deleteComponent({ operationId: id, componentId });
+        reply.code(204).send(null);
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
           reply.code(404).send({ error: "operation_not_found", message: error.message });
