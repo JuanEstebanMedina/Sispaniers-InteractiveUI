@@ -20,6 +20,7 @@ export class OpenAiCompletionAdapter implements AiCompletionPort {
     const response = await this.client.chat.completions.create({
       model: this.model,
       messages: [{ role: "user", content: request.prompt }],
+      response_format: { type: "json_object" },
     });
 
     return { text: response.choices[0]?.message.content ?? "" };

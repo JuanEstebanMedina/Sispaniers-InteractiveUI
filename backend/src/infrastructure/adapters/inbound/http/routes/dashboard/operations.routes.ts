@@ -5,6 +5,10 @@ import type {
   CreateOperationResult,
 } from "../../../../../../application/use-cases/dashboard/create-operation.use-case.js";
 import type {
+  GetDocumentPreviewUrlInput,
+  GetDocumentPreviewUrlResult,
+} from "../../../../../../application/use-cases/dashboard/get-document-preview-url.use-case.js";
+import type {
   GetOperationInput,
   GetOperationResult,
 } from "../../../../../../application/use-cases/dashboard/get-operation.use-case.js";
@@ -12,27 +16,47 @@ import type {
   ListOperationsInput,
   ListOperationsResultItem,
 } from "../../../../../../application/use-cases/dashboard/list-operations.use-case.js";
+import type {
+  UploadOperationDocumentInput,
+  UploadOperationDocumentResult,
+} from "../../../../../../application/use-cases/dashboard/upload-operation-document.use-case.js";
 import type { ContainerState } from "../../../../../../domain/enums/container-state.js";
+import type { Document } from "../../../../../../domain/logistics/document.js";
 import type { Operation } from "../../../../../../domain/logistics/operation.js";
 import {
   CompanyNotFoundError,
+  DocumentNotFoundError,
+  DocumentUploadError,
   InvalidFilterCombinationError,
   OperationNotFoundError,
 } from "../../../../../../domain/model/errors.js";
 import { errorResponseSchema } from "../../schemas/error.schema.js";
 import {
   createOperationBodySchema,
-  listOperationsQuerySchema,
+  documentPreviewUrlResponseSchema,
   listOperationsResponseSchema,
   operationResponseSchema,
+  searchOperationsBodySchema,
+  uploadDocumentBodySchema,
+  uploadDocumentResponseSchema,
 } from "../../schemas/operation.schema.js";
 
 const operationParamsSchema = z.object({ id: z.string().min(1) });
+const documentParamsSchema = z.object({
+  id: z.string().min(1),
+  documentId: z.string().min(1),
+});
 
 export interface OperationsRouteDeps {
   createOperation: (input: CreateOperationInput) => Promise<CreateOperationResult>;
   getOperation: (input: GetOperationInput) => Promise<GetOperationResult>;
   listOperations: (input: ListOperationsInput) => Promise<ListOperationsResultItem[]>;
+  getDocumentPreviewUrl: (
+    input: GetDocumentPreviewUrlInput,
+  ) => Promise<GetDocumentPreviewUrlResult>;
+  uploadOperationDocument: (
+    input: UploadOperationDocumentInput,
+  ) => Promise<UploadOperationDocumentResult>;
 }
 
 function toOperationResponse(operation: Operation, status: ContainerState) {
@@ -44,6 +68,19 @@ function toOperationResponse(operation: Operation, status: ContainerState) {
     created_at: operation.createdAt.toISOString(),
     bookings: operation.bookings,
     context: operation.context,
+  };
+}
+
+function toDocumentResponse(document: Document) {
+  return {
+    id: document.id,
+    type: document.type,
+    format: document.format,
+    bucket_key: document.bucketKey,
+    ...(document.bookingId !== undefined ? { booking_id: document.bookingId } : {}),
+    ...(document.sourceEmailId !== undefined ? { source_email_id: document.sourceEmailId } : {}),
+    extracted_data: document.extractedData,
+    received_at: document.receivedAt.toISOString(),
   };
 }
 
@@ -105,11 +142,22 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
     },
   );
 
-  app.get(
-    "/operations",
+  /**
+   * `POST /operations/search` — el ÚNICO listado.
+   *
+   * Había también un `GET /operations` y se eliminó: dos rutas para lo mismo
+   * significan dos contratos que mantener y dos sitios donde arreglar un bug
+   * de filtrado. Los filtros de la web —texto libre, estado, salud, empresa,
+   * rango de fechas y orden— no caben en una query string legible, así que la
+   * que sobrevive es la que puede con todo.
+   *
+   * Un body vacío lista todo, que es lo que el GET hacía.
+   */
+  app.post(
+    "/operations/search",
     {
       schema: {
-        querystring: listOperationsQuerySchema,
+        body: searchOperationsBodySchema,
         response: {
           200: listOperationsResponseSchema,
           400: errorResponseSchema,
@@ -118,16 +166,19 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
       },
     },
     async (request, reply) => {
-      const query = request.query;
+      const body = request.body;
 
       try {
         const results = await deps.listOperations({
-          ...(query.status !== undefined ? { status: query.status } : {}),
-          ...(query.health !== undefined ? { health: query.health } : {}),
-          ...(query.company_id !== undefined ? { companyId: query.company_id } : {}),
-          ...(query.from !== undefined ? { from: new Date(query.from) } : {}),
-          ...(query.to !== undefined ? { to: new Date(query.to) } : {}),
-          ...(query.date !== undefined ? { date: new Date(query.date) } : {}),
+          ...(body.status !== undefined ? { status: body.status } : {}),
+          ...(body.health !== undefined ? { health: body.health } : {}),
+          ...(body.company_id !== undefined ? { companyId: body.company_id } : {}),
+          ...(body.search !== undefined ? { search: body.search } : {}),
+          ...(body.from !== undefined ? { from: new Date(body.from) } : {}),
+          ...(body.to !== undefined ? { to: new Date(body.to) } : {}),
+          ...(body.date !== undefined ? { date: new Date(body.date) } : {}),
+          ...(body.sort_by !== undefined ? { sortBy: body.sort_by } : {}),
+          ...(body.sort_dir !== undefined ? { sortDir: body.sort_dir } : {}),
         });
 
         reply.code(200).send({
@@ -142,6 +193,80 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
         }
         if (error instanceof CompanyNotFoundError) {
           reply.code(404).send({ error: "company_not_found", message: error.message });
+          return;
+        }
+        throw error;
+      }
+    },
+  );
+
+  app.get(
+    "/operations/:id/documents/:documentId/preview-url",
+    {
+      schema: {
+        params: documentParamsSchema,
+        response: { 200: documentPreviewUrlResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const { id, documentId } = request.params;
+
+      try {
+        const result = await deps.getDocumentPreviewUrl({ operationId: id, documentId });
+        reply.code(200).send({ url: result.url, expires_in_seconds: result.expiresInSeconds });
+      } catch (error) {
+        if (error instanceof OperationNotFoundError) {
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
+          return;
+        }
+        if (error instanceof DocumentNotFoundError) {
+          reply.code(404).send({ error: "document_not_found", message: error.message });
+          return;
+        }
+        throw error;
+      }
+    },
+  );
+
+  // TODO: protect this endpoint with a shared secret/auth before production
+  app.post(
+    "/operations/:id/documents",
+    {
+      schema: {
+        params: operationParamsSchema,
+        body: uploadDocumentBodySchema,
+        response: {
+          201: uploadDocumentResponseSchema,
+          404: errorResponseSchema,
+          502: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+      const dto = request.body;
+
+      try {
+        const result = await deps.uploadOperationDocument({
+          operationId: id,
+          filename: dto.filename,
+          mimetype: dto.mimetype,
+          data: dto.data,
+          ...(dto.type !== undefined ? { type: dto.type } : {}),
+        });
+
+        reply.code(201).send({
+          document: toDocumentResponse(result.document),
+          url: result.url,
+          expires_in_seconds: result.expiresInSeconds,
+        });
+      } catch (error) {
+        if (error instanceof OperationNotFoundError) {
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
+          return;
+        }
+        if (error instanceof DocumentUploadError) {
+          reply.code(502).send({ error: "document_upload_failed", message: error.message });
           return;
         }
         throw error;

@@ -35,6 +35,8 @@ Copy `.env.example` to `.env` and fill it in.
 | `GMAIL_APP_PASSWORD` | — | Gmail **App Password** (not OAuth, no spaces, needs 2FA) |
 | `OPENAI_MODEL` | `gpt-4o-mini` | model id for the OpenAI adapter |
 | `GEMINI_MODEL` | `gemini-2.0-flash` | model id for the Gemini adapter |
+| `SUPABASE_URL` | — | project URL, used to upload email attachments to Storage |
+| `SUPABASE_SERVICE_ROLE_KEY` | — | service role (secret) key — bypasses RLS for server-side uploads |
 
 Mongo connection resolution order (`src/infrastructure/config/mongo.ts`):
 `MONGODB_URI` → a URI built from `MONGO_USER`/`MONGO_PASSWORD`/`MONGO_PORT`/`MONGO_DB`
@@ -83,23 +85,34 @@ curl -X POST http://127.0.0.1:8000/api/operations \
 
 `201` returns the operation object.
 
-### `GET /api/operations`
+### `POST /api/operations/search`
 
-Lists operations. All query parameters are optional.
+El **único** listado. Había también un `GET /api/operations` y se eliminó: dos
+rutas para lo mismo son dos contratos que mantener y dos sitios donde arreglar
+un bug de filtrado. Los filtros de la web —texto libre, estado, salud, empresa,
+rango de fechas y orden— no caben en una query string legible, así que la que
+sobrevive es la que puede con todo. Un body vacío lista todo.
 
-| Parameter | Type | Behaviour |
+Todos los campos son opcionales; un body vacío lista todo.
+
+| Campo | Tipo | Comportamiento |
 |---|---|---|
-| `status` | container state | filters on the **derived** status, in memory |
-| `health` | `ok` \| `warning` \| `error` | filters in Mongo |
-| `company_id` | string | reads `Company.operationIds` and narrows to those ids |
-| `from` / `to` | ISO date | `created_at` range |
-| `date` | ISO date | that whole UTC day; **cannot be combined** with `from`/`to` |
+| `search` | string | subcadena sin distinguir mayúsculas sobre el id de la operación, los ids de empresa y los puertos |
+| `status` | container state | filtra sobre el status **derivado**, en memoria |
+| `health` | `ok` \| `warning` \| `error` | filtra en Mongo |
+| `company_id` | string | operaciones de esa empresa |
+| `from` / `to` | fecha ISO | rango sobre `created_at` |
+| `date` | fecha ISO | ese día UTC; **no se combina** con `from`/`to` |
+| `sort_by` | `updatedAt` \| `company` \| `id` | `updatedAt` es derivado: el cambio de ETA más reciente, o la creación |
+| `sort_dir` | `asc` \| `desc` | por defecto `desc` |
 
 ```bash
-curl "http://127.0.0.1:8000/api/operations?status=in_transit&company_id=company-andes-textiles"
+curl -X POST http://127.0.0.1:8000/api/operations/search \
+  -H "Content-Type: application/json" \
+  -d '{ "search": "andes", "sort_by": "id", "sort_dir": "asc" }'
 ```
 
-`200` → `{ "operations": [ ... ] }`
+`200` → `{ "operations": [ ... ] }` · `400` → `invalid_filter_combination` · `404` → `company_not_found`
 
 ### `GET /api/operations/:id`
 
@@ -113,11 +126,57 @@ An operation object is `id`, `company_ids`, `status`, `health`, `created_at`,
 `bookings[]` and `context`. Run the curl above against a seeded database for the full
 shape.
 
+### `POST /api/operations/:id/documents`
+
+Uploads a document straight onto an operation — the manual counterpart to what
+`POST /api/emails/receive` does automatically per attachment. Same three steps: upload
+the original bytes to Supabase Storage, extract text via the same `mimetype` table as
+the email flow, append a `Document` to `context.documents` in Mongo. Unlike the email
+flow, a failed Storage upload here **fails the request** (`502`) instead of degrading
+gracefully — a direct upload has no point if the file never lands anywhere.
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/operations/op-andes-textiles-001/documents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filename": "invoice.pdf",
+    "mimetype": "application/pdf",
+    "data": "<base64>",
+    "type": "Invoice"
+  }'
+```
+
+Required: `filename`, `mimetype`, `data` (base64). Optional: `type` (`PO` \|
+`BookingConfirmation` \| `BillOfLading` \| `Invoice` \| `PackingList` \| `ArrivalNotice`,
+defaults to `PO`) — unlike the email flow, a human uploading a file usually knows what
+it is, so it's not hardcoded here.
+
+`201` → `{ "document": { ...same shape as a context.documents[] entry, snake_case... },
+"url": "...", "expires_in_seconds": 300 }`. `404` → `operation_not_found`. `502` →
+`document_upload_failed`.
+
+**TODO**: no auth yet — see the comment in `operations.routes.ts`.
+
+### `GET /api/operations/:id/documents/:documentId/preview-url`
+
+A signed, time-limited URL for downloading or previewing one document's bytes straight
+from Supabase Storage — works for documents from either upload path above.
+
+```bash
+curl http://127.0.0.1:8000/api/operations/op-andes-textiles-001/documents/doc-1/preview-url
+```
+
+`200` → `{ "url": "...", "expires_in_seconds": 300 }`. `404` → `operation_not_found` or
+`document_not_found`. Opening the URL in a browser previews it inline when the type is
+renderable (image, PDF); otherwise the browser downloads it or shows it as plain text —
+there's no separate "preview" vs "download" URL, it's the same signed URL either way.
+
 ### `POST /api/emails/receive`
 
 Entry point for an inbound email. Make.com polls Gmail and posts here — this is not a
-real webhook, there is no subscription or push involved. Nothing is persisted: the
-request is logged and a `run_id` is generated.
+real webhook, there is no subscription or push involved. A `run_id` is generated and the
+request is logged; if the subject links to an operation (see below), that operation is
+also created or updated in Mongo.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/emails/receive \
@@ -137,7 +196,8 @@ Required: `source` (`make` \| `gmail` \| `outlook` \| `manual`), `message_id`, `
 `subject`, `received_at` (ISO-8601 **with offset**). Optional: `to`, `body_text`,
 `body_html`, `attachments[]`.
 
-`201` → `{ "run_id": "...", "status": "queued" }`.
+`201` → `{ "run_id": "...", "status": "queued", "operation_id"?: "..." }` — `operation_id`
+is present only when the subject matched (see below).
 
 Each attachment is `{ filename, mimetype, data }` with `data` base64-encoded. Content is
 extracted by `mimetype` so a future AI hand-off gets usable text instead of raw bytes:
@@ -150,9 +210,27 @@ extracted by `mimetype` so a future AI hand-off gets usable text instead of raw 
 | `.pptx` | text via `officeparser` |
 | `.xls` / `.xlsx` | each sheet converted to CSV via `xlsx` (SheetJS) |
 | `text/csv` | passed through as-is |
-| anything else | `kind: "unsupported"` — does not fail the request |
+| anything else | `format: "other"` — does not fail the request |
 
-Extraction results are only logged for now; nothing is handed to an AI yet.
+The original attachment bytes are also uploaded to Supabase Storage (private bucket
+`email-attachments`, keyed by `message_id/filename`) — see
+`infrastructure/adapters/outbound/storage/supabase-attachment-storage.ts`. A successful
+upload adds `storagePath` to that attachment's entry; a failed one adds `storageError`
+instead, without failing the whole request. Nothing is handed to an AI yet — but the
+operation link below does persist, and `GET /api/operations/:id/documents/:documentId/preview-url`
+(below) gets a signed URL for any uploaded document, from this flow or the manual one.
+
+**Subject links the email to an operation.** If the subject matches
+`Orden de compra #<id>` (case-insensitive), `<id>` is used as the operation id: an
+existing operation is fetched and updated, a missing one is created from scratch. The
+email is appended to `context.emails`, and one `Document` per **successfully uploaded**
+attachment (`storagePath` present) is appended to `context.documents` — `bucketKey` is
+that `storagePath`, `extractedData` is `{ text: <extracted content> }` (`{}` for images,
+nothing meaningful extracted as text), and `type` is hardcoded to `"PO"` for now (see the
+TODO in `upsert-operation-from-email.use-case.ts` — no real document classification
+yet). Re-processing the same `message_id` against an operation that already has it is a
+no-op (Make's polling can double-post the same email). A subject that doesn't match the
+pattern skips this step entirely — extraction and upload above still happen either way.
 
 ### `POST /api/emails/send`
 
@@ -183,7 +261,9 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 | `400` | `invalid_filter_combination` | `date` sent together with `from`/`to` |
 | `404` | `operation_not_found` | no operation with that id |
 | `404` | `company_not_found` | no company with that id |
+| `404` | `document_not_found` | no document with that id on that operation |
 | `502` | `email_send_failed` | SMTP rejected the message |
+| `502` | `document_upload_failed` | Supabase Storage rejected the upload |
 
 ## Things the code will not tell you at a glance
 
@@ -192,11 +272,12 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 one place only: `Company.operationIds`. An operation with no bookings answers with an
 empty list, which is the truth.
 
-**Documents are pointers, not payloads.** A `Document` carries a `bucketKey` into S3
-plus a `format` (`pdf`, `spreadsheet`, `document`, `image`, `other`) and whatever the
-extractor could scrape into `extractedData`. The bytes never reach Mongo, and neither do
-email attachments: `NormalizedEmail` is a transport DTO, and only the lightweight
-`ContextEmail` projection is persisted.
+**Documents are pointers, not payloads.** A `Document` carries a `bucketKey` into an
+S3-compatible bucket (Supabase Storage, not AWS) plus a `format` (`pdf`, `spreadsheet`,
+`document`, `image`, `other`) and whatever the extractor could scrape into
+`extractedData`. The bytes never reach Mongo, and neither do email attachments:
+`NormalizedEmail` is a transport DTO, and only the lightweight `ContextEmail` projection
+is persisted.
 
 **`status` is derived, never stored.** Container states run
 `booking_confirmed` → `in_transit` → `arrived_port` → `customs` → `delivered`. A booking's

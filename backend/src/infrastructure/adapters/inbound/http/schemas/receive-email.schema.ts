@@ -25,6 +25,7 @@ export type ReceiveEmailBody = z.infer<typeof receiveEmailBodySchema>;
 export const receiveEmailResponseSchema = z.object({
   run_id: z.string(),
   status: z.literal("queued"),
+  operation_id: z.string().optional(),
 });
 
 export type ReceiveEmailResponse = z.infer<typeof receiveEmailResponseSchema>;

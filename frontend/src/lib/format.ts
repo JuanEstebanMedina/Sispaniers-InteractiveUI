@@ -130,6 +130,37 @@ export function formatDate(
   return format(date, DATE_PATTERNS[pattern], { locale: dateLocales[locale ?? currentLocale()] })
 }
 
+/**
+ * Fecha de CALENDARIO, sin corrimiento de zona.
+ *
+ * El backend manda todo en UTC. Para un instante real —cuándo llegó un correo,
+ * cuándo se movió una ETA— convertir a la zona del usuario es lo correcto, y
+ * `formatDate` ya lo hace: `parseISO` respeta el offset y `format` imprime en
+ * local.
+ *
+ * Pero una ETA NO es un instante, es una FECHA. El backend la manda como
+ * `2026-08-21T00:00:00Z`, y en Bogotá (UTC-5) esa medianoche cae el día 20.
+ * El buque no llega un día antes por estar en otro huso: convertirla sería
+ * mentir. Estas se imprimen tal como vienen.
+ *
+ * El truco del offset evita meter una dependencia de zonas horarias sólo para
+ * esto: se corre el instante lo que vale el huso local, así los componentes
+ * locales de la fecha coinciden con los UTC del original.
+ */
+export function formatCalendarDate(
+  input: string | number | Date | null | undefined,
+  pattern: DatePattern = 'medium',
+  locale?: Locale,
+): string {
+  const date = toDate(input)
+  if (!date) return '—'
+
+  const asLocalCalendar = new Date(date.getTime() + date.getTimezoneOffset() * 60_000)
+  return format(asLocalCalendar, DATE_PATTERNS[pattern], {
+    locale: dateLocales[locale ?? currentLocale()],
+  })
+}
+
 export function formatRelative(
   input: string | number | Date | null | undefined,
   locale?: Locale,

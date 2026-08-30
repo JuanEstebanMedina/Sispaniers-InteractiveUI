@@ -1,11 +1,16 @@
-import type { Component } from "../../../domain/components/component.js";
+import { validateComponentTree } from "../../../domain/components/component-node.js";
+import type { Component, ComponentNode } from "../../../domain/components/component.js";
 import { WIDGET_SIZES, type WidgetSizeName } from "../../../domain/components/widget-size.js";
-import { WIDGET_KINDS, type WidgetKind } from "../../../domain/enums/widget-kind.js";
-import { InvalidAiComponentError, OperationNotFoundError } from "../../../domain/model/errors.js";
+import {
+  InvalidAiComponentError,
+  InvalidComponentTreeError,
+  OperationNotFoundError,
+} from "../../../domain/model/errors.js";
 import type { AiCompletionPort } from "../../../domain/ports/ai-completion-port.js";
-import type { ComponentEventsBroadcaster } from "../../../domain/ports/component-events.port.js";
+import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 import type { CreateComponentInput } from "./create-component.use-case.js";
+import type { UpdateComponentContentInput } from "./update-component-content.use-case.js";
 
 export type AiTrigger = "chat" | "auto";
 
@@ -17,39 +22,49 @@ export interface GenerateComponentFromAiInput {
 
 export interface GenerateComponentFromAiDeps {
   operationRepository: OperationRepository;
+  componentRepository: ComponentRepository;
   aiCompletionPort: AiCompletionPort;
   createComponent: (input: CreateComponentInput) => Promise<Component>;
-  componentEventsBroadcaster: ComponentEventsBroadcaster;
+  updateComponentContent: (input: UpdateComponentContentInput) => Promise<Component>;
   promptTemplate: string;
 }
 
 const GRID_COLUMNS = 4;
+const NOT_AVAILABLE = "N/A (no disponible en esta versión)";
 
-const COMPONENT_CATALOG_WHEN_TO_USE: Record<WidgetKind, string> = {
-  map: "Cuando hay que ubicar geográficamente un contenedor o buque en tránsito.",
-  metric: "Cuando hay que comunicar un número o indicador clave de la operación.",
-  "decision-panel": "Cuando la situación requiere una decisión humana entre varias opciones.",
-  timeline: "Cuando hay que mostrar la secuencia de eventos/hitos de una operación.",
-};
+function buildOutputContractOverride(
+  existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
+): string {
+  return `---
+NOTA TÉCNICA — el formato de salida de la sección 7 de este documento está desactualizado. Usa este formato real en su lugar:
 
-function buildComponentCatalog(): Array<{ type: WidgetKind; whenToUse: string }> {
-  return WIDGET_KINDS.map((kind) => ({
-    type: kind,
-    whenToUse: COMPONENT_CATALOG_WHEN_TO_USE[kind],
-  }));
+{
+  "children": [ { "kind": "<uno de: title|trend-chart|category-chart|breakdown-chart|stat|label|button|button-group>", "order": <int>, "props": { ... }, "action"?: "<navigate|confirm|reject|export|refresh, solo si kind=button>", "children"?: [ <mismo shape, solo si kind=button-group> ] } ],
+  "layout": { "cols": <int>, "rows": <int> },
+  "supersedes": "<id de un componente EXISTENTE de esta operación a reemplazar>" | null,
+  "agentReasoning": "<explicación breve>"
 }
 
-function buildPrompt(template: string, trigger: AiTrigger, currentInput: string): string {
-  const NOT_AVAILABLE = "N/A (no disponible en esta versión)";
+Componentes existentes de esta operación (usa su "id" en "supersedes" si tu salida reemplaza a uno; si no reemplazas nada, "supersedes": null):
+${JSON.stringify(existingComponents)}
 
-  return template
+El resto de reglas de este documento (secciones 0-6, 8) siguen aplicando igual.`;
+}
+
+function buildPrompt(
+  template: string,
+  trigger: AiTrigger,
+  currentInput: string,
+  existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
+): string {
+  const base = template
     .replaceAll("{{company_knowledge}}", NOT_AVAILABLE)
     .replaceAll("{{client_memory}}", NOT_AVAILABLE)
-    .replaceAll("{{run_history}}", NOT_AVAILABLE)
-    .replaceAll("{{component_catalog}}", JSON.stringify(buildComponentCatalog()))
     .replaceAll("{{trigger}}", trigger)
     .replaceAll("{{current_input}}", currentInput)
     .replaceAll("{{grid_columns}}", String(GRID_COLUMNS));
+
+  return `${base}\n\n${buildOutputContractOverride(existingComponents)}`;
 }
 
 function stripMarkdownCodeFence(text: string): string {
@@ -63,13 +78,9 @@ function truncateForDebugging(text: string): string {
 }
 
 interface ParsedAiComponent {
-  kind: WidgetKind;
-  content: Record<string, unknown>;
+  children: ComponentNode[];
   size: WidgetSizeName;
-}
-
-function isWidgetKind(value: unknown): value is WidgetKind {
-  return typeof value === "string" && (WIDGET_KINDS as readonly string[]).includes(value);
+  supersedes: string | null;
 }
 
 function nearestSize(cols: number, rows: number): WidgetSizeName {
@@ -103,10 +114,10 @@ function parseAiResponse(rawText: string): ParsedAiComponent {
     throw new InvalidAiComponentError(`expected an object: ${truncateForDebugging(rawText)}`);
   }
 
-  const { type, props, layout } = parsed as Record<string, unknown>;
+  const { children, layout, supersedes } = parsed as Record<string, unknown>;
 
-  if (!isWidgetKind(type)) {
-    throw new InvalidAiComponentError(`unknown component type: ${truncateForDebugging(rawText)}`);
+  if (!Array.isArray(children)) {
+    throw new InvalidAiComponentError(`missing children array: ${truncateForDebugging(rawText)}`);
   }
 
   if (typeof layout !== "object" || layout === null) {
@@ -120,19 +131,29 @@ function parseAiResponse(rawText: string): ParsedAiComponent {
     );
   }
 
+  try {
+    validateComponentTree(children);
+  } catch (error) {
+    if (error instanceof InvalidComponentTreeError) {
+      throw new InvalidAiComponentError(`invalid component tree: ${truncateForDebugging(rawText)}`);
+    }
+    throw error;
+  }
+
   return {
-    kind: type,
-    content: typeof props === "object" && props !== null ? (props as Record<string, unknown>) : {},
+    children,
     size: nearestSize(cols, rows),
+    supersedes: typeof supersedes === "string" && supersedes.length > 0 ? supersedes : null,
   };
 }
 
 export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFromAiDeps) {
   const {
     operationRepository,
+    componentRepository,
     aiCompletionPort,
     createComponent,
-    componentEventsBroadcaster,
+    updateComponentContent,
     promptTemplate,
   } = deps;
 
@@ -144,23 +165,48 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       throw new OperationNotFoundError(input.operationId);
     }
 
-    const prompt = buildPrompt(promptTemplate, input.trigger, input.input);
-    const response = await aiCompletionPort.complete({ prompt });
-    const parsed = parseAiResponse(response.text);
+    const existingComponents = (await componentRepository.findByOperationId(input.operationId)).map(
+      (component) => ({
+        id: component.id,
+        size: component.size,
+        childCount: component.children.length,
+      }),
+    );
 
-    const component = await createComponent({
+    const prompt = buildPrompt(promptTemplate, input.trigger, input.input, existingComponents);
+    const response = await aiCompletionPort.complete({ prompt });
+
+    let parsed: ParsedAiComponent;
+    try {
+      parsed = parseAiResponse(response.text);
+    } catch (error) {
+      if (!(error instanceof InvalidAiComponentError)) {
+        throw error;
+      }
+      console.warn("generateComponentFromAi: retrying after invalid AI response");
+      const retryResponse = await aiCompletionPort.complete({ prompt });
+      parsed = parseAiResponse(retryResponse.text);
+    }
+
+    if (parsed.supersedes !== null) {
+      const target = await componentRepository.findById(parsed.supersedes);
+      if (target !== null && target.operationId === input.operationId) {
+        return updateComponentContent({
+          operationId: input.operationId,
+          componentId: parsed.supersedes,
+          children: parsed.children,
+        });
+      }
+      console.warn(
+        `generateComponentFromAi: ignoring hallucinated supersedes id ${parsed.supersedes}`,
+      );
+    }
+
+    return createComponent({
       operationId: input.operationId,
-      kind: parsed.kind,
-      content: parsed.content,
+      kind: "container",
+      children: parsed.children,
       size: parsed.size,
     });
-
-    componentEventsBroadcaster.publish(input.operationId, {
-      type: "component-created",
-      operationId: input.operationId,
-      component,
-    });
-
-    return component;
   };
 }

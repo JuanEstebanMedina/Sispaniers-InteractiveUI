@@ -4,39 +4,51 @@ import {
   type OperationComponentsRouteDeps,
   operationComponentsRoutes,
 } from "./dashboard/operation-components.routes.js";
+import {
+  type OperationEventsRouteDeps,
+  operationEventsRoutes,
+} from "./dashboard/operation-events.routes.js";
 import { type OperationsRouteDeps, operationsRoutes } from "./dashboard/operations.routes.js";
 import { type EmailsRouteDeps, emailsRoutes } from "./emails.routes.js";
 
 export type RouteDependencies = EmailsRouteDeps &
   OperationsRouteDeps &
   OperationComponentsRouteDeps &
-  AiRouteDeps;
+  AiRouteDeps &
+  OperationEventsRouteDeps;
 
 export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastify, deps) => {
   const {
     receiveEmail,
     sendEmail,
+    upsertOperationFromEmail,
     createOperation,
     getOperation,
     listOperations,
+    getDocumentPreviewUrl,
+    uploadOperationDocument,
     getOperationComponents,
     updateOperationLayout,
     updateComponentContent,
     generateComponentFromAi,
-    componentEventsBroadcaster,
-    operationRepository,
+    createComponent,
+    componentEventPublisher,
   } = deps;
 
-  await fastify.register(emailsRoutes, { receiveEmail, sendEmail });
-  await fastify.register(operationsRoutes, { createOperation, getOperation, listOperations });
+  await fastify.register(emailsRoutes, { receiveEmail, sendEmail, upsertOperationFromEmail });
+  await fastify.register(operationsRoutes, {
+    createOperation,
+    getOperation,
+    listOperations,
+    getDocumentPreviewUrl,
+    uploadOperationDocument,
+  });
   await fastify.register(operationComponentsRoutes, {
     getOperationComponents,
     updateOperationLayout,
     updateComponentContent,
+    createComponent,
   });
-  await fastify.register(aiRoutes, {
-    generateComponentFromAi,
-    componentEventsBroadcaster,
-    operationRepository,
-  });
+  await fastify.register(aiRoutes, { generateComponentFromAi });
+  await fastify.register(operationEventsRoutes, { componentEventPublisher });
 };

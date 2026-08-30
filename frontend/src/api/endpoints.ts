@@ -19,12 +19,17 @@ export const endpoints = {
   },
 
   operations: {
-    list: '/flows',
-    detail: (id: string) => `/flows/${id}`,
-    /** ⚠️ El backend todavía NO implementa esto: la posición de los widgets
-     *  no se persiste. El PATCH sale y devuelve 404, que la mutación ignora
-     *  a propósito (fire-and-forget). */
-    layout: (id: string) => `/flows/${id}/layout`,
+    /**
+     * El ÚNICO listado. Es POST porque texto libre + estado + salud + rango de
+     * fechas + orden no caben en una query string legible. Un body vacío lista
+     * todo, que es lo que hacía el `GET /operations` que se eliminó.
+     */
+    search: '/operations/search',
+    detail: (id: string) => `/operations/${id}`,
+    components: (id: string) => `/operations/${id}/components`,
+    layout: (id: string) => `/operations/${id}/layout`,
+    componentContent: (id: string, componentId: string) =>
+      `/operations/${id}/components/${componentId}`,
   },
 
   notifications: {
@@ -34,9 +39,10 @@ export const endpoints = {
   },
 
   ai: {
-    ask: '/ai/ask',
-    stream: '/ai/stream',
-    suggestions: '/ai/suggestions',
+    chat: (operationId: string) => `/operations/${operationId}/chat`,
+    events: (operationId: string) => `/operations/${operationId}/events`,
+    components: (operationId: string, cols: 2 | 4 | 8) =>
+      `/operations/${operationId}/components?cols=${cols}`,
   },
 
   health: '/health',
@@ -53,8 +59,15 @@ export const queryKeys = {
   },
   operations: {
     all: ['operations'] as const,
-    list: (filters?: unknown) => ['operations', 'list', filters ?? {}] as const,
+    /**
+     * La clave ES el cuerpo de la petición. Con eso, dos pantallas que piden
+     * exactamente lo mismo comparten una sola consulta: el punto del menú pide
+     * `{}` y la grilla sin filtros también manda `{}`, así que React Query las
+     * funde en UNA petición en vez de dos idénticas.
+     */
+    list: (body?: unknown) => ['operations', 'list', body ?? {}] as const,
     detail: (id: string) => ['operations', 'detail', id] as const,
+    components: (id: string, cols: number) => ['operations', 'components', id, cols] as const,
   },
   notifications: {
     all: ['notifications'] as const,

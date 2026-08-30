@@ -1,4 +1,12 @@
 import { z } from "zod";
+import { WIDGET_SIZES, type WidgetSizeName } from "../../../../../domain/components/widget-size.js";
+import { GRID_COMPONENT_KINDS } from "../../../../../domain/enums/widget-kind.js";
+import { componentChildrenSchema } from "./component-node.schema.js";
+
+const widgetSizeNames = Object.keys(WIDGET_SIZES) as [WidgetSizeName, ...WidgetSizeName[]];
+
+export const widgetSizeSchema = z.enum(widgetSizeNames);
+export const gridComponentKindSchema = z.enum(GRID_COMPONENT_KINDS);
 
 export const gridColsSchema = z.union([z.literal(2), z.literal(4), z.literal(8)]);
 
@@ -10,11 +18,14 @@ export const layoutEntrySchema = z.object({
   h: z.number().int().min(1),
 });
 
+// Wire-level key stays "content" for backward compatibility with the already
+// shipped flow-components contract (SPEC-FC-007); its value is now the
+// ComponentNode[] tree (children) rather than an opaque bag.
 export const componentResponseSchema = z.object({
   id: z.string(),
   operation_id: z.string(),
   kind: z.string(),
-  content: z.record(z.unknown()),
+  content: z.array(z.unknown()),
   size: z.string(),
   created_at: z.string(),
 });
@@ -38,8 +49,15 @@ export const updateLayoutResponseSchema = z.object({
   layout: z.array(layoutEntrySchema),
 });
 
-export const updateComponentContentBodySchema = z.object({
-  content: z.record(z.unknown()),
-});
+export const updateComponentContentBodySchema = z.union([
+  z.object({ content: componentChildrenSchema }).strict(),
+  z.object({ path: z.string().min(1), value: z.unknown() }).strict(),
+]);
 
 export const updateComponentContentResponseSchema = componentResponseSchema;
+
+export const createComponentBodySchema = z.object({
+  kind: gridComponentKindSchema,
+  size: widgetSizeSchema,
+  children: componentChildrenSchema,
+});

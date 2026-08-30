@@ -39,7 +39,7 @@ export function Sidebar({
   badges = {},
 }: SidebarProps) {
   const { t } = useTranslation()
-  const labelVisibility = cn('md:hidden', !collapsed && 'lg:block')
+  const labelVisibility = cn('md:hidden', !collapsed && 'md:block')
 
   return (
     <>
@@ -60,8 +60,7 @@ export function Sidebar({
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
 
           'md:sticky md:top-0 md:h-dvh md:translate-x-0',
-          'md:w-sidebar-collapsed',
-          collapsed ? 'lg:w-sidebar-collapsed' : 'lg:w-sidebar',
+          collapsed ? 'md:w-sidebar-collapsed' : 'md:w-sidebar',
         )}
         aria-label={t('nav.main')}
       >
@@ -69,7 +68,7 @@ export function Sidebar({
           className={cn(
             'flex h-brandbar shrink-0 items-center gap-3 px-3',
             'md:justify-center',
-            !collapsed && 'lg:justify-start',
+            !collapsed && 'md:justify-start',
           )}
         >
           <div

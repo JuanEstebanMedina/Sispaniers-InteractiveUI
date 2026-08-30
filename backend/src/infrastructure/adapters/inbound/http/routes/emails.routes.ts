@@ -4,6 +4,10 @@ import type {
   SendEmailInput,
   SendEmailResult,
 } from "../../../../../application/use-cases/email/send-email.use-case.js";
+import type {
+  UpsertOperationFromEmailInput,
+  UpsertOperationFromEmailResult,
+} from "../../../../../application/use-cases/email/upsert-operation-from-email.use-case.js";
 import type { NormalizedEmail } from "../../../../../domain/model/email.js";
 import { EmailSendError } from "../../../../../domain/model/errors.js";
 import { toNormalizedEmail } from "../mappers/email.mapper.js";
@@ -17,6 +21,9 @@ import { sendEmailBodySchema, sendEmailResponseSchema } from "../schemas/send-em
 export interface EmailsRouteDeps {
   receiveEmail: (email: NormalizedEmail) => Promise<ReceiveEmailResult>;
   sendEmail: (input: SendEmailInput) => Promise<SendEmailResult>;
+  upsertOperationFromEmail: (
+    input: UpsertOperationFromEmailInput,
+  ) => Promise<UpsertOperationFromEmailResult | undefined>;
 }
 
 const ATTACHMENT_PREVIEW_LENGTH = 300;
@@ -36,6 +43,8 @@ function attachmentLogSummary(attachments: ReceiveEmailResult["attachments"]) {
     ...(attachment.format === "image" && attachment.content !== undefined
       ? { base64_length: attachment.content.length }
       : {}),
+    ...(attachment.storagePath !== undefined ? { storage_path: attachment.storagePath } : {}),
+    ...(attachment.storageError !== undefined ? { storage_error: attachment.storageError } : {}),
   }));
 }
 
@@ -53,6 +62,7 @@ export const emailsRoutes: FastifyPluginAsyncZod<EmailsRouteDeps> = async (fasti
     async (request, reply) => {
       const email = toNormalizedEmail(request.body);
       const { runId, attachments } = await deps.receiveEmail(email);
+      const operationResult = await deps.upsertOperationFromEmail({ email, attachments });
 
       request.log.warn(
         {
@@ -65,15 +75,21 @@ export const emailsRoutes: FastifyPluginAsyncZod<EmailsRouteDeps> = async (fasti
           received_at: email.receivedAt,
           body_text: email.bodyText,
           attachments: attachmentLogSummary(attachments),
+          operation_id: operationResult?.operationId,
+          operation_created: operationResult?.created,
         },
         "received email",
       );
 
-      reply.code(201).send({ run_id: runId, status: "queued" as const });
+      reply.code(201).send({
+        run_id: runId,
+        status: "queued" as const,
+        ...(operationResult !== undefined ? { operation_id: operationResult.operationId } : {}),
+      });
     },
   );
 
-  // TODO: proteger este endpoint con un secreto compartido con Make antes de producción
+  // TODO: protect this endpoint with a secret shared with Make before production
   app.post(
     "/emails/send",
     {

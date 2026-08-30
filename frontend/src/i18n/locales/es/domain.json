@@ -50,7 +50,9 @@
       "title": "Operaciones activas",
       "backToGrid": "Ver todas",
       "show": "Ver las demás operaciones",
-      "hide": "Ocultar el panel"
+      "hide": "Ocultar el panel",
+      "resize": "Ajustar el ancho del panel",
+      "panel": "Panel lateral"
     },
     "generated": {
       "label": "Interfaz generada",
@@ -59,13 +61,23 @@
       "emptyHint": "Cuando el agente ejecute el flujo, la interfaz de este run se va a construir acá y se va a reorganizar sola a medida que avance.",
       "moveWidget": "Mover {{title}}",
       "renameWidget": "Renombrar widget",
-      "widgetName": "Nombre del widget"
+      "widgetName": "Nombre del widget",
+      "untitledWidget": "Componente IA"
     },
     "chat": {
       "title": "Hablar con el agente",
-      "empty": "Pídele algo que la interfaz no cubre: enviar un correo, frenar el despacho, pedir un documento.",
+      "empty": "Escríbele como a un colega: «avisa al cliente del retraso», «frena el despacho hasta que revise el BL», «pídele el certificado de origen al proveedor».",
       "placeholder": "Escribe lo que necesitas…",
-      "send": "Enviar"
+      "send": "Enviar",
+      "attach": "Adjuntar archivo",
+      "removeFile": "Quitar {{name}}",
+      "emptyTitle": "¿Algo que hacer a mano?",
+      "componentGenerated": "Componente actualizado en el panel.",
+      "sendError": "No se pudo enviar el mensaje al agente."
+    },
+    "events": {
+      "componentCreated": "Se generó un componente nuevo",
+      "componentUpdated": "Se actualizó un componente"
     }
   }
 }

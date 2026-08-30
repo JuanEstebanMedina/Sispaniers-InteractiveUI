@@ -50,7 +50,9 @@
       "title": "Active operations",
       "backToGrid": "View all",
       "show": "Show the other operations",
-      "hide": "Hide the panel"
+      "hide": "Hide the panel",
+      "resize": "Resize the panel",
+      "panel": "Side panel"
     },
     "generated": {
       "label": "Generated interface",
@@ -59,13 +61,23 @@
       "emptyHint": "Once the agent runs the flow, this run's interface will be built here and restructure itself as it goes.",
       "moveWidget": "Move {{title}}",
       "renameWidget": "Rename widget",
-      "widgetName": "Widget name"
+      "widgetName": "Widget name",
+      "untitledWidget": "AI component"
     },
     "chat": {
       "title": "Talk to the agent",
-      "empty": "Ask for something the interface does not cover: send an email, hold the dispatch, request a document.",
+      "empty": "Write to it like you would a colleague: “tell the client about the delay”, “hold the dispatch until I check the BL”, “ask the supplier for the certificate of origin”.",
       "placeholder": "Type what you need…",
-      "send": "Send"
+      "send": "Send",
+      "attach": "Attach a file",
+      "removeFile": "Remove {{name}}",
+      "emptyTitle": "Something to do by hand?",
+      "componentGenerated": "Component updated in the panel.",
+      "sendError": "Could not send the message to the agent."
+    },
+    "events": {
+      "componentCreated": "A new component was generated",
+      "componentUpdated": "A component was updated"
     }
   }
 }

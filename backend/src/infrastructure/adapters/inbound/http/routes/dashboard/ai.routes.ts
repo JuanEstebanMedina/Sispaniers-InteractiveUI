@@ -7,8 +7,7 @@ import {
   InvalidAiComponentError,
   OperationNotFoundError,
 } from "../../../../../../domain/model/errors.js";
-import type { ComponentEventsBroadcaster } from "../../../../../../domain/ports/component-events.port.js";
-import type { OperationRepository } from "../../../../../../domain/ports/operation.repository.js";
+import { toComponentWireShape } from "../../mappers/component.mapper.js";
 import {
   chatBodySchema,
   chatResponseSchema,
@@ -21,19 +20,6 @@ const operationParamsSchema = z.object({ id: z.string().min(1) });
 
 export interface AiRouteDeps {
   generateComponentFromAi: (input: GenerateComponentFromAiInput) => Promise<Component>;
-  componentEventsBroadcaster: ComponentEventsBroadcaster;
-  operationRepository: OperationRepository;
-}
-
-function toComponentResponse(component: Component) {
-  return {
-    id: component.id,
-    operation_id: component.operationId,
-    kind: component.kind,
-    content: component.content,
-    size: component.size,
-    created_at: component.createdAt.toISOString(),
-  } as const;
 }
 
 export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps) => {
@@ -62,7 +48,7 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
           trigger: "chat",
           input: message,
         });
-        reply.code(201).send(toComponentResponse(component));
+        reply.code(201).send(toComponentWireShape(component));
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
           reply.code(404).send({ error: "operation_not_found", message: error.message });
@@ -102,7 +88,7 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
           trigger: "auto",
           input: JSON.stringify({ event, payload }),
         });
-        reply.code(202).send(toComponentResponse(component));
+        reply.code(202).send(toComponentWireShape(component));
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
           reply.code(404).send({ error: "operation_not_found", message: error.message });
@@ -114,40 +100,6 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
         }
         throw error;
       }
-    },
-  );
-
-  app.get(
-    "/operations/:id/events",
-    { schema: { params: operationParamsSchema } },
-    async (request, reply) => {
-      const { id } = request.params;
-
-      const operation = await deps.operationRepository.findById(id);
-      if (operation === null) {
-        reply
-          .code(404)
-          .send({ error: "operation_not_found", message: `Operation not found: ${id}` });
-        return;
-      }
-
-      reply.raw.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      });
-      reply.raw.write(": connected\n\n");
-
-      // ponytail: no periodic keep-alive ping. Add one if a proxy in front of
-      // this starts timing out idle SSE connections.
-      const unsubscribe = deps.componentEventsBroadcaster.subscribe(id, (event) => {
-        reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
-      });
-
-      request.raw.on("close", () => {
-        unsubscribe();
-        reply.raw.end();
-      });
     },
   );
 };
