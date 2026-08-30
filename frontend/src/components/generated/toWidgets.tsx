@@ -1,6 +1,13 @@
-import type { GeneratedComponent, LayoutEntry } from '@/schemas'
-import { ComponentNodeView, agentTitleOf } from './ComponentNodeView'
+import type { ComponentNode, GeneratedComponent, LayoutEntry } from '@/schemas'
+import { createTree } from './nodeFactory'
 import type { Widget } from './WidgetGrid'
+
+/** El primer `title` del árbol: el nombre que el agente le puso al widget. */
+function agentTitleOf(nodes: ComponentNode[]): string | undefined {
+  const node = nodes.find((candidate) => candidate.kind === 'title')
+  const text = node?.props.text
+  return typeof text === 'string' && text.length > 0 ? text : undefined
+}
 
 /**
  * El backend devuelve dos listas: los componentes en el orden que eligió el
@@ -33,7 +40,14 @@ export function toWidgets(
         title: component.title ?? agentTitle ?? '—',
         priority: component.priority,
         fromAgent: component.title === undefined,
-        body: <ComponentNodeView nodes={body} />,
+        // Parts that ask to fill the widget (`flex-1`, `h-full`) only get to —
+        // a chart's `flex-1` does nothing inside a bare Fragment, it needs a
+        // flex ancestor to grow against.
+        body: (
+          <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
+            {createTree(body, component.id)}
+          </div>
+        ),
       },
     ]
   })

@@ -1,49 +1,48 @@
-## Herramienta: `update_component`
+## Tool: `update_component`
 
-Úsala **únicamente** cuando el mensaje del usuario referencia de forma
-explícita e inequívoca que quiere modificar, actualizar, cambiar o
-reemplazar un componente que ya existe en esta operación (su `id` aparece en
-la lista de componentes existentes del contexto). El historial es
-append-only — nunca "editas" el componente anterior, esta herramienta
-registra el reemplazo.
+Use it **only** when the user's message explicitly and unambiguously
+references wanting to modify, update, change or replace a component that
+already exists on this operation (its `id` appears in the context's list of
+existing components). History is append-only — you never "edit" the
+previous component, this tool records the replacement.
 
-Señales explícitas de que corresponde `update_component` (en español, las
-frases del usuario contienen algo como): "actualiza", "actualízalo",
-"cambia", "cámbialo", "modifica", "modifícalo", "reemplaza" — combinado con
-una referencia clara a "el/la [componente que ya existe]" (ej. "actualiza el
-panel de envíos", "cambia el gráfico de costos", "modifica el que ya tengo de
-aduanas").
+Explicit signals that `update_component` applies (phrases like): "update",
+"change", "modify", "replace", "fix" — combined with a clear reference to
+"the [existing component]" (e.g. "update the shipments panel", "change the
+cost chart", "modify the customs one I already have").
 
-Si el mensaje es genérico, nuevo o ambiguo (ej. "crea un componente",
-"muéstrame algo de envíos", "agrega un widget") — **NO uses esta
-herramienta**, aunque ya existan componentes similares en la operación. Usa
-siempre `create_component` en ese caso: es más seguro añadir un componente de
-más que actualizar uno equivocado.
+If the message is generic, new, or ambiguous (e.g. "create a component",
+"show me something about shipments", "add a widget") — **do NOT use this
+tool**, even if similar components already exist on the operation. Always
+use `create_component` in that case: adding one extra component is safer
+than updating the wrong one.
 
-### Argumentos
+### Arguments
 
 ```json
 {
   "children": [
-    { "kind": "<uno de component_catalog>", "order": <n>, "props": { ... } }
+    { "kind": "<same index as create_component, see above>", "order": <n>, "props": { ... } }
   ],
-  "componentId": "<id del componente que reemplaza>",
+  "componentId": "<id of the component being replaced>",
   "layout": { "cols": 4, "rows": 2 },
-  "reply": "<mensaje breve en lenguaje natural, dirigido directamente al usuario final y mostrado tal cual en una burbuja de chat>"
+  "reply": "<short natural-language message, addressed directly to the end user and shown as-is in a chat bubble>"
 }
 ```
 
-- IMPORTANTE: `kind` debe ser EXACTAMENTE uno de estos valores, nunca inventes
-  otros: `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`,
-  `label`, `button`, `layout`. Cualquier otro valor será rechazado.
-- `componentId` es **obligatorio** — el `id` que aparece en la lista de
-  componentes existentes del contexto.
-- `reply` es **obligatorio** — mensaje conversacional para el usuario final,
-  sin jerga interna, sin HTML ni markdown ni código, nunca vacío.
-- `layout` es **opcional**: omítelo si solo reemplazas el contenido y el
-  tamaño actual sigue siendo correcto; inclúyelo (mismo formato
-  `{ "cols": n, "rows": n }`) cuando el componente también necesita cambiar
-  de tamaño o reacomodarse en la grilla de `{{grid_columns}}` columnas. Si lo
-  omites, el tamaño actual del componente no cambia.
-- Cuando incluyas `layout`, respeta el rango permitido por el `kind` elegido
-  (`minCols/maxCols`, `minRows/maxRows`), igual que en `create_component`.
+`children` uses exactly the same `kind` index, the same props per
+component, the same data sources (`dataKey`) and the same sizing mechanism
+as `create_component` — there is no separate list for updates.
+
+- `componentId` is **required** — the `id` that appears in the context's
+  list of existing components.
+- `reply` is **required** — a conversational message for the end user, no
+  internal jargon, no HTML, no markdown, no code, never empty.
+- `layout` is **optional**: omit it if you're only replacing the content and
+  the current size is still correct; include it (same format
+  `{ "cols": n, "rows": n }`) when the component also needs to resize or
+  reflow in the `{{grid_columns}}`-column grid. Omitting it leaves the
+  current size unchanged.
+- **`children` replaces the entire content, it doesn't patch it.** If the
+  component had three nodes and the user asked to change one, send all
+  three — the ones that don't change, exactly as they were.

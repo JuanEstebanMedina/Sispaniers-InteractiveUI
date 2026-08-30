@@ -81,8 +81,11 @@ export const operationEventsRoutes: FastifyPluginAsyncZod<OperationEventsRouteDe
       const unsubscribeComponents = deps.componentEventPublisher.subscribe(id, (event, payload) => {
         // "component-pending" carries its own wire shape already — it has
         // no Component to map, just the estimated size and a temp id.
+        // "component-pending-cleared" carries no payload at all.
         const data =
-          event === "component-pending" ? payload : toComponentWireShape(payload as Component);
+          event === "component-pending" || event === "component-pending-cleared"
+            ? payload
+            : toComponentWireShape(payload as Component);
         reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
       });
 
