@@ -4,6 +4,7 @@ import type {
   CreateCompanyInput,
   CreateCompanyResult,
 } from "../../../../../../application/use-cases/dashboard/create-company.use-case.js";
+import type { ListCompaniesInput } from "../../../../../../application/use-cases/dashboard/list-companies.use-case.js";
 import type { UpdateCompanyInput } from "../../../../../../application/use-cases/dashboard/update-company.use-case.js";
 import type { Company } from "../../../../../../domain/logistics/company.js";
 import {
@@ -22,7 +23,7 @@ const companyParamsSchema = z.object({ id: z.string().min(1) });
 
 export interface CompaniesRouteDeps {
   createCompany: (input: CreateCompanyInput) => Promise<CreateCompanyResult>;
-  listCompanies: () => Promise<Company[]>;
+  listCompanies: (input: ListCompaniesInput) => Promise<Company[]>;
   updateCompany: (input: UpdateCompanyInput) => Promise<Company>;
 }
 
@@ -42,8 +43,13 @@ export const companiesRoutes: FastifyPluginAsyncZod<CompaniesRouteDeps> = async 
   app.get(
     "/companies",
     { schema: { response: { 200: listCompaniesResponseSchema } } },
-    async (_request, reply) => {
-      const companies = await deps.listCompanies();
+    async (request, reply) => {
+      const { actor } = request;
+      const scopeCompanyId = actor.role === "superadmin" ? undefined : actor.companyId;
+
+      const companies = await deps.listCompanies({
+        ...(scopeCompanyId !== undefined ? { scopeCompanyId } : {}),
+      });
       reply.code(200).send({ companies: companies.map(toCompanyResponse) });
     },
   );
@@ -55,10 +61,21 @@ export const companiesRoutes: FastifyPluginAsyncZod<CompaniesRouteDeps> = async 
     {
       schema: {
         body: createCompanyBodySchema,
-        response: { 200: companyResponseSchema, 201: companyResponseSchema },
+        response: {
+          200: companyResponseSchema,
+          201: companyResponseSchema,
+          403: errorResponseSchema,
+        },
       },
     },
     async (request, reply) => {
+      if (request.actor.role !== "superadmin") {
+        reply
+          .code(403)
+          .send({ error: "forbidden", message: "Only superadmin can manage companies" });
+        return;
+      }
+
       const dto = request.body;
 
       const result = await deps.createCompany({
@@ -84,12 +101,20 @@ export const companiesRoutes: FastifyPluginAsyncZod<CompaniesRouteDeps> = async 
         body: updateCompanyBodySchema,
         response: {
           200: companyResponseSchema,
+          403: errorResponseSchema,
           404: errorResponseSchema,
           409: errorResponseSchema,
         },
       },
     },
     async (request, reply) => {
+      if (request.actor.role !== "superadmin") {
+        reply
+          .code(403)
+          .send({ error: "forbidden", message: "Only superadmin can manage companies" });
+        return;
+      }
+
       const { id } = request.params;
       const dto = request.body;
 

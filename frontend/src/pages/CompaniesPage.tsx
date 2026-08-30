@@ -21,7 +21,8 @@ const column = columnHelperFor<Company>()
 
 export default function CompaniesPage() {
   const { t } = useTranslation(['domain', 'common'])
-  const can = useAuthStore((state) => state.can)
+  const isAtLeast = useAuthStore((state) => state.isAtLeast)
+  const canManage = isAtLeast('superadmin')
   const queryClient = useQueryClient()
   const formModal = useDisclosure()
   const [editing, setEditing] = useState<Company | undefined>(undefined)
@@ -92,7 +93,7 @@ export default function CompaniesPage() {
           </Badge>
         ),
       }),
-      ...(can('companies:update')
+      ...(canManage
         ? [
             column.display({
               id: 'actions',
@@ -131,7 +132,7 @@ export default function CompaniesPage() {
           ]
         : []),
     ],
-    [t, can, togglingId],
+    [t, canManage, togglingId],
   )
 
   return (
@@ -140,7 +141,7 @@ export default function CompaniesPage() {
         title={t('company.title')}
         description={t('company.subtitle')}
         actions={
-          can('companies:create') && (
+          canManage && (
             <Button icon={<Plus />} onClick={openCreate}>
               {t('company.actions.create')}
             </Button>
@@ -159,7 +160,7 @@ export default function CompaniesPage() {
           emptyTitle={t('company.emptyTitle')}
           emptyDescription={t('company.emptyHint')}
           emptyAction={
-            can('companies:create') && (
+            canManage && (
               <Button size="sm" icon={<Building2 />} onClick={openCreate}>
                 {t('company.actions.create')}
               </Button>

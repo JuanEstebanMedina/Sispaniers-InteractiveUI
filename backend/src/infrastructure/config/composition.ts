@@ -3,6 +3,12 @@ import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { createCreateComponentCommand } from "../../application/commands/create-component.command.js";
 import { createUpdateComponentCommand } from "../../application/commands/update-component.command.js";
+import { createCreateUserUseCase } from "../../application/use-cases/auth/create-user.use-case.js";
+import { createGetMeUseCase } from "../../application/use-cases/auth/get-me.use-case.js";
+import { createListUsersUseCase } from "../../application/use-cases/auth/list-users.use-case.js";
+import { createLoginUseCase } from "../../application/use-cases/auth/login.use-case.js";
+import { createRefreshTokenUseCase } from "../../application/use-cases/auth/refresh-token.use-case.js";
+import { createUpdateUserUseCase } from "../../application/use-cases/auth/update-user.use-case.js";
 import { createApplyTrackingEventUseCase } from "../../application/use-cases/dashboard/apply-tracking-event.use-case.js";
 import { createCreateCompanyUseCase } from "../../application/use-cases/dashboard/create-company.use-case.js";
 import { createCreateComponentUseCase } from "../../application/use-cases/dashboard/create-component.use-case.js";
@@ -28,14 +34,19 @@ import { CommandRegistry } from "../../domain/commands/command-registry.js";
 import type { AiCompletionPort } from "../../domain/ports/ai-completion-port.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
 import type { AttachmentStorage } from "../../domain/ports/attachment-storage.port.js";
+import type { AuthTokenPort } from "../../domain/ports/auth-token.port.js";
 import type { CompanyRepository } from "../../domain/ports/company.repository.js";
 import type { ComponentRepository } from "../../domain/ports/component.repository.js";
 import type { EmailSender } from "../../domain/ports/email-sender.port.js";
 import type { OperationEventPublisher } from "../../domain/ports/operation-event-publisher.port.js";
 import type { OperationRepository } from "../../domain/ports/operation.repository.js";
+import type { PasswordHasher } from "../../domain/ports/password-hasher.port.js";
 import type { SimulationRegistry } from "../../domain/ports/simulation-registry.port.js";
+import type { UserRepository } from "../../domain/ports/user.repository.js";
 import { buildApp } from "../adapters/inbound/http/app.js";
 import { MultiFormatAttachmentExtractor } from "../adapters/outbound/attachment/multi-format-attachment-extractor.js";
+import { BcryptPasswordHasher } from "../adapters/outbound/auth/bcrypt-password-hasher.js";
+import { JwtTokenAdapter } from "../adapters/outbound/auth/jwt-token-adapter.js";
 import { NodemailerEmailSender } from "../adapters/outbound/email/nodemailer-email-sender.js";
 import { InMemoryComponentEventPublisher } from "../adapters/outbound/events/in-memory-component-event-publisher.js";
 import { InMemoryOperationEventPublisher } from "../adapters/outbound/events/in-memory-operation-event-publisher.js";
@@ -45,6 +56,7 @@ import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.j
 import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repository.js";
 import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
+import { MongoUserRepository } from "../adapters/outbound/mongo/user.repository.js";
 import { OpenAiCompletionAdapter } from "../adapters/outbound/openai-completion-adapter.js";
 import { InMemorySimulationRegistry } from "../adapters/outbound/simulation/in-memory-simulation-registry.js";
 import { SupabaseAttachmentStorage } from "../adapters/outbound/storage/supabase-attachment-storage.js";
@@ -81,8 +93,11 @@ export interface CreateAppOverrides {
   operationRepository?: OperationRepository;
   companyRepository?: CompanyRepository;
   componentRepository?: ComponentRepository;
+  userRepository?: UserRepository;
   simulationRegistry?: SimulationRegistry;
   operationEventPublisher?: OperationEventPublisher;
+  passwordHasher?: PasswordHasher;
+  authTokenPort?: AuthTokenPort;
 }
 
 function buildEmailSender(override: EmailSender | undefined): EmailSender {
@@ -109,21 +124,24 @@ interface RepositorySources {
   operationRepository: OperationRepository;
   companyRepository: CompanyRepository;
   componentRepository: ComponentRepository;
+  userRepository: UserRepository;
   close?: () => Promise<void>;
 }
 
 async function buildRepositories(overrides: CreateAppOverrides): Promise<RepositorySources> {
-  const { operationRepository, companyRepository, componentRepository } = overrides;
+  const { operationRepository, companyRepository, componentRepository, userRepository } = overrides;
 
   if (
     operationRepository !== undefined &&
     companyRepository !== undefined &&
-    componentRepository !== undefined
+    componentRepository !== undefined &&
+    userRepository !== undefined
   ) {
     return {
       operationRepository,
       companyRepository,
       componentRepository,
+      userRepository,
     };
   }
 
@@ -133,6 +151,7 @@ async function buildRepositories(overrides: CreateAppOverrides): Promise<Reposit
     operationRepository: operationRepository ?? new MongoOperationRepository(mongo.db),
     companyRepository: companyRepository ?? new MongoCompanyRepository(mongo.db),
     componentRepository: componentRepository ?? new MongoComponentRepository(mongo.db),
+    userRepository: userRepository ?? new MongoUserRepository(mongo.db),
     close: mongo.close,
   };
 }
@@ -142,8 +161,19 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const emailSender = buildEmailSender(overrides.emailSender);
   const attachmentExtractor = overrides.attachmentExtractor ?? new MultiFormatAttachmentExtractor();
   const attachmentStorage = buildAttachmentStorage(overrides.attachmentStorage);
-  const { operationRepository, companyRepository, componentRepository, close } =
+  const { operationRepository, companyRepository, componentRepository, userRepository, close } =
     await buildRepositories(overrides);
+
+  const passwordHasher: PasswordHasher = overrides.passwordHasher ?? new BcryptPasswordHasher();
+  const authTokenPort: AuthTokenPort =
+    overrides.authTokenPort ?? new JwtTokenAdapter(process.env.JWT_SECRET ?? "");
+
+  const login = createLoginUseCase({ userRepository, passwordHasher, authTokenPort });
+  const refreshToken = createRefreshTokenUseCase({ userRepository, authTokenPort });
+  const getMe = createGetMeUseCase({ userRepository });
+  const createUser = createCreateUserUseCase({ userRepository, passwordHasher, idGenerator });
+  const listUsers = createListUsersUseCase({ userRepository });
+  const updateUser = createUpdateUserUseCase({ userRepository, passwordHasher });
 
   const receiveEmail = createReceiveEmailUseCase({
     idGenerator,
@@ -279,6 +309,13 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     deleteComponent,
     componentEventPublisher,
     operationEventPublisher,
+    login,
+    refreshToken,
+    getMe,
+    createUser,
+    listUsers,
+    updateUser,
+    authTokenPort,
   });
 
   app.decorate("createComponent", createComponent);

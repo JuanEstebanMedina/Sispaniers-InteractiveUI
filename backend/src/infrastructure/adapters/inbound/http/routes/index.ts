@@ -1,4 +1,12 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
+import type { AuthTokenPort } from "../../../../../domain/ports/auth-token.port.js";
+import { createAuthenticateHook } from "../auth-hook.js";
+import {
+  type AuthMeRouteDeps,
+  type AuthRouteDeps,
+  authMeRoutes,
+  authRoutes,
+} from "./auth.routes.js";
 import { type AiRouteDeps, aiRoutes } from "./dashboard/ai.routes.js";
 import { type CompaniesRouteDeps, companiesRoutes } from "./dashboard/companies.routes.js";
 import {
@@ -10,6 +18,7 @@ import {
   operationEventsRoutes,
 } from "./dashboard/operation-events.routes.js";
 import { type OperationsRouteDeps, operationsRoutes } from "./dashboard/operations.routes.js";
+import { type UsersRouteDeps, usersRoutes } from "./dashboard/users.routes.js";
 import { type EmailsRouteDeps, emailsRoutes } from "./emails.routes.js";
 
 export type RouteDependencies = EmailsRouteDeps &
@@ -17,7 +26,12 @@ export type RouteDependencies = EmailsRouteDeps &
   OperationComponentsRouteDeps &
   AiRouteDeps &
   OperationEventsRouteDeps &
-  CompaniesRouteDeps;
+  CompaniesRouteDeps &
+  AuthRouteDeps &
+  AuthMeRouteDeps &
+  UsersRouteDeps & {
+    authTokenPort: AuthTokenPort;
+  };
 
 export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastify, deps) => {
   const {
@@ -42,38 +56,60 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     createCompany,
     listCompanies,
     updateCompany,
+    login,
+    refreshToken,
+    getMe,
+    createUser,
+    listUsers,
+    updateUser,
+    authTokenPort,
   } = deps;
 
-  await fastify.register(companiesRoutes, {
-    createCompany,
-    listCompanies,
-    updateCompany,
-  });
+  await fastify.register(authRoutes, { login, refreshToken });
   await fastify.register(emailsRoutes, {
     receiveEmail,
     sendEmail,
     upsertOperationFromEmail,
     enrollOperationInSimulation,
   });
-  await fastify.register(operationsRoutes, {
-    createOperation,
-    getOperation,
-    listOperations,
-    getDocumentPreviewUrl,
-    uploadOperationDocument,
-    applyTrackingEvent,
-    enrollOperationInSimulation,
-  });
-  await fastify.register(operationComponentsRoutes, {
-    getOperationComponents,
-    updateComponentPlacement,
-    updateComponentContent,
-    createComponent,
-    deleteComponent,
-  });
-  await fastify.register(aiRoutes, { generateComponentFromAi });
-  await fastify.register(operationEventsRoutes, {
-    componentEventPublisher,
-    operationEventPublisher,
+  // Nested plugin: registering the auth hook inside a child context (instead
+  // of directly on `fastify`) keeps it from leaking backward onto the
+  // already-registered, unauthenticated `authRoutes` above — Fastify's hook
+  // encapsulation is scoped to the instance a plugin is registered on, not to
+  // call order on a shared instance.
+  await fastify.register(async (protectedRoutes) => {
+    protectedRoutes.addHook(
+      "preHandler",
+      createAuthenticateHook(authTokenPort.verifyAccessToken.bind(authTokenPort)),
+    );
+
+    await protectedRoutes.register(companiesRoutes, {
+      createCompany,
+      listCompanies,
+      updateCompany,
+    });
+    await protectedRoutes.register(operationsRoutes, {
+      createOperation,
+      getOperation,
+      listOperations,
+      getDocumentPreviewUrl,
+      uploadOperationDocument,
+      applyTrackingEvent,
+      enrollOperationInSimulation,
+    });
+    await protectedRoutes.register(operationComponentsRoutes, {
+      getOperationComponents,
+      updateComponentPlacement,
+      updateComponentContent,
+      createComponent,
+      deleteComponent,
+    });
+    await protectedRoutes.register(aiRoutes, { generateComponentFromAi, respondToChat });
+    await protectedRoutes.register(operationEventsRoutes, {
+      componentEventPublisher,
+      operationEventPublisher,
+    });
+    await protectedRoutes.register(usersRoutes, { createUser, listUsers, updateUser });
+    await protectedRoutes.register(authMeRoutes, { getMe });
   });
 };

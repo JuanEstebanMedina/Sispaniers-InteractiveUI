@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 
 import { useAuthStore } from './auth.store'
-import type { Permission, Role } from './roles'
+import type { Role } from './roles'
 
 export function useAuth() {
   return useAuthStore(
@@ -28,14 +28,6 @@ export function useRole() {
 
 export function useAuthStatus() {
   return useAuthStore((state) => state.status)
-}
-
-export function useCan(permission: Permission | readonly Permission[]): boolean {
-  return useAuthStore((state) => state.can(permission))
-}
-
-export function useCanAny(permissions: readonly Permission[]): boolean {
-  return useAuthStore((state) => state.canAny(permissions))
 }
 
 export function useIsAtLeast(role: Role): boolean {

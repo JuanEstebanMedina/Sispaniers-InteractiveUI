@@ -27,6 +27,7 @@ services:
     restart: unless-stopped
     environment:
       MONGODB_URI: mongodb://${MONGO_USER:-sispaniers}:${MONGO_PASSWORD:?set MONGO_PASSWORD in .env, see .env.example}@mongo:27017/${MONGO_DB:-sispaniers}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env, see .env.example}
       GMAIL_USER: ${GMAIL_USER:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

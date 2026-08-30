@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { InMemoryCompanyRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-company-repository.js";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 import { createApp } from "../../src/infrastructure/config/composition.js";
+import { authHeader } from "../support/auth.js";
 import { FakeAttachmentStorage } from "../support/fakes.js";
 
 let app: FastifyInstance;
@@ -24,14 +25,20 @@ test("GET /companies lists every created company", async () => {
     method: "POST",
     url: "/api/companies",
     payload: { name: "Andes Textiles" },
+    headers: authHeader("superadmin"),
   });
   await app.inject({
     method: "POST",
     url: "/api/companies",
     payload: { name: "Muebles del Sur" },
+    headers: authHeader("superadmin"),
   });
 
-  const response = await app.inject({ method: "GET", url: "/api/companies" });
+  const response = await app.inject({
+    method: "GET",
+    url: "/api/companies",
+    headers: authHeader("superadmin"),
+  });
 
   expect(response.statusCode).toBe(200);
   const names = response
@@ -42,7 +49,11 @@ test("GET /companies lists every created company", async () => {
 });
 
 test("GET /companies on an empty repository returns an empty list", async () => {
-  const response = await app.inject({ method: "GET", url: "/api/companies" });
+  const response = await app.inject({
+    method: "GET",
+    url: "/api/companies",
+    headers: authHeader("superadmin"),
+  });
 
   expect(response.statusCode).toBe(200);
   expect(response.json()).toEqual({ companies: [] });
@@ -53,6 +64,7 @@ test("a new name creates a company", async () => {
     method: "POST",
     url: "/api/companies",
     payload: { name: "Andes Textiles", contact_emails: ["ops@andestextiles.co"] },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(201);
@@ -68,12 +80,14 @@ test("posting the same name again returns the existing company instead of a dupl
     method: "POST",
     url: "/api/companies",
     payload: { name: "Andes Textiles" },
+    headers: authHeader("superadmin"),
   });
 
   const second = await app.inject({
     method: "POST",
     url: "/api/companies",
     payload: { name: "andes textiles" },
+    headers: authHeader("superadmin"),
   });
 
   expect(second.statusCode).toBe(200);
@@ -85,6 +99,7 @@ test("POST /operations accepts a company object and creates the company", async 
     method: "POST",
     url: "/api/operations",
     payload: { company: { name: "Nuevo Cliente" } },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(201);
@@ -95,6 +110,7 @@ test("POST /operations accepts a company object and creates the company", async 
     method: "POST",
     url: "/api/companies",
     payload: { name: "Nuevo Cliente" },
+    headers: authHeader("superadmin"),
   });
   expect(companies.statusCode).toBe(200);
   expect(companies.json().id).toBe(body.company_ids[0]);
@@ -105,6 +121,7 @@ test("POST /operations rejects a body with both company_id and company", async (
     method: "POST",
     url: "/api/operations",
     payload: { company_id: "company-1", company: { name: "Nuevo Cliente" } },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(400);
@@ -115,6 +132,7 @@ test("POST /operations rejects a body with neither company_id nor company", asyn
     method: "POST",
     url: "/api/operations",
     payload: {},
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(400);
@@ -125,12 +143,14 @@ test("PATCH /companies/:id updates only the given fields", async () => {
     method: "POST",
     url: "/api/companies",
     payload: { name: "Andes Textiles" },
+    headers: authHeader("superadmin"),
   });
 
   const response = await app.inject({
     method: "PATCH",
     url: `/api/companies/${created.json().id}`,
     payload: { preferred_notification_channel: "slack" },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(200);
@@ -144,23 +164,31 @@ test("PATCH /companies/:id on an unknown id returns 404", async () => {
     method: "PATCH",
     url: "/api/companies/ghost",
     payload: { name: "Whatever" },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(404);
 });
 
 test("PATCH /companies/:id rejects a rename that collides with another company", async () => {
-  await app.inject({ method: "POST", url: "/api/companies", payload: { name: "Andes Textiles" } });
+  await app.inject({
+    method: "POST",
+    url: "/api/companies",
+    payload: { name: "Andes Textiles" },
+    headers: authHeader("superadmin"),
+  });
   const second = await app.inject({
     method: "POST",
     url: "/api/companies",
     payload: { name: "Muebles del Sur" },
+    headers: authHeader("superadmin"),
   });
 
   const response = await app.inject({
     method: "PATCH",
     url: `/api/companies/${second.json().id}`,
     payload: { name: "andes textiles" },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(409);
@@ -171,6 +199,7 @@ test("a newly created company is active", async () => {
     method: "POST",
     url: "/api/companies",
     payload: { name: "Andes Textiles" },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.json().active).toBe(true);
@@ -181,12 +210,14 @@ test("PATCH /companies/:id can disable a company without deleting it", async () 
     method: "POST",
     url: "/api/companies",
     payload: { name: "Andes Textiles" },
+    headers: authHeader("superadmin"),
   });
 
   const response = await app.inject({
     method: "PATCH",
     url: `/api/companies/${created.json().id}`,
     payload: { active: false },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(200);
@@ -194,7 +225,11 @@ test("PATCH /companies/:id can disable a company without deleting it", async () 
   expect(response.json().name).toBe("Andes Textiles");
 
   // Still there — disabling is not deleting.
-  const list = await app.inject({ method: "GET", url: "/api/companies" });
+  const list = await app.inject({
+    method: "GET",
+    url: "/api/companies",
+    headers: authHeader("superadmin"),
+  });
   expect(list.json().companies).toHaveLength(1);
   expect(list.json().companies[0].active).toBe(false);
 });
@@ -204,17 +239,20 @@ test("PATCH /companies/:id can re-enable a disabled company", async () => {
     method: "POST",
     url: "/api/companies",
     payload: { name: "Andes Textiles" },
+    headers: authHeader("superadmin"),
   });
   await app.inject({
     method: "PATCH",
     url: `/api/companies/${created.json().id}`,
     payload: { active: false },
+    headers: authHeader("superadmin"),
   });
 
   const response = await app.inject({
     method: "PATCH",
     url: `/api/companies/${created.json().id}`,
     payload: { active: true },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.json().active).toBe(true);

@@ -130,3 +130,31 @@ export class CompanyDisabledError extends Error {
     this.name = "CompanyDisabledError";
   }
 }
+
+export class UserNotFoundError extends Error {
+  constructor(id: string) {
+    super(`User not found: ${id}`);
+    this.name = "UserNotFoundError";
+  }
+}
+
+export class InvalidCredentialsError extends Error {
+  constructor() {
+    super("Invalid email or password");
+    this.name = "InvalidCredentialsError";
+  }
+}
+
+export class EmailConflictError extends Error {
+  constructor(email: string) {
+    super(`A user with email ${email} already exists`);
+    this.name = "EmailConflictError";
+  }
+}
+
+export class ForbiddenCompanyScopeError extends Error {
+  constructor() {
+    super("Actor cannot act outside their own company");
+    this.name = "ForbiddenCompanyScopeError";
+  }
+}
