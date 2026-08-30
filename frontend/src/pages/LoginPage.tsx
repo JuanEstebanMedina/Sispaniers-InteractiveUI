@@ -17,11 +17,9 @@ import { toast } from '@/lib/toast'
 import { createLoginSchema } from '@/schemas'
 
 const DEMO_ACCOUNTS: { email: string; role: Role }[] = [
+  { email: 'superadmin@yuno.com', role: 'superadmin' },
   { email: 'admin@yuno.com', role: 'admin' },
-  { email: 'supervisor@yuno.com', role: 'manager' },
-  { email: 'operator@nauta.com', role: 'operator' },
-  { email: 'analyst@nauta.com', role: 'analyst' },
-  { email: 'guest@yuno.com', role: 'viewer' },
+  { email: 'user@nauta.com', role: 'user' },
 ]
 
 const DEMO_PASSWORD = 'demo1234'

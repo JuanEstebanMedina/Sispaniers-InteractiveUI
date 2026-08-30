@@ -18,8 +18,6 @@ export function App() {
       status: state.status,
       user: state.user,
       role: state.role,
-      can: state.can,
-      canAny: state.canAny,
       isAtLeast: state.isAtLeast,
     })),
   )

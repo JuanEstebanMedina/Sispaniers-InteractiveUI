@@ -9,7 +9,7 @@ import {
 
 import { queryClient } from '@/api/queryClient'
 import { authSnapshot, type AuthSnapshot } from '@/auth/auth.store'
-import type { Permission } from '@/auth/roles'
+import type { Role } from '@/auth/roles'
 import { AppShell } from '@/components/layout/AppShell'
 import { FullPageLoader } from '@/components/feedback/FullPageLoader'
 import { RootLayout } from '@/components/layout/RootLayout'
@@ -28,8 +28,8 @@ function requireAuth(context: RouterContext, href: string) {
   }
 }
 
-function requirePermission(context: RouterContext, permission: Permission) {
-  if (!context.auth.can(permission)) {
+function requireRole(context: RouterContext, minimum: Role) {
+  if (!context.auth.isAtLeast(minimum)) {
     throw redirect({ to: '/403' })
   }
 }
@@ -68,7 +68,6 @@ const appRoute = createRoute({
 const operationsLayoutRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/operations',
-  beforeLoad: ({ context }) => requirePermission(context, 'operations:read'),
   component: lazyRouteComponent(() => import('@/components/layout/OperationsLayout')),
 })
 
@@ -96,22 +95,28 @@ const indexRedirectRoute = createRoute({
 const assistantRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/assistant',
-  beforeLoad: ({ context }) => requirePermission(context, 'ai:use'),
   component: lazyRouteComponent(() => import('@/pages/PlaceholderPage')),
 })
 
 const companiesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/companies',
-  beforeLoad: ({ context }) => requirePermission(context, 'companies:read'),
+  beforeLoad: ({ context }) => requireRole(context, 'superadmin'),
   component: lazyRouteComponent(() => import('@/pages/CompaniesPage')),
 })
 
 const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/settings',
-  beforeLoad: ({ context }) => requirePermission(context, 'settings:read'),
+  beforeLoad: ({ context }) => requireRole(context, 'admin'),
   component: lazyRouteComponent(() => import('@/pages/PlaceholderPage')),
+})
+
+const usersRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/users',
+  beforeLoad: ({ context }) => requireRole(context, 'admin'),
+  component: lazyRouteComponent(() => import('@/pages/UsersPage')),
 })
 
 const profileRoute = createRoute({
@@ -135,6 +140,7 @@ const routeTree = rootRoute.addChildren([
     assistantRoute,
     companiesRoute,
     settingsRoute,
+    usersRoute,
     profileRoute,
     ...(isDev ? [componentsRoute] : []),
   ]),

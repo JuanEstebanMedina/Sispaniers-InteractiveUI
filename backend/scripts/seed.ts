@@ -2,12 +2,16 @@ import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { CONTAINER_STATES } from "../src/domain/enums/container-state.js";
 import { DOCUMENT_FORMATS } from "../src/domain/enums/document-format.js";
+import { ROLES } from "../src/domain/enums/role.js";
 import type { Company } from "../src/domain/logistics/company.js";
 import type { Document } from "../src/domain/logistics/document.js";
 import type { ContextEmail } from "../src/domain/logistics/operation-context.js";
 import type { Booking, Operation } from "../src/domain/logistics/operation.js";
+import type { User } from "../src/domain/logistics/user.js";
+import { BcryptPasswordHasher } from "../src/infrastructure/adapters/outbound/auth/bcrypt-password-hasher.js";
 import { MongoCompanyRepository } from "../src/infrastructure/adapters/outbound/mongo/company.repository.js";
 import { MongoOperationRepository } from "../src/infrastructure/adapters/outbound/mongo/operation.repository.js";
+import { MongoUserRepository } from "../src/infrastructure/adapters/outbound/mongo/user.repository.js";
 import { connectMongo } from "../src/infrastructure/config/mongo.js";
 
 const DATA_FILE = new URL("./seed-data.json", import.meta.url);
@@ -83,12 +87,23 @@ const companySeedSchema = z.object({
   active: z.boolean().default(true),
 }) satisfies z.ZodType<Company, z.ZodTypeDef, unknown>;
 
+const userSeedSchema = z.object({
+  id: z.string().min(1),
+  companyId: z.string().min(1).optional(),
+  email: z.string().min(1),
+  password: z.string().min(1),
+  name: z.string().min(1),
+  role: z.enum(ROLES),
+});
+
 type EmailSeed = z.infer<typeof emailSeedSchema>;
 type DocumentSeed = z.infer<typeof documentSeedSchema>;
+type UserSeed = z.infer<typeof userSeedSchema>;
 
 const seedFileSchema = z.object({
   operations: z.array(operationSeedSchema),
   companies: z.array(companySeedSchema),
+  users: z.array(userSeedSchema),
 });
 
 type BookingSeed = z.infer<typeof bookingSeedSchema>;
@@ -159,6 +174,17 @@ function buildOperation(seed: OperationSeed): Operation {
   };
 }
 
+async function buildUser(seed: UserSeed, passwordHasher: BcryptPasswordHasher): Promise<User> {
+  const { password, companyId, ...rest } = seed;
+
+  return {
+    ...rest,
+    ...(companyId !== undefined ? { companyId } : {}),
+    passwordHash: await passwordHasher.hash(password),
+    active: true,
+  };
+}
+
 const seedFile = seedFileSchema.parse(JSON.parse(readFileSync(DATA_FILE, "utf8")));
 
 const mongo = await connectMongo();
@@ -166,6 +192,8 @@ const mongo = await connectMongo();
 try {
   const operations = new MongoOperationRepository(mongo.db);
   const companies = new MongoCompanyRepository(mongo.db);
+  const users = new MongoUserRepository(mongo.db);
+  const passwordHasher = new BcryptPasswordHasher();
 
   for (const seed of seedFile.operations) {
     await operations.save(buildOperation(seed));
@@ -173,12 +201,18 @@ try {
   for (const company of seedFile.companies) {
     await companies.save(company);
   }
+  for (const seed of seedFile.users) {
+    await users.save(await buildUser(seed, passwordHasher));
+  }
 
   const storedOperations = await operations.findAll();
   const storedCompanies = await companies.findAll();
+  const storedUsers = await users.findAllByCompany();
 
   console.log(`seeded into "${mongo.db.databaseName}"`);
-  console.log(`operations: ${storedOperations.length}, companies: ${storedCompanies.length}`);
+  console.log(
+    `operations: ${storedOperations.length}, companies: ${storedCompanies.length}, users: ${storedUsers.length}`,
+  );
 } finally {
   await mongo.close();
 }
