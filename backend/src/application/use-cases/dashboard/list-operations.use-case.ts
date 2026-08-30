@@ -28,6 +28,9 @@ export type OperationSortField = (typeof OPERATION_SORT_FIELDS)[number];
 export const SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type SortDirection = (typeof SORT_DIRECTIONS)[number];
 
+export const DEFAULT_SORT_FIELD: OperationSortField = "updatedAt";
+export const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
+
 export interface ListOperationsInput {
   status?: ContainerState;
   health?: OperationHealth;
@@ -120,14 +123,13 @@ export function createListOperationsUseCase(deps: ListOperationsDeps) {
       .map((operation) => ({ operation, status: deriveOperationStatus(operation) }))
       .filter(({ status }) => input.status === undefined || status === input.status);
 
-    if (input.sortBy === undefined) {
-      return results;
-    }
+    // Sin orden explícito NO se devuelve el orden natural de Mongo: ese orden
+    // no está definido y puede cambiar entre consultas, así que la lista
+    // "bailaría" sola entre refrescos. Por defecto va lo mismo que pide la
+    // pantalla principal: lo último que se movió, primero.
+    const field = input.sortBy ?? DEFAULT_SORT_FIELD;
+    const direction = (input.sortDir ?? DEFAULT_SORT_DIRECTION) === "asc" ? 1 : -1;
 
-    const direction = input.sortDir === "asc" ? 1 : -1;
-
-    return [...results].sort(
-      (a, b) => compareBy(input.sortBy as OperationSortField, a.operation, b.operation) * direction,
-    );
+    return [...results].sort((a, b) => compareBy(field, a.operation, b.operation) * direction);
   };
 }

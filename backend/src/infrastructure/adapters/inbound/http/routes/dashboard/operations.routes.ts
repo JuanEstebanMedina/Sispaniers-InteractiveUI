@@ -34,9 +34,9 @@ import { errorResponseSchema } from "../../schemas/error.schema.js";
 import {
   createOperationBodySchema,
   documentPreviewUrlResponseSchema,
-  listOperationsQuerySchema,
   listOperationsResponseSchema,
   operationResponseSchema,
+  searchOperationsBodySchema,
   uploadDocumentBodySchema,
   uploadDocumentResponseSchema,
 } from "../../schemas/operation.schema.js";

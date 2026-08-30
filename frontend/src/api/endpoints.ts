@@ -58,7 +58,13 @@ export const queryKeys = {
   },
   operations: {
     all: ['operations'] as const,
-    list: (filters?: unknown) => ['operations', 'list', filters ?? {}] as const,
+    /**
+     * La clave ES el cuerpo de la petición. Con eso, dos pantallas que piden
+     * exactamente lo mismo comparten una sola consulta: el punto del menú pide
+     * `{}` y la grilla sin filtros también manda `{}`, así que React Query las
+     * funde en UNA petición en vez de dos idénticas.
+     */
+    list: (body?: unknown) => ['operations', 'list', body ?? {}] as const,
     detail: (id: string) => ['operations', 'detail', id] as const,
     components: (id: string, cols: number) => ['operations', 'components', id, cols] as const,
   },

@@ -56,7 +56,6 @@ export const searchOperationsBodySchema = z.object({
 });
 
 export type SearchOperationsBody = z.infer<typeof searchOperationsBodySchema>;
-export type ListOperationsQuery = z.infer<typeof listOperationsQuerySchema>;
 
 export const documentPreviewUrlResponseSchema = z.object({
   url: z.string(),

@@ -62,7 +62,7 @@ export function OperationDetailHeader({ operation, waiting = 0 }: OperationDetai
     operation.eta ? (
       <Fact key="eta">
         <span className="text-fg-subtle">{t('domain:operation.fields.eta')}</span>
-        {formatDate(operation.eta)}
+        {formatCalendarDate(operation.eta)}
       </Fact>
     ) : null,
 

@@ -232,3 +232,15 @@ test("sorting by updatedAt uses the newest schedule change, not the creation dat
 
   expect(found.map(({ operation }) => operation.id)).toEqual(["op-moved", "op-untouched"]);
 });
+
+test("without an explicit sort the newest activity comes first", async () => {
+  // Sin orden por defecto, un body vacío devolvería el orden natural de Mongo
+  // —que no está definido— y la lista se reordenaría sola entre refrescos.
+  const older = anOperation({ id: "op-older", createdAt: new Date("2026-01-01T00:00:00Z") });
+  const newer = anOperation({ id: "op-newer", createdAt: new Date("2026-05-01T00:00:00Z") });
+
+  const listOperations = await listOver([older, newer]);
+  const found = await listOperations({});
+
+  expect(found.map(({ operation }) => operation.id)).toEqual(["op-newer", "op-older"]);
+});
