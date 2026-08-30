@@ -8,6 +8,7 @@ export function toComponentWireShape(component: Component) {
     ...(component.title !== undefined ? { title: component.title } : {}),
     content: component.children,
     size: component.size,
+    priority: component.priority ?? "normal",
     created_at: component.createdAt.toISOString(),
   } as const;
 }

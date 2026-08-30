@@ -192,10 +192,18 @@ export const operationComponentsRoutes: FastifyPluginAsyncZod<
     },
     async (request, reply) => {
       const { id } = request.params;
-      const { kind, size, children } = request.body;
+      const { kind, size, priority, children } = request.body;
 
       try {
-        const component = await deps.createComponent({ operationId: id, kind, size, children });
+        const component = await deps.createComponent({
+          operationId: id,
+          kind,
+          size,
+          children,
+          // Spread rather than passed through: exactOptionalPropertyTypes draws
+          // a line between "absent" and "explicitly undefined".
+          ...(priority !== undefined ? { priority } : {}),
+        });
         reply.code(201).send(toComponentWireShape(component));
       } catch (error) {
         if (error instanceof OperationNotFoundError) {

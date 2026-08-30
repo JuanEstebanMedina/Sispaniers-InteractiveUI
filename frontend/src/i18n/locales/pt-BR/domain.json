@@ -115,9 +115,32 @@
       "componentGenerated": "Componente atualizado no painel.",
       "sendError": "Não foi possível enviar a mensagem ao agente."
     },
+    "files": {
+      "title": "Arquivos",
+      "emptyTitle": "Ainda não chegou nada",
+      "empty": "Aqui aparecem os documentos que o agente recebeu por e-mail: BLs, faturas, listas de embalagem.",
+      "ask": "Perguntar à IA",
+      "alreadyAttached": "Já está no chat",
+      "open": "Abrir o arquivo",
+      "openError": "Não foi possível abrir o arquivo.",
+      "types": {
+        "PO": "Ordem de compra",
+        "BookingConfirmation": "Confirmação de reserva",
+        "BillOfLading": "Conhecimento de embarque",
+        "Invoice": "Fatura",
+        "PackingList": "Lista de embalagem",
+        "ArrivalNotice": "Aviso de chegada"
+      }
+    },
     "events": {
       "componentCreated": "Um novo componente foi gerado",
       "componentUpdated": "Um componente foi atualizado"
+    },
+    "stream": {
+      "live": "Ao vivo",
+      "connecting": "Conectando…",
+      "offline": "Sem conexão",
+      "ended": "Fluxo concluído"
     }
   }
 }

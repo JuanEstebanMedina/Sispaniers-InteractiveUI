@@ -71,7 +71,11 @@ test("a sibling with no order does not poison the sequence", async () => {
 
 test("an invalid tree is rejected before anything is stored", async () => {
   const { componentRepository, createComponent } = buildUseCase();
-  const unknownKind = [{ kind: "sparkline", order: 0, props: {} }] as unknown as ComponentNode[];
+  // A kind that is not in the contract, and must stay that way for this test
+  // to mean anything: `sparkline` used to live here and became real.
+  const unknownKind = [
+    { kind: "not-a-real-kind", order: 0, props: {} },
+  ] as unknown as ComponentNode[];
 
   await expect(createComponent({ ...aRequest(), children: unknownKind })).rejects.toThrow(
     InvalidComponentTreeError,

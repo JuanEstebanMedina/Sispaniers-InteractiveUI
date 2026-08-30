@@ -36,7 +36,7 @@ interface ChartFrameProps {
   title?: ReactNode
   description?: ReactNode
   action?: ReactNode
-  height?: number
+  height?: number | string
   isLoading?: boolean
   error?: unknown
   onRetry?: () => void
@@ -45,6 +45,11 @@ interface ChartFrameProps {
   children: ReactNode
   className?: string
   tableView?: ReactNode
+  /**
+   * Drops the card chrome. A chart rendered inside a widget is already in a
+   * card, and nesting two reads as a box inside a box.
+   */
+  bare?: boolean
 }
 
 export function ChartFrame({
@@ -60,14 +65,15 @@ export function ChartFrame({
   children,
   className,
   tableView,
+  bare = false,
 }: ChartFrameProps) {
   const { t } = useTranslation()
   const [showTable, setShowTable] = useState(false)
 
   return (
-    <section className={cn('surface-card flex flex-col', className)}>
+    <section className={cn('flex min-h-0 flex-col', !bare && 'surface-card', className)}>
       {(title || action) && (
-        <header className="flex items-start justify-between gap-4 px-gutter py-4">
+        <header className={cn('flex shrink-0 items-start justify-between gap-4', bare ? 'pb-2' : 'px-gutter py-4')}>
           <div className="min-w-0">
             {title && <h3 className="text-lg font-semibold leading-tight text-fg">{title}</h3>}
             {description && <p className="mt-0.5 text-sm text-fg-muted">{description}</p>}
@@ -87,7 +93,7 @@ export function ChartFrame({
         </header>
       )}
 
-      <div className="min-w-0 flex-1 px-gutter pb-gutter">
+      <div className={cn('min-h-0 min-w-0 flex-1', !bare && 'px-gutter pb-gutter')}>
         {error ? (
           <ErrorState compact error={error} onRetry={onRetry} />
         ) : isLoading ? (
@@ -104,7 +110,15 @@ export function ChartFrame({
             {tableView}
           </div>
         ) : (
-          <div style={{ height }}>{children}</div>
+          // A numeric height is a fixed strip; anything else means "fill the
+          // parent", and inside a flex column that is a flex child, not a
+          // percentage — percentages against a flex-sized parent collapse.
+          <div
+            className={cn('min-h-0', typeof height === 'number' ? undefined : 'h-full flex-1')}
+            style={typeof height === 'number' ? { height } : undefined}
+          >
+            {children}
+          </div>
         )}
       </div>
     </section>
