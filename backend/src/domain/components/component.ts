@@ -1,4 +1,4 @@
-import type { GridComponentKind } from "../enums/widget-kind.js";
+import type { ComponentPriority, GridComponentKind } from "../enums/widget-kind.js";
 import type { ComponentNode } from "./component-node.js";
 import type { WidgetSizeName } from "./widget-size.js";
 
@@ -8,6 +8,8 @@ export interface Component {
   order: number;
   title?: string;
   size: WidgetSizeName;
+  /** Absent means `normal`; stored components predate the field. */
+  priority?: ComponentPriority;
   kind: GridComponentKind;
   children: ComponentNode[];
   createdAt: Date;
@@ -31,4 +33,9 @@ export function nextOrderAfter(siblings: Component[]): number {
 }
 
 export type { ComponentNode } from "./component-node.js";
-export type { GridComponentKind, AtomicNodeKind, ActionKind } from "../enums/widget-kind.js";
+export type {
+  GridComponentKind,
+  AtomicNodeKind,
+  ActionKind,
+  ComponentPriority,
+} from "../enums/widget-kind.js";

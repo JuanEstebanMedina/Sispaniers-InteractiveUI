@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { ComponentDataProvider } from '@/components/generated/ComponentData'
 import { createTree } from '@/components/generated/nodeFactory'
 import { sampleComponents, sampleDatasets } from '@/components/generated/sampleComponents'
-import type { ComponentNode } from '@/schemas/component.schema'
+import { componentSchema, type ComponentNode } from '@/schemas/component.schema'
 
 /**
  * Rendered to static markup rather than through a DOM: the factory's job is to
@@ -352,5 +352,49 @@ describe('files', () => {
     const html = render([{ kind: 'file', order: 0, props: { name: 'sin-extension', type: 'excel' } }])
 
     expect(html).toContain('Excel')
+  })
+})
+
+describe('priority', () => {
+  test('an absent priority parses as normal, so old components stay calm', () => {
+    const parsed = componentSchema.parse({
+      id: 'c1',
+      operation_id: 'op1',
+      kind: 'container',
+      content: [],
+      size: 'small',
+      created_at: '2026-08-30T00:00:00Z',
+    })
+
+    expect(parsed.priority).toBe('normal')
+  })
+
+  test('a severity the contract does not know falls back to normal', () => {
+    const parsed = componentSchema.parse({
+      id: 'c1',
+      operation_id: 'op1',
+      kind: 'container',
+      content: [],
+      size: 'small',
+      priority: 'apocalyptic',
+      created_at: '2026-08-30T00:00:00Z',
+    })
+
+    expect(parsed.priority).toBe('normal')
+  })
+
+  test('the three real levels survive', () => {
+    for (const level of ['normal', 'high', 'critical'] as const) {
+      const parsed = componentSchema.parse({
+        id: 'c1',
+        operation_id: 'op1',
+        kind: 'container',
+        content: [],
+        size: 'small',
+        priority: level,
+        created_at: '2026-08-30T00:00:00Z',
+      })
+      expect(parsed.priority).toBe(level)
+    }
   })
 })

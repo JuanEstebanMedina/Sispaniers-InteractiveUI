@@ -59,6 +59,20 @@ export const DATA_SOURCE_NAMES = [
 
 export type DataSourceName = (typeof DATA_SOURCE_NAMES)[number];
 
+/**
+ * How badly a container wants to be looked at.
+ *
+ * Severity of the block, not state of the cargo — `critical` is the agent
+ * saying "read this first", and the grid tints the widget's frame so a
+ * supervisor scanning nine of them sees which one matters without reading any.
+ *
+ * Three levels and no more: with five, nothing reads as urgent because the
+ * middle three are indistinguishable at a glance.
+ */
+export const COMPONENT_PRIORITIES = ["normal", "high", "critical"] as const;
+
+export type ComponentPriority = (typeof COMPONENT_PRIORITIES)[number];
+
 export const ACTION_KINDS = ["navigate", "confirm", "reject", "export", "refresh"] as const;
 
 export type ActionKind = (typeof ACTION_KINDS)[number];
