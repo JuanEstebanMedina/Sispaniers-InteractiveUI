@@ -1,5 +1,6 @@
 export * from './common.schema'
 export * from './auth.schema'
+export * from './component.schema'
 export * from './operation.schema'
 export * from './search.schema'
 export * from './component.schema'

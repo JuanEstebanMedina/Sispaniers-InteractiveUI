@@ -30,13 +30,21 @@ test("a new operation is persisted empty and readable back by its generated id",
   expect(await operationRepository.findById("op-1")).toEqual(operation);
 });
 
-test("the new operation id is appended to the owning company", async () => {
+test("the new operation records the company that owns it", async () => {
+  const createOperation = await useCaseOver(new InMemoryOperationRepository());
+  const { operation } = await createOperation({ companyId: "company-1" });
+
+  expect(operation.companyId).toBe("company-1");
+});
+
+test("creating an operation leaves the company document untouched", async () => {
   const companyRepository = new InMemoryCompanyRepository();
 
   const createOperation = await useCaseOver(new InMemoryOperationRepository(), companyRepository);
+  const before = await companyRepository.findById("company-1");
   await createOperation({ companyId: "company-1" });
 
-  expect((await companyRepository.findById("company-1"))?.operationIds).toEqual(["op-1"]);
+  expect(await companyRepository.findById("company-1")).toEqual(before);
 });
 
 test("an unknown company is rejected and nothing is persisted", async () => {

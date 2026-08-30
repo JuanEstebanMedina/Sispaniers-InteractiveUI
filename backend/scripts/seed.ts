@@ -67,6 +67,7 @@ const documentSeedSchema = z.object({
 const operationSeedSchema = z.object({
   id: z.string().min(1),
   createdAt: daySchema,
+  companyId: z.string().min(1).optional(),
   bookings: z.array(bookingSeedSchema),
   context: z.object({
     emails: z.array(emailSeedSchema),
@@ -78,7 +79,6 @@ const companySeedSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   contactEmails: z.array(z.string().min(1)),
-  operationIds: z.array(z.string().min(1)),
   preferredNotificationChannel: z.enum(["email", "slack"]),
 }) satisfies z.ZodType<Company, z.ZodTypeDef, unknown>;
 
@@ -148,6 +148,7 @@ function buildBooking(seed: BookingSeed): Booking {
 function buildOperation(seed: OperationSeed): Operation {
   return {
     id: seed.id,
+    ...(seed.companyId !== undefined ? { companyId: seed.companyId } : {}),
     bookings: seed.bookings.map(buildBooking),
     context: {
       emails: seed.context.emails.map(buildEmail),

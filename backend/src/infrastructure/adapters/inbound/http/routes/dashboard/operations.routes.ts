@@ -70,7 +70,12 @@ export interface OperationsRouteDeps {
 export function toOperationResponse(operation: Operation, status: ContainerState) {
   return {
     id: operation.id,
-    company_ids: [...new Set(operation.bookings.flatMap((booking) => booking.companyIds))],
+    company_ids: [
+      ...new Set([
+        ...(operation.companyId !== undefined ? [operation.companyId] : []),
+        ...operation.bookings.flatMap((booking) => booking.companyIds),
+      ]),
+    ],
     status,
     health: operation.health ?? "ok",
     created_at: operation.createdAt.toISOString(),

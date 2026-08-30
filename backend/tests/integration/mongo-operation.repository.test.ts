@@ -109,22 +109,6 @@ test("optional booking and document fields stay absent when the domain leaves th
   expect(found?.context.documents[0]).not.toHaveProperty("sourceEmailId");
 });
 
-test("findAll narrows to the ids a company owns", async () => {
-  const owned = anOperation();
-  const other = anOperation();
-
-  await repository.save(owned);
-  await repository.save(other);
-
-  expect(await repository.findAll({ ids: [owned.id] })).toEqual([owned]);
-});
-
-test("findAll with an empty id list returns nothing rather than everything", async () => {
-  await repository.save(anOperation());
-
-  expect(await repository.findAll({ ids: [] })).toEqual([]);
-});
-
 test("findAll returns every stored operation regardless of owner or delivery state", async () => {
   const first = anOperation();
   const second = withAllContainersDelivered(anOperation());

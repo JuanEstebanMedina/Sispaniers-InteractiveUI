@@ -101,7 +101,7 @@ Todos los campos son opcionales; un body vacío lista todo.
 | `search` | string | subcadena sin distinguir mayúsculas sobre el id de la operación, los ids de empresa y los puertos |
 | `status` | container state | filtra sobre el status **derivado**, en memoria |
 | `health` | `ok` \| `warning` \| `error` | filtra en Mongo |
-| `company_id` | string | operaciones de esa empresa |
+| `company_id` | string | la empresa dueña o cualquier parte de una reserva, en Mongo |
 | `from` / `to` | fecha ISO | rango sobre `created_at` |
 | `date` | fecha ISO | ese día UTC; **no se combina** con `from`/`to` |
 | `sort_by` | `updatedAt` \| `company` \| `id` | `updatedAt` es derivado: el cambio de ETA más reciente, o la creación |
@@ -342,10 +342,19 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 
 ## Things the code will not tell you at a glance
 
-**`company_ids` on an operation is derived, never stored.** It is the union of
-`bookings[].companyIds`, computed when the response is built. Ownership itself lives in
-one place only: `Company.operationIds`. An operation with no bookings answers with an
-empty list, which is the truth.
+**A widget's position is its place in a sequence, not a pair of coordinates.**
+`Component.order` is what the user controls by dragging; `col`/`row` are packed from that
+order for whatever column count is asked for, so one arrangement serves every screen
+width and nothing has to be stored per breakpoint. Widgets can be moved and renamed
+(`Component.title` overrides the name the agent generated) but never resized: the size
+comes from `Component.size` alone.
+
+**Two different company links, on purpose.** `Operation.companyId` is the company the
+operation was opened *for* — absent when the operation came from an inbound email, where
+no company is known yet. `bookings[].companyIds` are the parties on each booking, which
+may differ per booking. The `company_ids` field in the response is the union of both,
+computed when the response is built and never stored, and `?company_id=` matches either.
+A company holds no list of its operations: that duplicate could only drift.
 
 **Documents are pointers, not payloads.** A `Document` carries a `bucketKey` into an
 S3-compatible bucket (Supabase Storage, not AWS) plus a `format` (`pdf`, `spreadsheet`,

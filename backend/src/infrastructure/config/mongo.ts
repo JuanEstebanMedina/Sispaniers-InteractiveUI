@@ -31,6 +31,19 @@ export interface MongoConnection {
   close: () => Promise<void>;
 }
 
+/**
+ * Without these every listing is a collection scan: only `_id` is indexed by
+ * default, and no query outside `findById` goes through it.
+ */
+export async function ensureIndexes(db: Db): Promise<void> {
+  await Promise.all([
+    db.collection("components").createIndex({ operationId: 1 }),
+    db.collection("operations").createIndex({ companyId: 1 }),
+    db.collection("operations").createIndex({ "bookings.companyIds": 1 }),
+    db.collection("operations").createIndex({ health: 1, createdAt: -1 }),
+  ]);
+}
+
 const CONNECT_MAX_ATTEMPTS = 5;
 const CONNECT_RETRY_DELAY_MS = 2000;
 
@@ -54,5 +67,8 @@ export async function connectMongo(uri: string = resolveMongoUri()): Promise<Mon
 
   await connectWithRetry(client);
 
-  return { db: client.db(), close: () => client.close() };
+  const db = client.db();
+  await ensureIndexes(db);
+
+  return { db, close: () => client.close() };
 }

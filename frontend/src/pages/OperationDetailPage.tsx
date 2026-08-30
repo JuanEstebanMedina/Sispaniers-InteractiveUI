@@ -1,19 +1,22 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { api, api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
 import { SectionBoundary } from '@/components/feedback/ErrorBoundary'
 import { ErrorState } from '@/components/feedback/ErrorState'
-import { toAiWidgets } from '@/components/generated/ComponentNodeRenderer'
 import { WidgetGrid } from '@/components/generated/WidgetGrid'
 import { demoWidgets } from '@/components/generated/demoWidgets'
+import { toWidgets } from '@/components/generated/toWidgets'
 import { GeneratedSurface } from '@/components/operations/GeneratedSurface'
 import { OperationDetailHeader } from '@/components/operations/OperationDetailHeader'
 import { Skeleton } from '@/components/ui/Skeleton'
-import type { GridItem } from '@/lib/grid'
-import { componentsResponseSchema, operationListSchema, operationResponseSchema } from '@/schemas'
+import {
+  componentsResponseSchema,
+  operationListSchema,
+  operationResponseSchema,
+} from '@/schemas'
 import { useRailStore } from '@/stores/railStore'
 
 /**
@@ -27,6 +30,9 @@ import { useRailStore } from '@/stores/railStore'
  * tienen que seguir vivos para poder irse a otra operación.
  */
 
+/** Lo que usa `WidgetGrid` mientras todavía no se ha medido. */
+const DEFAULT_COLS = 4
+
 export default function OperationDetailPage() {
   const { trackId } = useParams({ from: '/app/operations/$trackId' })
 
@@ -36,11 +42,37 @@ export default function OperationDetailPage() {
     refetchInterval: 15_000,
   })
 
-  // Fire-and-forget on purpose: a corrected layout must never block the run or
-  // steal the screen with an error toast.
-  const saveLayout = useMutation({
-    mutationFn: (layout: GridItem[]) =>
-      api.patch(endpoints.operations.layout(trackId), { layout }),
+  // El backend empaqueta la grilla para un número de columnas concreto, y quien
+  // sabe cuántas caben es el grid, que se mide a sí mismo. Arranca en el mismo
+  // valor que usa él antes de medir, y lo corrige en cuanto lo sabe.
+  const [cols, setCols] = useState(DEFAULT_COLS)
+
+  const components = useQuery({
+    queryKey: queryKeys.operations.components(trackId, cols),
+    queryFn: () =>
+      api$.get(
+        `${endpoints.operations.components(trackId)}?cols=${cols}`,
+        componentsResponseSchema,
+      ),
+  })
+
+  // Moves have to reach the backend in the order the user made them. Each one
+  // renumbers the whole sequence, so a request that overtakes the one before it
+  // renumbers from a position the user has already left — and the stored order
+  // ends up matching neither drag. Chaining them here is what makes the order
+  // on the wire the order on the screen.
+  const inFlight = useRef<Promise<unknown>>(Promise.resolve())
+
+  // Fire-and-forget on purpose: moving or renaming a widget must never block
+  // the run or steal the screen with an error toast.
+  const savePlacement = useMutation({
+    mutationFn: ({ id, ...body }: { id: string; position?: number; title?: string }) => {
+      const sent = inFlight.current.then(() =>
+        api.patch(endpoints.operations.componentPlacement(trackId, id), body),
+      )
+      inFlight.current = sent.catch(() => undefined)
+      return sent
+    },
   })
 
   // Same key the layout and the grid use, so this is a cache read, not a fetch.
@@ -59,20 +91,37 @@ export default function OperationDetailPage() {
   const railWidth = useRailStore((state) => state.width)
 
   const operation = detail.data
+  const generated = components.data
 
-  // ponytail: hardcoded to 4 cols — thread the grid's own computed column
-  // count down here once there's a clean way to do it, not a blocker now.
-  const aiComponents = useQuery({
-    queryKey: queryKeys.operations.components(trackId, 4),
-    queryFn: () => api$.get(endpoints.ai.components(trackId, 4), componentsResponseSchema),
-  })
+  // Los bloques de demostración son para una operación que el agente todavía no
+  // ha tocado, NO para una que no se pudo leer: son datos fabricados y en una
+  // pantalla logística se leen igual que los de verdad. Por eso hacen falta los
+  // `generated`: sin respuesta buena no se pinta nada y la página muestra el
+  // error o el esqueleto.
+  const widgets = useMemo(() => {
+    if (!generated) return []
+    if (generated.components.length > 0) {
+      return toWidgets(generated.components, generated.layout)
+    }
+    return operation ? demoWidgets(operation) : []
+  }, [generated, operation])
 
-  const widgets = useMemo(
-    () => (operation ? [...demoWidgets(operation), ...toAiWidgets(aiComponents.data?.components ?? [])] : []),
-    [operation, aiComponents.data],
+  const persist = savePlacement.mutate
+  const persistable = (generated?.components.length ?? 0) > 0
+
+  const handleMove = useCallback(
+    (id: string, position: number) => {
+      if (persistable) persist({ id, position })
+    },
+    [persist, persistable],
   )
-  const save = saveLayout.mutate
-  const handleLayoutChange = useCallback((layout: GridItem[]) => save(layout), [save])
+
+  const handleTitleChange = useCallback(
+    (id: string, title: string) => {
+      if (persistable) persist({ id, title })
+    },
+    [persist, persistable],
+  )
 
   return (
     <div className="flex h-dvh flex-col gap-3 px-2 py-4 sm:px-4">
@@ -88,12 +137,18 @@ export default function OperationDetailPage() {
 
       {detail.isError && <ErrorState error={detail.error} onRetry={() => void detail.refetch()} />}
 
-      {detail.isSuccess && (
+      {detail.isSuccess && components.isError && (
+        <ErrorState error={components.error} onRetry={() => void components.refetch()} />
+      )}
+
+      {detail.isSuccess && !components.isError && (
         <GeneratedSurface className="flex-1">
           <SectionBoundary name="generated-ui">
             <WidgetGrid
               widgets={widgets}
-              onLayoutChange={handleLayoutChange}
+              onMove={handleMove}
+              onTitleChange={handleTitleChange}
+              onColsChange={setCols}
               reserve={railOpen ? railWidth : 0}
             />
           </SectionBoundary>

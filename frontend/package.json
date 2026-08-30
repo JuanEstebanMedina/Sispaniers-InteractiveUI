@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty",
+    "test": "vitest run",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix"
   },
@@ -51,7 +52,8 @@
     "msw": "^2.15.0",
     "oxlint": "^1.79.0",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   },
   "msw": {
     "workerDirectory": [
