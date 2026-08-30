@@ -8,7 +8,9 @@ import { createUpdateComponentContentUseCase } from "../../application/use-cases
 import { createUpdateOperationLayoutUseCase } from "../../application/use-cases/dashboard/update-operation-layout.use-case.js";
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
+import { createUpsertOperationFromEmailUseCase } from "../../application/use-cases/email/upsert-operation-from-email.use-case.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
+import type { AttachmentStorage } from "../../domain/ports/attachment-storage.port.js";
 import type { CompanyRepository } from "../../domain/ports/company.repository.js";
 import type { ComponentRepository } from "../../domain/ports/component.repository.js";
 import type { EmailSender } from "../../domain/ports/email-sender.port.js";
@@ -22,6 +24,7 @@ import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repos
 import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
 import { MongoOperationLayoutRepository } from "../adapters/outbound/mongo/operation-layout.repository.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
+import { SupabaseAttachmentStorage } from "../adapters/outbound/storage/supabase-attachment-storage.js";
 import { connectMongo } from "./mongo.js";
 
 // TODO: recibir/enviar correo todavía no persiste nada — solo se registra vía
@@ -31,6 +34,7 @@ import { connectMongo } from "./mongo.js";
 export interface CreateAppOverrides {
   emailSender?: EmailSender;
   attachmentExtractor?: AttachmentExtractor;
+  attachmentStorage?: AttachmentStorage;
   operationRepository?: OperationRepository;
   companyRepository?: CompanyRepository;
   componentRepository?: ComponentRepository;
@@ -44,6 +48,16 @@ function buildEmailSender(override: EmailSender | undefined): EmailSender {
   return new NodemailerEmailSender(
     process.env.GMAIL_USER ?? "",
     process.env.GMAIL_APP_PASSWORD ?? "",
+  );
+}
+
+function buildAttachmentStorage(override: AttachmentStorage | undefined): AttachmentStorage {
+  if (override !== undefined) {
+    return override;
+  }
+  return new SupabaseAttachmentStorage(
+    process.env.SUPABASE_URL ?? "",
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
   );
 }
 
@@ -89,6 +103,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const idGenerator = new CryptoIdGenerator();
   const emailSender = buildEmailSender(overrides.emailSender);
   const attachmentExtractor = overrides.attachmentExtractor ?? new MultiFormatAttachmentExtractor();
+  const attachmentStorage = buildAttachmentStorage(overrides.attachmentStorage);
   const {
     operationRepository,
     companyRepository,
@@ -97,8 +112,16 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     close,
   } = await buildRepositories(overrides);
 
-  const receiveEmail = createReceiveEmailUseCase({ idGenerator, attachmentExtractor });
+  const receiveEmail = createReceiveEmailUseCase({
+    idGenerator,
+    attachmentExtractor,
+    attachmentStorage,
+  });
   const sendEmail = createSendEmailUseCase({ emailSender, idGenerator });
+  const upsertOperationFromEmail = createUpsertOperationFromEmailUseCase({
+    operationRepository,
+    idGenerator,
+  });
   const createOperation = createCreateOperationUseCase({
     operationRepository,
     companyRepository,
@@ -124,6 +147,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const app = buildApp({
     receiveEmail,
     sendEmail,
+    upsertOperationFromEmail,
     createOperation,
     getOperation,
     listOperations,

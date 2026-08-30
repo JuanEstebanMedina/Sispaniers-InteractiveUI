@@ -35,6 +35,8 @@ Copy `.env.example` to `.env` and fill it in.
 | `GMAIL_APP_PASSWORD` | — | Gmail **App Password** (not OAuth, no spaces, needs 2FA) |
 | `OPENAI_MODEL` | `gpt-4o-mini` | model id for the OpenAI adapter |
 | `GEMINI_MODEL` | `gemini-2.0-flash` | model id for the Gemini adapter |
+| `SUPABASE_URL` | — | project URL, used to upload email attachments to Storage |
+| `SUPABASE_SERVICE_ROLE_KEY` | — | service role (secret) key — bypasses RLS for server-side uploads |
 
 Mongo connection resolution order (`src/infrastructure/config/mongo.ts`):
 `MONGODB_URI` → a URI built from `MONGO_USER`/`MONGO_PASSWORD`/`MONGO_PORT`/`MONGO_DB`
@@ -116,8 +118,9 @@ shape.
 ### `POST /api/emails/receive`
 
 Entry point for an inbound email. Make.com polls Gmail and posts here — this is not a
-real webhook, there is no subscription or push involved. Nothing is persisted: the
-request is logged and a `run_id` is generated.
+real webhook, there is no subscription or push involved. A `run_id` is generated and the
+request is logged; if the subject links to an operation (see below), that operation is
+also created or updated in Mongo.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/emails/receive \
@@ -137,7 +140,8 @@ Required: `source` (`make` \| `gmail` \| `outlook` \| `manual`), `message_id`, `
 `subject`, `received_at` (ISO-8601 **with offset**). Optional: `to`, `body_text`,
 `body_html`, `attachments[]`.
 
-`201` → `{ "run_id": "...", "status": "queued" }`.
+`201` → `{ "run_id": "...", "status": "queued", "operation_id"?: "..." }` — `operation_id`
+is present only when the subject matched (see below).
 
 Each attachment is `{ filename, mimetype, data }` with `data` base64-encoded. Content is
 extracted by `mimetype` so a future AI hand-off gets usable text instead of raw bytes:
@@ -150,9 +154,26 @@ extracted by `mimetype` so a future AI hand-off gets usable text instead of raw 
 | `.pptx` | text via `officeparser` |
 | `.xls` / `.xlsx` | each sheet converted to CSV via `xlsx` (SheetJS) |
 | `text/csv` | passed through as-is |
-| anything else | `kind: "unsupported"` — does not fail the request |
+| anything else | `format: "other"` — does not fail the request |
 
-Extraction results are only logged for now; nothing is handed to an AI yet.
+The original attachment bytes are also uploaded to Supabase Storage (private bucket
+`email-attachments`, keyed by `message_id/filename`) — see
+`infrastructure/adapters/outbound/storage/supabase-attachment-storage.ts`. A successful
+upload adds `storagePath` to that attachment's entry; a failed one adds `storageError`
+instead, without failing the whole request. Nothing generates a signed download/preview
+URL yet, and nothing is handed to an AI — but the operation link below does persist.
+
+**Subject links the email to an operation.** If the subject matches
+`Orden de compra #<id>` (case-insensitive), `<id>` is used as the operation id: an
+existing operation is fetched and updated, a missing one is created from scratch. The
+email is appended to `context.emails`, and one `Document` per **successfully uploaded**
+attachment (`storagePath` present) is appended to `context.documents` — `bucketKey` is
+that `storagePath`, `extractedData` is `{ text: <extracted content> }` (`{}` for images,
+nothing meaningful extracted as text), and `type` is hardcoded to `"PO"` for now (see the
+TODO in `upsert-operation-from-email.use-case.ts` — no real document classification
+yet). Re-processing the same `message_id` against an operation that already has it is a
+no-op (Make's polling can double-post the same email). A subject that doesn't match the
+pattern skips this step entirely — extraction and upload above still happen either way.
 
 ### `POST /api/emails/send`
 
@@ -192,11 +213,12 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 one place only: `Company.operationIds`. An operation with no bookings answers with an
 empty list, which is the truth.
 
-**Documents are pointers, not payloads.** A `Document` carries a `bucketKey` into S3
-plus a `format` (`pdf`, `spreadsheet`, `document`, `image`, `other`) and whatever the
-extractor could scrape into `extractedData`. The bytes never reach Mongo, and neither do
-email attachments: `NormalizedEmail` is a transport DTO, and only the lightweight
-`ContextEmail` projection is persisted.
+**Documents are pointers, not payloads.** A `Document` carries a `bucketKey` into an
+S3-compatible bucket (Supabase Storage, not AWS) plus a `format` (`pdf`, `spreadsheet`,
+`document`, `image`, `other`) and whatever the extractor could scrape into
+`extractedData`. The bytes never reach Mongo, and neither do email attachments:
+`NormalizedEmail` is a transport DTO, and only the lightweight `ContextEmail` projection
+is persisted.
 
 **`status` is derived, never stored.** Container states run
 `booking_confirmed` → `in_transit` → `arrived_port` → `customs` → `delivered`. A booking's

@@ -62,7 +62,7 @@ test("uploads the original attachment bytes to storage, keyed by message id and 
   const storage = new FakeAttachmentStorage();
   const receiveEmail = createReceiveEmailUseCase({
     idGenerator: { newId: () => "id-1" },
-    attachmentExtractor: { extract: () => Promise.resolve({ kind: "unsupported" }) },
+    attachmentExtractor: { extract: () => Promise.resolve({ format: "other" as const }) },
     attachmentStorage: storage,
   });
 
@@ -81,7 +81,7 @@ test("records a storageError instead of throwing when the upload fails", async (
   storage.failWith = new Error("bucket unreachable");
   const receiveEmail = createReceiveEmailUseCase({
     idGenerator: { newId: () => "id-1" },
-    attachmentExtractor: { extract: () => Promise.resolve({ kind: "unsupported" }) },
+    attachmentExtractor: { extract: () => Promise.resolve({ format: "other" as const }) },
     attachmentStorage: storage,
   });
 
