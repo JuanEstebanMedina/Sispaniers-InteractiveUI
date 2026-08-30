@@ -1,14 +1,17 @@
 import { useEffect, useRef } from 'react'
 
-import { endpoints } from '@/api/endpoints'
-import { env } from '@/config/env'
 import { componentSchema, type GeneratedComponent } from '@/schemas/component.schema'
+import { operationEventsUrl, operationStreams, type SharedStream } from './streamPool'
 
 /**
- * `GET /api/operations/:id/events` — los componentes de UNA operación. No habla
- * de la lista, así que no reemplaza el sondeo de la grilla ni del riel.
+ * `GET /api/operations/:id/events` — the components of ONE operation. It says
+ * nothing about the list, so it replaces neither the grid's polling nor the
+ * rail's.
  *
- * El callback vive en un ref para no reconectar el stream en cada repintado.
+ * The connection is shared: see `streamPool`. This only adds its own listeners
+ * and takes them away again, and never closes what it did not open.
+ *
+ * The callback lives in a ref so a repaint does not reconnect the stream.
  */
 
 export type OperationEventName = 'component-created' | 'component-updated'
@@ -18,32 +21,47 @@ export type OperationEventHandler = (
   component: GeneratedComponent | null,
 ) => void
 
+const COMPONENT_EVENTS: readonly OperationEventName[] = ['component-created', 'component-updated']
+
+export function bindOperationEvents(
+  source: SharedStream,
+  onEvent: OperationEventHandler,
+): () => void {
+  const stop: (() => void)[] = []
+
+  for (const name of COMPONENT_EVENTS) {
+    const listener = (event: MessageEvent<string>) => {
+      // The component is a bonus: if the backend changes its shape, the news
+      // that something moved still has to arrive so the screen can refresh.
+      onEvent(name, safeParse(event.data))
+    }
+
+    source.addEventListener(name, listener)
+    stop.push(() => source.removeEventListener(name, listener))
+  }
+
+  return () => {
+    for (const off of stop) off()
+    stop.length = 0
+  }
+}
+
 export function useOperationEvents(operationId: string, onEvent: OperationEventHandler): void {
   const handler = useRef(onEvent)
   handler.current = onEvent
 
   useEffect(() => {
-    // Con id vacío quedaría una conexión colgada contra una ruta que da 404.
+    // An empty id would leave a connection hanging against a route that 404s.
     if (!operationId) return
 
-    const url = `${env.VITE_API_URL}${endpoints.ai.events(operationId)}`
-    const source = new EventSource(url)
-
-    const listen = (name: OperationEventName) => {
-      const listener = (event: MessageEvent<string>) => {
-        // Si la forma cambia, el aviso debe llegar igual para poder refrescar.
-        const parsed = safeParse(event.data)
-        handler.current(name, parsed)
-      }
-      source.addEventListener(name, listener)
-      return () => source.removeEventListener(name, listener)
-    }
-
-    const stop = [listen('component-created'), listen('component-updated')]
+    const lease = operationStreams.acquire(operationEventsUrl(operationId))
+    const unbind = bindOperationEvents(lease.stream, (event, component) =>
+      handler.current(event, component),
+    )
 
     return () => {
-      for (const off of stop) off()
-      source.close()
+      unbind()
+      lease.release()
     }
   }, [operationId])
 }
@@ -52,7 +70,8 @@ function safeParse(data: string): GeneratedComponent | null {
   try {
     return componentSchema.parse(JSON.parse(data))
   } catch {
-    // Un evento ilegible no tumba el stream: el consumidor refresca por HTTP.
+    // An unreadable event does not bring the stream down: the consumer
+    // refreshes over HTTP.
     return null
   }
 }

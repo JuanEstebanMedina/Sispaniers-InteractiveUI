@@ -1,11 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
-import { endpoints, queryKeys } from '@/api/endpoints'
-import { env } from '@/config/env'
+import { queryKeys } from '@/api/endpoints'
+import { operationEventsUrl, operationStreams } from '@/hooks/streamPool'
 import { operationResponseSchema } from '@/schemas'
 
 export type StreamStatus = 'connecting' | 'live' | 'offline' | 'ended'
+
+/** `EventSource.OPEN`, named so this does not depend on the global at import time. */
+const OPEN = 1
 
 /**
  * The live half of the generated UI: the agent writes, the grid restructures.
@@ -20,6 +23,9 @@ export type StreamStatus = 'connecting' | 'live' | 'offline' | 'ended'
  * the events route has no auth, and it is why this uses the browser's own SSE
  * client instead of the axios instance — the moment that route is protected,
  * this has to become fetch with a ReadableStream.
+ *
+ * The connection comes from `streamPool` and is shared with the rail, so this
+ * adds listeners and takes them away: closing belongs to the pool.
  */
 export function useComponentStream(operationId: string, cols: number): StreamStatus {
   const queryClient = useQueryClient()
@@ -28,11 +34,21 @@ export function useComponentStream(operationId: string, cols: number): StreamSta
   useEffect(() => {
     if (!operationId) return
 
-    const base = env.VITE_API_URL.replace(/\/$/, '')
-    const source = new EventSource(`${base}${endpoints.ai.events(operationId)}`)
+    const lease = operationStreams.acquire(operationEventsUrl(operationId))
+    const source = lease.stream
+    const stop: (() => void)[] = []
     let ended = false
 
-    source.addEventListener('open', () => setStatus('live'))
+    const listen = (name: string, listener: (event: MessageEvent<string>) => void) => {
+      source.addEventListener(name, listener)
+      stop.push(() => source.removeEventListener(name, listener))
+    }
+
+    // A connection the rail already opened will not fire `open` again, so a
+    // late subscriber reads the state instead of waiting for an event that has
+    // already been and gone.
+    if (source.readyState === OPEN) setStatus('live')
+    listen('open', () => setStatus('live'))
 
     /**
      * Refetch rather than splice the new component into the cache.
@@ -48,16 +64,14 @@ export function useComponentStream(operationId: string, cols: number): StreamSta
       })
     }
 
-    source.addEventListener('component-created', refetchComponents)
-    source.addEventListener('component-updated', refetchComponents)
+    listen('component-created', refetchComponents)
+    listen('component-updated', refetchComponents)
 
-    source.addEventListener('operation-updated', (event) => {
+    listen('operation-updated', (event) => {
       // The operation arrives whole, so this one goes straight into the cache:
       // no layout to repack, and the header updating a beat before the grid is
       // exactly the "the agent is working" signal the screen is meant to give.
-      const parsed = operationResponseSchema.safeParse(
-        JSON.parse((event as MessageEvent).data),
-      )
+      const parsed = operationResponseSchema.safeParse(JSON.parse(event.data))
       if (!parsed.success) return
 
       queryClient.setQueryData(queryKeys.operations.detail(operationId), parsed.data)
@@ -66,22 +80,20 @@ export function useComponentStream(operationId: string, cols: number): StreamSta
       void queryClient.invalidateQueries({ queryKey: queryKeys.operations.list() })
     })
 
-    source.addEventListener('simulation-completed', () => {
-      // The server closes the stream after this. Closing from here as well
-      // stops EventSource from reconnecting to a feed that has nothing left.
+    listen('simulation-completed', () => {
       ended = true
       setStatus('ended')
-      source.close()
     })
 
     // The browser reconnects on its own; this only reports the gap, so stale
     // content is never shown as though it were live.
-    source.addEventListener('error', () => {
+    listen('error', () => {
       if (!ended) setStatus('offline')
     })
 
     return () => {
-      source.close()
+      for (const off of stop) off()
+      lease.release()
       setStatus('connecting')
     }
   }, [operationId, cols, queryClient])
