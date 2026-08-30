@@ -51,6 +51,7 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     generateComponentFromAi,
     createComponent,
     deleteComponent,
+    queryCompanyConcepts,
     componentEventPublisher,
     operationEventPublisher,
     createCompany,
@@ -71,6 +72,7 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     sendEmail,
     upsertOperationFromEmail,
     enrollOperationInSimulation,
+    generateComponentFromAi,
   });
   // Nested plugin: registering the auth hook inside a child context (instead
   // of directly on `fastify`) keeps it from leaking backward onto the
@@ -103,6 +105,7 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
       updateComponentContent,
       createComponent,
       deleteComponent,
+      queryCompanyConcepts,
     });
     await protectedRoutes.register(aiRoutes, { generateComponentFromAi });
     await protectedRoutes.register(operationEventsRoutes, {

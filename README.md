@@ -85,9 +85,10 @@ Employees, emails, documents, vessels and data can all be invented.
 ## Structure
 
 ```
-frontend/    # runtime-generated UI (React + Vite) — see frontend/.env.example
+frontend/    # runtime-generated UI (React + Vite) — see frontend/README.md
 backend/     # agents, flows and orchestration — see backend/README.md
 .githooks/   # versioned git hooks, shared by every clone
+Makefile     # docker compose with both env files and a scrubbed shell
 docker-compose.yml
 ```
 
@@ -96,11 +97,26 @@ docker-compose.yml
 **1. Configure the environment.** Each app owns its own env file — copy the example and adjust:
 
 ```bash
-cp backend/.env.example backend/.env      # MONGO_PASSWORD is required
+cp backend/.env.example backend/.env      # MONGO_PASSWORD and JWT_SECRET are required
 cp frontend/.env.example frontend/.env
 ```
 
-**2. Bring up the stack.** Both `--env-file` flags are required, every time:
+**2. Bring up the stack.** Use the `Makefile` at the root — it is the shortest correct
+command, and it is correct for a reason worth reading:
+
+```bash
+make up-build       # or: make up, once the images exist
+```
+
+`make` passes both env files *and* scrubs the variables compose interpolates out of the
+surrounding shell. That second part is not cosmetic: an exported `MONGO_PASSWORD` — a
+stray `source backend/.env.example`, or a line in your shell profile — **wins over
+`--env-file`**, silently replaces the real password with a placeholder, and the backend
+dies unable to authenticate. `make config` prints the resolved values; a placeholder
+there means the shell leaked in.
+
+The raw command, if you want to see what it wraps (both `--env-file` flags are required,
+every time):
 
 ```bash
 docker compose --env-file backend/.env --env-file frontend/.env up --build
@@ -115,7 +131,8 @@ the synthetic data. When it settles:
 | API | http://127.0.0.1:8000 — `curl http://127.0.0.1:8000/health` |
 | MongoDB | `127.0.0.1:27017` |
 
-Add `-d` to run it in the background. To tear it down:
+`make up` already runs detached; add `-d` to the raw command for the same. To tear it
+down:
 
 ```bash
 docker compose --env-file backend/.env --env-file frontend/.env down -v
@@ -127,11 +144,14 @@ docker compose --env-file backend/.env --env-file frontend/.env down -v
 > the API fails to authenticate. `down -v` is the reset. Dropping `-v` keeps the data —
 > and keeps that mismatch.
 
+> `make down` stops the stack but **keeps** the volume. The `-v` reset is deliberately
+> not a make target, so nobody wipes the database by muscle memory.
+
 Mongo's own log noise is silenced (`logging: driver: "none"` in `docker-compose.yml`);
 to follow the backend's application/AI-flow logs:
 
 ```bash
-docker compose logs -f backend
+make logs                         # or: docker compose logs -f backend
 ```
 
 Or, for the fast development loop, run only the database in Docker and the API on the
@@ -144,6 +164,15 @@ make install
 make dev                          # http://127.0.0.1:8000
 ```
 
+To iterate on the **frontend** instead, run mongo and the API in Docker and Vite on the
+host. If the frontend container is already up, stop it first or port 5173 collides:
+
+```bash
+docker compose --env-file backend/.env --env-file frontend/.env stop frontend
+make backend                      # mongo + backend only
+cd frontend && pnpm dev           # http://localhost:5173
+```
+
 The backend needs Node.js 22 and pnpm 8. Enable pnpm with `corepack enable` if you do
 not have it.
 
@@ -153,14 +182,33 @@ not have it.
 make -C backend hooks
 ```
 
-**4. Load the seed data.** The database starts empty; this loads three companies and
-four synthetic operations covering every container state. Step 2 already ran it via the
-one-off `seed` service (it upserts by id, so it is safe to re-run). Only the host-only
-dev loop needs it by hand:
+**4. Load the seed data.** The database starts empty; this loads three companies, their
+users, and four synthetic operations covering every container state. Step 2 already ran
+it via the one-off `seed` service (it upserts by id, so it is safe to re-run). Only the
+host-only dev loop needs it by hand:
 
 ```bash
 make -C backend seed
-curl http://127.0.0.1:8000/api/operations
+```
+
+**5. Log in.** The API is behind a bearer token — only `/health`, `/api/auth/*` and
+`/api/emails/*` are open. The seeded superadmin, and what the frontend expects at
+http://127.0.0.1:5173:
+
+```
+admin@sispaniers.com / sispaniers-dev
+```
+
+Every company also has an `admin@…` and a `user@…` scoped to it; all of them, passwords
+included, live in `backend/scripts/seed-data.json`. From curl:
+
+```bash
+TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "admin@sispaniers.com", "password": "sispaniers-dev" }' | jq -r .accessToken)
+
+curl -X POST http://127.0.0.1:8000/api/operations/search \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{}'
 ```
 
 The full environment-variable table, the API reference, the data model and
@@ -179,13 +227,9 @@ error while interpolating services.mongo.environment.MONGO_INITDB_ROOT_PASSWORD:
 required variable MONGO_PASSWORD is missing a value: set MONGO_PASSWORD in .env, see .env.example
 ```
 
-If you get tired of typing it, export the pair once per shell:
-
-```bash
-export COMPOSE_ENV="--env-file backend/.env --env-file frontend/.env"
-docker compose $COMPOSE_ENV up --build
-docker compose $COMPOSE_ENV down -v
-```
+That is what the root `Makefile` wraps, and why `make up` is the recommended path: it
+also unsets the interpolated variables so an exported one in your shell can't quietly
+outrank the env file.
 
 ### Why the git hooks need opting in
 

@@ -16,6 +16,7 @@ import type { ComponentEventPublisher } from "../../../domain/ports/component-ev
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
+import type { QueryCompanyConceptsCommandResult } from "../../commands/query-company-concepts.command.js";
 import { type PromptContext, buildBasePrompt } from "./ai-response.helpers.js";
 
 export type AiTrigger = "chat" | "auto";
@@ -34,22 +35,14 @@ export interface GenerateComponentFromAiDeps {
   commandRegistry: CommandRegistry;
   promptTemplate: string;
   chatHistoryPort?: ChatHistoryPort;
-  // Optional so existing callers (and the unit test that builds this use
-  // case without an event publisher) keep compiling. Production wiring in
-  // composition.ts always supplies both.
   eventPublisher?: ComponentEventPublisher;
   idGenerator?: IdGenerator;
 }
 
-// ponytail: at the point the AI request starts we know nothing about what it
-// will build — the actual size only exists inside `result.input` after the
-// round trip completes, which is also the point most of the latency this
-// placeholder exists to cover has already elapsed. A generic mid-size
-// estimate fired before the AI call is the honest trade-off: it covers the
-// full wait instead of a fraction of it.
 const ESTIMATED_PENDING_SIZE: WidgetSizeName = "small";
-
 const GRID_COLUMNS = 4;
+const MAX_QUERY_TOOL_CALLS = 3;
+const CONTINUATION_COMMANDS = new Set(["ingest_company_concepts", "query_company_concepts"]);
 
 function buildExistingComponentsHint(
   trigger: AiTrigger,
@@ -78,7 +71,6 @@ function buildSystemPrompt(
     GRID_COLUMNS,
     context,
   );
-
   return `${base}\n\n${buildExistingComponentsHint(trigger, existingComponents)}`;
 }
 
@@ -105,7 +97,8 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       .list()
       .filter(
         (command) =>
-          (trigger !== "chat" || command.name !== "update_component") &&
+          (trigger !== "chat" ||
+            (command.name !== "update_component" && command.name !== "ingest_company_concepts")) &&
           (trigger !== "auto" || command.name !== "save_company_context"),
       )
       .map((command) => ({
@@ -113,61 +106,50 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         description: command.description,
         inputSchema: command.inputSchema,
       }));
+    let queryCount = 0;
+    let nextInput = input;
 
-    // "auto" always has to produce a component — nobody is reading a text
-    // reply from a webhook. "chat" may legitimately have nothing to show
-    // (the user asked for data the operation doesn't have), and forcing a
-    // tool call there just makes the model build an empty component to hang
-    // its answer on instead of saying so.
-    const result = await aiCompletionPort.complete({
-      prompt: input,
-      systemPrompt,
-      tools,
-      forceTool: trigger !== "chat",
-    });
+    while (true) {
+      const result = await aiCompletionPort.complete({
+        prompt: nextInput,
+        systemPrompt,
+        tools,
+        forceTool: trigger !== "chat",
+      });
 
-    if (result.kind === "text") {
-      if (trigger === "chat") {
-        console.log(
-          `generateComponentFromAi: chat trigger returned plain text for operation ${operationId}`,
-        );
-        // No component is coming for this turn, so the placeholder from
-        // "component-pending" has nothing left to clear it — without this it
-        // sits on screen looking like a stuck blank widget until its timeout.
-        eventPublisher?.publish(operationId, "component-pending-cleared", null);
-        return { component: null, reply: result.text };
+      if (result.kind === "text") {
+        if (trigger === "chat") {
+          eventPublisher?.publish(operationId, "component-pending-cleared", null);
+          return { component: null, reply: result.text };
+        }
+        throw new InvalidAiComponentError(`no tool called: ${result.text}`);
       }
-      console.warn(
-        `generateComponentFromAi: auto trigger returned plain text instead of a tool call for operation ${operationId}, retrying`,
-      );
-      throw new InvalidAiComponentError(`no tool called: ${result.text}`);
-    }
 
-    console.log(
-      `generateComponentFromAi: dispatching tool "${result.toolName}" for operation ${operationId}`,
-    );
-
-    try {
-      const dispatched = (await commandRegistry.dispatch(result.toolName, result.input, {
-        operationId,
-      })) as { component: Component; reply: string };
-      console.log(
-        `generateComponentFromAi: tool "${result.toolName}" dispatched successfully for operation ${operationId}`,
-      );
-      return dispatched;
-    } catch (error) {
-      if (
-        error instanceof UnknownCommandError ||
-        error instanceof InvalidCommandInputError ||
-        error instanceof InvalidComponentTreeError ||
-        error instanceof InvalidComponentPathError
-      ) {
-        console.warn(
-          `generateComponentFromAi: tool "${result.toolName}" dispatch failed for operation ${operationId}: ${error.message}`,
-        );
-        throw new InvalidAiComponentError(error.message);
+      try {
+        const dispatched = await commandRegistry.dispatch(result.toolName, result.input, {
+          operationId,
+        });
+        if (!CONTINUATION_COMMANDS.has(result.toolName)) {
+          return dispatched as { component: Component; reply: string };
+        }
+        if (queryCount >= MAX_QUERY_TOOL_CALLS) {
+          throw new InvalidAiComponentError("too many company concept queries");
+        }
+        queryCount += 1;
+        nextInput = `${nextInput}\n\n---\n${result.toolName} result:\n${JSON.stringify(
+          dispatched as QueryCompanyConceptsCommandResult,
+        )}\nUse this result now. Call another tool only when needed.`;
+      } catch (error) {
+        if (
+          error instanceof UnknownCommandError ||
+          error instanceof InvalidCommandInputError ||
+          error instanceof InvalidComponentTreeError ||
+          error instanceof InvalidComponentPathError
+        ) {
+          throw new InvalidAiComponentError(error.message);
+        }
+        throw error;
       }
-      throw error;
     }
   }
 
@@ -175,9 +157,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     input: GenerateComponentFromAiInput,
   ): Promise<{ component: Component | null; reply: string }> {
     const operation = await operationRepository.findById(input.operationId);
-    if (operation === null) {
-      throw new OperationNotFoundError(input.operationId);
-    }
+    if (operation === null) throw new OperationNotFoundError(input.operationId);
 
     const existingComponents = (await componentRepository.findByOperationId(input.operationId)).map(
       (component) => ({
@@ -186,12 +166,11 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         childCount: component.children.length,
       }),
     );
-
     const company =
       operation.companyId === undefined || companyRepository === undefined
         ? null
         : await companyRepository.findById(operation.companyId);
-    const promptContext = {
+    const promptContext: PromptContext = {
       // The company's own id is an internal identifier, never the model's
       // answer to "what's the client called" — leading with the real name
       // here is what keeps it from guessing (or worse, inventing a
@@ -204,7 +183,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
           : [],
       componentCatalog: [],
     };
-    const prompt = buildSystemPrompt(
+    const systemPrompt = buildSystemPrompt(
       promptTemplate,
       input.trigger,
       existingComponents,
@@ -221,31 +200,31 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
 
     let result: { component: Component | null; reply: string };
     try {
-      result = await completeAndDispatch(prompt, input.input, input.operationId, input.trigger);
-    } catch (error) {
-      if (!(error instanceof InvalidAiComponentError)) {
-        throw error;
-      }
-      console.warn(
-        `generateComponentFromAi: retrying after invalid AI response for operation ${input.operationId}: ${error.message}`,
+      result = await completeAndDispatch(
+        systemPrompt,
+        input.input,
+        input.operationId,
+        input.trigger,
       );
-      result = await completeAndDispatch(prompt, input.input, input.operationId, input.trigger);
+    } catch (error) {
+      if (!(error instanceof InvalidAiComponentError)) throw error;
+      result = await completeAndDispatch(
+        systemPrompt,
+        input.input,
+        input.operationId,
+        input.trigger,
+      );
     }
 
     if (input.trigger === "chat" && chatHistoryPort !== undefined) {
       const recordedAt = new Date();
-      chatHistoryPort.append(input.operationId, {
-        role: "user",
-        content: input.input,
-        recordedAt,
-      });
+      chatHistoryPort.append(input.operationId, { role: "user", content: input.input, recordedAt });
       chatHistoryPort.append(input.operationId, {
         role: "assistant",
         content: result.reply,
         recordedAt,
       });
     }
-
     return result;
   };
 }

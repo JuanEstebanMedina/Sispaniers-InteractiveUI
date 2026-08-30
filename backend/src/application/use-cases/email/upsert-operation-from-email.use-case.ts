@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { buildWelcomeComponent } from "../../../domain/components/welcome-component.js";
 import type { Document } from "../../../domain/logistics/document.js";
 import type { ContextEmail } from "../../../domain/logistics/operation-context.js";
@@ -14,6 +15,10 @@ const OPERATION_ID_PATTERN = /orden de compra\s*#\s*([\w-]+)/i;
 
 export function extractOperationIdFromSubject(subject: string): string | undefined {
   return OPERATION_ID_PATTERN.exec(subject)?.[1];
+}
+
+function inboundOperationId(messageId: string): string {
+  return `inbound-${createHash("sha256").update(messageId).digest("hex").slice(0, 16)}`;
 }
 
 // Looks for a labelled "Compañía: <name>" / "Company: <name>" line anywhere
@@ -102,9 +107,9 @@ function toDocument(
   };
 }
 
-// TODO: wire up the real agent here — today the email↔operation link is
-// purely textual (the id comes from the subject "Orden de compra #<id>");
-// later a real agent will decide which operation each email belongs to.
+// A purchase-order number keeps related email on one operation. Emails
+// without one still get a stable operation from their message id, so inbound
+// AI processing always has an operation context.
 export function createUpsertOperationFromEmailUseCase(deps: UpsertOperationFromEmailDeps) {
   const {
     operationRepository,
@@ -117,10 +122,9 @@ export function createUpsertOperationFromEmailUseCase(deps: UpsertOperationFromE
   return async function upsertOperationFromEmail(
     input: UpsertOperationFromEmailInput,
   ): Promise<UpsertOperationFromEmailResult | undefined> {
-    const operationId = extractOperationIdFromSubject(input.email.subject);
-    if (operationId === undefined) {
-      return undefined;
-    }
+    const operationId =
+      extractOperationIdFromSubject(input.email.subject) ??
+      inboundOperationId(input.email.messageId);
 
     const existing = await operationRepository.findById(operationId);
     const created = existing === null;

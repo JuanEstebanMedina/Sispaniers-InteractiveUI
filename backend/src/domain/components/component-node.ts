@@ -82,9 +82,11 @@ function validateComponentNode(node: unknown, remainingDepth: number): void {
   // A dataKey the frontend cannot resolve renders nothing and says nothing.
   // Rejecting it here turns a silent blank widget into an error the agent can
   // act on.
+  const dataKey = String(props.dataKey);
   if (
     props.dataKey !== undefined &&
-    !(DATA_SOURCE_NAMES as readonly string[]).includes(String(props.dataKey))
+    !(DATA_SOURCE_NAMES as readonly string[]).includes(dataKey) &&
+    !/^concept:[\w-]+$/.test(dataKey)
   ) {
     throw new InvalidComponentTreeError(
       `unknown dataKey: ${String(props.dataKey)} (expected one of ${DATA_SOURCE_NAMES.join(", ")})`,

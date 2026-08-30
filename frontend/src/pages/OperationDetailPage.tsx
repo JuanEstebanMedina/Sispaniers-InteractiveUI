@@ -23,6 +23,7 @@ import { toast } from '@/lib/toast'
 import {
   type ComponentsResponse,
   componentsResponseSchema,
+  companyConceptsResponseSchema,
   operationListSchema,
   operationResponseSchema,
   type Operation,
@@ -31,6 +32,17 @@ import { needsAttention } from '@/lib/operation'
 import { useRailStore } from '@/stores/railStore'
 
 const DEFAULT_COLS = 4
+
+function conceptIdsFrom(nodes: Array<{ props: Record<string, unknown>; children?: unknown[] }>): string[] {
+  return nodes.flatMap((node) => {
+    const dataKey = node.props.dataKey
+    const id = typeof dataKey === 'string' && dataKey.startsWith('concept:') ? dataKey.slice(8) : ''
+    const children = Array.isArray(node.children)
+      ? conceptIdsFrom(node.children as Array<{ props: Record<string, unknown>; children?: unknown[] }>)
+      : []
+    return id ? [id, ...children] : children
+  })
+}
 
 const PENDING_TIMEOUT_MS = 45_000
 
@@ -112,6 +124,26 @@ export default function OperationDetailPage() {
 
   const operation = detail.data
   const generated = components.data
+  const conceptIds = useMemo(
+    () => [...new Set((generated?.components ?? []).flatMap((component) => conceptIdsFrom(component.content)))],
+    [generated],
+  )
+  const companyConcepts = useQuery({
+    queryKey: queryKeys.operations.companyConcepts(trackId, conceptIds),
+    queryFn: () =>
+      api$.get(
+        endpoints.operations.companyConcepts(trackId, conceptIds),
+        companyConceptsResponseSchema,
+      ),
+    enabled: conceptIds.length > 0,
+  })
+  const datasets = useMemo(
+    () =>
+      Object.fromEntries(
+        (companyConcepts.data?.concepts ?? []).map((concept) => [`concept:${concept.id}`, concept.values]),
+      ),
+    [companyConcepts.data],
+  )
 
   const [pending, setPending] = useState<ComponentPendingEvent[]>([])
 
@@ -226,7 +258,7 @@ export default function OperationDetailPage() {
       {detail.isSuccess && !components.isError && (
         <GeneratedSurface className="flex-1">
           <SectionBoundary name="generated-ui">
-            <ComponentDataProvider operation={operation}>
+            <ComponentDataProvider operation={operation} datasets={datasets}>
               <WidgetGrid
                 widgets={widgets}
                 onMove={handleMove}
