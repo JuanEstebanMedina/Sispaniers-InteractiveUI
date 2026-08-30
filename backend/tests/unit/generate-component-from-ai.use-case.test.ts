@@ -269,6 +269,7 @@ test("chat includes durable company knowledge", async () => {
   await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "Hola" });
 
   expect(systemPrompt).toContain("Salida semanal desde Cartagena.");
+  expect(systemPrompt).toContain("OUTPUT LANGUAGE IS HARD-CODED: English only.");
 });
 
 test("chat includes operation emails and extracted document data", async () => {
@@ -389,7 +390,7 @@ test("chat publishes a component placeholder before AI starts an explicit compon
   expect(eventsWhenAiStarts).toEqual(["component-pending"]);
 });
 
-test("an explicit component request requires an AI tool call", async () => {
+test("chat component requests leave room for an AI clarification", async () => {
   let forceTool = false;
   let requiredToolName: string | undefined;
   const commandRegistry = new CommandRegistry();
@@ -429,8 +430,100 @@ test("an explicit component request requires an AI tool call", async () => {
     input: "Crea un componente con estado de contenedores",
   });
 
+  expect(forceTool).toBe(false);
+  expect(requiredToolName).toBeUndefined();
+});
+
+test("moving a named component requires a tool without forcing a duplicate creation", async () => {
+  let forceTool = false;
+  let requiredToolName: string | undefined;
+  const commandRegistry = new CommandRegistry();
+  const update = async () => ({ component: { id: "history" }, reply: "Movido." });
+  commandRegistry.register({
+    name: "create_component",
+    description: "create",
+    inputSchema: { type: "object", properties: {} },
+    execute: update,
+  });
+  commandRegistry.register({
+    name: "update_component",
+    description: "update",
+    inputSchema: { type: "object", properties: {} },
+    execute: update,
+  });
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [componentStub({ id: "history", title: "Histórico" })],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async (request) => {
+        forceTool = request.forceTool ?? false;
+        requiredToolName = request.requiredToolName;
+        return { kind: "tool_call", toolName: "update_component", input: {} };
+      },
+    },
+    commandRegistry,
+    promptTemplate: "{{trigger}}",
+  });
+
+  await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "Podemos mover el componente histórico para que quede de primero?",
+  });
+
   expect(forceTool).toBe(true);
-  expect(requiredToolName).toBe("create_component");
+  expect(requiredToolName).toBe("update_component");
+});
+
+test("adding detail to an existing component requires an update", async () => {
+  let requiredToolName: string | undefined;
+  const commandRegistry = new CommandRegistry();
+  commandRegistry.register({
+    name: "update_component",
+    description: "update",
+    inputSchema: { type: "object", properties: {} },
+    execute: async () => ({ component: { id: "history" }, reply: "Updated." }),
+  });
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [componentStub({ id: "history", title: "Purchase history" })],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async (request) => {
+        requiredToolName = request.requiredToolName;
+        return { kind: "tool_call", toolName: "update_component", input: {} };
+      },
+    },
+    commandRegistry,
+    promptTemplate: "{{trigger}}",
+  });
+
+  await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "Me gustaría que el historial de compras tenga más información.",
+  });
+
+  expect(requiredToolName).toBe("update_component");
 });
 
 test("auto flow can ingest, query, then create a component", async () => {

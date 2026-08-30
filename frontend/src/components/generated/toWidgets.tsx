@@ -16,6 +16,16 @@ interface Heading {
   rest: ComponentNode[]
 }
 
+function isCentered(nodes: ComponentNode[]): boolean {
+  const root = nodes[0]
+  return (
+    nodes.length === 1 &&
+    root?.kind === 'layout' &&
+    root.props.align === 'center' &&
+    root.props.justify === 'center'
+  )
+}
+
 /**
  * The widget frame already draws a header, so the first `title` of the tree
  * moves up into it and leaves the body. It is pulled from wherever it sits:
@@ -69,6 +79,7 @@ export function toWidgets(
         title: component.title ?? title ?? '—',
         priority: component.priority,
         fromAgent: component.title === undefined,
+        centered: isCentered(rest),
         // Parts that ask to fill the widget (`flex-1`, `h-full`) only get to —
         // a chart's `flex-1` does nothing inside a bare Fragment, it needs a
         // flex ancestor to grow against.

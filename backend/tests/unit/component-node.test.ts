@@ -198,10 +198,37 @@ test("a non-chart node fits any size but tile", () => {
   expect(() => validateComponentSize("banner", [statNode(0)])).not.toThrow();
 });
 
+test("rejects a wide text-only component", () => {
+  expect(() =>
+    validateComponentSize("wide", [
+      { kind: "title", order: 0, props: { text: "Import control tower" } },
+      { kind: "label", order: 1, props: { text: "Three bookings under follow-up." } },
+    ]),
+  ).toThrow("size wide is too large for text-only content");
+});
+
 test("rejects a dataKey the frontend cannot resolve", () => {
   const tree = [{ kind: "table", order: 0, props: { dataKey: "ventas-del-mes" } }];
 
   expect(() => validateComponentTree(tree)).toThrow(InvalidComponentTreeError);
+});
+
+test("requires a visible illustrative flag for inline chart rows", () => {
+  expect(() =>
+    validateComponentTree([
+      { kind: "trend-chart", order: 0, props: { rows: [{ x: "Week 1", value: 4 }] } },
+    ]),
+  ).toThrow("inline chart rows require illustrative: true");
+
+  expect(() =>
+    validateComponentTree([
+      {
+        kind: "trend-chart",
+        order: 0,
+        props: { illustrative: true, rows: [{ x: "Week 1", value: 4 }, { x: "Week 2", value: 6 }] },
+      },
+    ]),
+  ).not.toThrow();
 });
 
 test("accepts every documented data source", () => {

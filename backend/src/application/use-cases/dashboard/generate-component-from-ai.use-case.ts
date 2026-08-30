@@ -49,9 +49,17 @@ const ESTIMATED_PENDING_SIZE: WidgetSizeName = "small";
 const GRID_COLUMNS = 4;
 const MAX_QUERY_TOOL_CALLS = 3;
 const CONTINUATION_COMMANDS = new Set(["ingest_company_concepts", "query_company_concepts"]);
+const ENGLISH_OUTPUT_RULE = `---
+OUTPUT LANGUAGE IS HARD-CODED: English only. Every user-visible response and component string must be English. Do not answer in the user's language when it is not English.`;
 
 function explicitlyRequestsComponent(input: string): boolean {
   return /\b(componente|widget|panel|dashboard|tarjeta|grafica|gráfica|tabla|visualizaci[oó]n)\b/i.test(
+    input,
+  );
+}
+
+function explicitlyRequestsExistingComponentAction(input: string): boolean {
+  return /\b(mueve|mover|move|reordena|reordenar|sube|baja|posiciona|poner|redimensiona|redimensionar|cambia|cambiar|actualiza|actualizar|edita|editar|renombra|renombrar|a[nñ]ade|a[nñ]adir|agrega|agregar|incluye|incluir|ampl[ií]a|ampliar|detalla|detallar|muestra|mostrar|m[aá]s\s+(?:info|informaci[oó]n|detalle|detalles)|more\s+(?:info|information|detail|details))\b/i.test(
     input,
   );
 }
@@ -143,7 +151,7 @@ function buildSystemPrompt(
     context,
   );
 
-  return `${base}\n\n${buildToolsHint(tools)}\n\n${buildExistingComponentsHint(existingComponents)}${buildReferencedComponentsHint(referenced)}`;
+  return `${base}\n\n${ENGLISH_OUTPUT_RULE}\n\n${buildToolsHint(tools)}\n\n${buildExistingComponentsHint(existingComponents)}${buildReferencedComponentsHint(referenced)}`;
 }
 
 export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFromAiDeps) {
@@ -166,7 +174,8 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     trigger: AiTrigger,
     tools: AiToolDefinition[],
   ): Promise<{ component: Component | null; reply: string }> {
-    const requiresComponentTool = trigger === "chat" && explicitlyRequestsComponent(input);
+    const requiresComponentTool =
+      trigger === "chat" && explicitlyRequestsExistingComponentAction(input);
     // save_company_context is a chat-only tool: a webhook has no user to
     // confirm what is worth remembering about the company.
     let queryCount = 0;
@@ -177,8 +186,11 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         prompt: nextInput,
         systemPrompt,
         tools,
+        // An explicit existing-component action must execute as an update.
+        // New chat views may still need one clarification; auto events always
+        // need an artifact.
         forceTool: trigger !== "chat" || requiresComponentTool,
-        ...(requiresComponentTool ? { requiredToolName: "create_component" } : {}),
+        ...(requiresComponentTool ? { requiredToolName: "update_component" } : {}),
       });
 
       if (result.kind === "text") {

@@ -43,6 +43,7 @@ export interface Widget extends GridItem {
   priority?: ComponentPriority
   body: ReactNode
   fromAgent?: boolean
+  centered?: boolean
 }
 
 interface WidgetGridProps {
@@ -285,7 +286,7 @@ export function WidgetGrid({
           >
             <header
               className={cn(
-                'flex shrink-0 touch-none select-none items-center gap-1.5 px-3 py-2',
+                'relative flex shrink-0 touch-none select-none items-center gap-1.5 px-3 py-2',
                 'border-b',
                 PRIORITY_HEADER[priority],
                 dragging ? 'cursor-grabbing' : 'cursor-grab',
@@ -348,13 +349,20 @@ export function WidgetGrid({
                 />
               ) : (
                 <>
-                  <h3 className="min-w-0 flex-1 truncate text-xs font-medium">{title}</h3>
+                  <h3
+                    className={cn(
+                      'min-w-0 truncate text-xs font-medium',
+                      widget.centered ? 'pointer-events-none absolute inset-x-10 text-center' : 'flex-1',
+                    )}
+                  >
+                    {title}
+                  </h3>
 
                   <button
                     type="button"
                     title={t('operation.generated.renameWidget')}
                     aria-label={t('operation.generated.renameWidget')}
-                    className={cn(HEADER_ACTION, 'hover:bg-surface-hover hover:text-fg')}
+                    className={cn(HEADER_ACTION, widget.centered && 'ml-auto', 'hover:bg-surface-hover hover:text-fg')}
                     // Without this the header would start a drag instead of
                     // letting the click through to the button.
                     onPointerDown={(event) => event.stopPropagation()}

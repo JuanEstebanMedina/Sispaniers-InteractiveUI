@@ -2,6 +2,7 @@ import { validateComponentSize } from "../../../domain/components/component-node
 import { type Component, bySequence } from "../../../domain/components/component.js";
 import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
 import { ComponentNotFoundError, OperationNotFoundError } from "../../../domain/model/errors.js";
+import type { ComponentEventPublisher } from "../../../domain/ports/component-event-publisher.port.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 import { createKeyedQueue } from "../../support/keyed-queue.js";
@@ -17,6 +18,7 @@ export interface UpdateComponentPlacementInput {
 export interface UpdateComponentPlacementDeps {
   operationRepository: OperationRepository;
   componentRepository: ComponentRepository;
+  eventPublisher?: ComponentEventPublisher;
 }
 
 function reorder(siblings: Component[], moved: Component, position: number): Component[] {
@@ -27,7 +29,7 @@ function reorder(siblings: Component[], moved: Component, position: number): Com
 }
 
 export function createUpdateComponentPlacementUseCase(deps: UpdateComponentPlacementDeps) {
-  const { operationRepository, componentRepository } = deps;
+  const { operationRepository, componentRepository, eventPublisher } = deps;
   // Renumbering the sequence means reading it, rewriting it, and storing it
   // back. The front fires one of these per drag without waiting for the last,
   // so two overlap easily — and the second would read orders the first had not
@@ -51,6 +53,7 @@ export function createUpdateComponentPlacementUseCase(deps: UpdateComponentPlace
 
     if (input.position === undefined) {
       await componentRepository.save(resized);
+      eventPublisher?.publish(resized.operationId, "component-updated", resized);
       return resized;
     }
 
@@ -65,7 +68,12 @@ export function createUpdateComponentPlacementUseCase(deps: UpdateComponentPlace
       ),
     );
 
-    return { ...renamed, order: sequence.findIndex((component) => component.id === renamed.id) };
+    const updated = {
+      ...renamed,
+      order: sequence.findIndex((component) => component.id === renamed.id),
+    };
+    eventPublisher?.publish(updated.operationId, "component-updated", updated);
+    return updated;
   }
 
   return async function updateComponentPlacement(

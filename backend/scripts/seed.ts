@@ -468,14 +468,24 @@ function buildAndesClosedComponents(
   const containers = containerCount(operation);
 
   return [
-    container(operation, "summary", 0, "wide", [
+    container(operation, "summary", 0, "small", [
       { kind: "title", order: 0, props: { text: "Operation summary" } },
       {
-        kind: "label",
+        kind: "layout",
         order: 1,
         props: {
-          text: `${operation.bookings.length} booking and ${operation.context.documents.length} documents — delivered.`,
+          direction: "column",
+          justify: "between",
+          fill: true,
         },
+        children: [
+          { kind: "stat", order: 0, props: { value: String(containers), label: "containers delivered" } },
+          {
+            kind: "label",
+            order: 1,
+            props: { text: `${operation.context.documents.length} documents completed` },
+          },
+        ],
       },
     ]),
     container(operation, "containers", 1, "small", [
@@ -514,20 +524,20 @@ function buildAndesClosedComponents(
 /** `op-cafe-del-valle-001` — multi-booking operation, still moving. */
 function buildCafeComponents(operation: Operation, narrative: NarrativeEventSeed[]): Component[] {
   return [
-    container(operation, "summary", 0, "wide", [
+    container(operation, "summary", 0, "small", [
       { kind: "title", order: 0, props: { text: "Operation summary" } },
       {
-        kind: "label",
+        kind: "layout",
         order: 1,
-        props: {
-          text: `${operation.bookings.length} bookings and ${operation.context.documents.length} documents in progress.`,
-        },
-      },
-      { kind: "divider", order: 2, props: {} },
-      {
-        kind: "label",
-        order: 3,
-        props: { text: "Café del Valle + Flores Tropicales share a booking.", tone: "muted" },
+        props: { direction: "column", justify: "between", fill: true },
+        children: [
+          {
+            kind: "stat",
+            order: 0,
+            props: { value: String(containerCount(operation)), label: "containers in progress" },
+          },
+          { kind: "label", order: 1, props: { text: "One shared booking requires consignee review." } },
+        ],
       },
     ]),
     container(operation, "containers-by-state", 1, "wide", [
@@ -595,12 +605,16 @@ function buildFloresComponents(operation: Operation, narrative: NarrativeEventSe
 
   return [
     buildWelcomeComponent(operation.id, operation.createdAt),
-    container(operation, "summary", 1, "wide", [
+    container(operation, "summary", 1, "small", [
       { kind: "title", order: 0, props: { text: "Operation summary" } },
       {
-        kind: "label",
+        kind: "layout",
         order: 1,
-        props: { text: "Still no booking — waiting on carrier confirmation." },
+        props: { direction: "column", justify: "between", fill: true },
+        children: [
+          { kind: "badge", order: 0, props: { text: "Booking pending", status: "warning" } },
+          { kind: "label", order: 1, props: { text: "Carrier confirmation is required before cutoff." } },
+        ],
       },
     ]),
     container(operation, "status", 2, "small", [
@@ -641,6 +655,75 @@ function buildFloresComponents(operation: Operation, narrative: NarrativeEventSe
   ];
 }
 
+/** `op-pacific-home-001` — a multi-carrier import with customs and document risk. */
+function buildPacificComponents(operation: Operation, narrative: NarrativeEventSeed[]): Component[] {
+  const containers = containerCount(operation);
+
+  return [
+    container(operation, "summary", 0, "small", [
+      { kind: "title", order: 0, props: { text: "Import control tower", center: true } },
+      {
+        kind: "layout",
+        order: 1,
+        props: {
+          direction: "column",
+          align: "center",
+          justify: "center",
+          fill: true,
+        },
+        children: [
+          {
+            kind: "stat",
+            order: 0,
+            props: { value: String(containers), label: "containers tracked", emphasis: true, center: true },
+          },
+          {
+            kind: "label",
+            order: 1,
+            props: { text: `${operation.bookings.length} bookings with active follow-up`, center: true },
+          },
+        ],
+      },
+    ]),
+    container(operation, "bookings", 1, "wide", [
+      { kind: "title", order: 0, props: { text: "Bookings and ETAs" } },
+      {
+        kind: "table",
+        order: 1,
+        props: {
+          dataKey: "bookings",
+          columns: [
+            { key: "carrier", label: "Carrier" },
+            { key: "vessel", label: "Vessel" },
+            { key: "destination", label: "Destination" },
+            { key: "containers", label: "Containers" },
+          ],
+        },
+      },
+    ]),
+    container(operation, "schedule", 2, "wide", [
+      { kind: "title", order: 0, props: { text: "Schedule changes" } },
+      {
+        kind: "trend-chart",
+        order: 1,
+        props: {
+          dataKey: "schedule-changes",
+          xKey: "x",
+          series: [{ key: "value", label: "Days late", colorIndex: 3 }],
+        },
+      },
+    ]),
+    container(operation, "history", 3, "tall", [
+      { kind: "title", order: 0, props: { text: "What happened with this shipment" } },
+      narrativeTimeline(1, narrative),
+    ]),
+    container(operation, "positions", 4, "wide", [
+      { kind: "title", order: 0, props: { text: "Vessel positions" } },
+      { kind: "map", order: 1, props: { dataKey: "vessel-positions" } },
+    ]),
+  ];
+}
+
 const COMPONENT_BUILDERS: Record<
   string,
   (operation: Operation, narrative: NarrativeEventSeed[]) => Component[]
@@ -649,6 +732,7 @@ const COMPONENT_BUILDERS: Record<
   "op-andes-textiles-002": buildAndesClosedComponents,
   "op-cafe-del-valle-001": buildCafeComponents,
   "op-flores-tropicales-001": buildFloresComponents,
+  "op-pacific-home-001": buildPacificComponents,
 };
 
 function buildComponents(seed: OperationSeed, operation: Operation): Component[] {

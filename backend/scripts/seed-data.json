@@ -449,6 +449,179 @@
           "status": "neutral"
         }
       ]
+    },
+    {
+      "id": "op-pacific-home-001",
+      "companyId": "company-pacific-home",
+      "createdAt": "2026-07-22",
+      "bookings": [
+        {
+          "id": "bkg-pacific-001",
+          "companyIds": ["company-pacific-home"],
+          "carrier": "ONE",
+          "vessel": "ONE Harmony",
+          "originPort": "CNYTN",
+          "destinationPort": "USLAX",
+          "etd": "2026-07-28",
+          "eta": "2026-08-20",
+          "delays": [
+            { "eta": "2026-08-24", "reason": "typhoon congestion in Yantian", "occurredAt": "2026-08-02" },
+            { "eta": "2026-08-27", "reason": "terminal berth omission in Los Angeles", "occurredAt": "2026-08-16" }
+          ],
+          "containers": [
+            ["ONEU4819203", "arrived_port"],
+            ["ONEU4819204", "customs"],
+            ["ONEU4819205", "customs"],
+            ["ONEU4819206", "in_transit"]
+          ],
+          "vesselPosition": { "lat": 33.74, "lng": -118.28, "updatedAt": "2026-08-27" }
+        },
+        {
+          "id": "bkg-pacific-002",
+          "companyIds": ["company-pacific-home"],
+          "carrier": "Evergreen",
+          "vessel": "Ever Cozy",
+          "originPort": "VNSGN",
+          "destinationPort": "USLGB",
+          "etd": "2026-08-04",
+          "eta": "2026-08-30",
+          "delays": [
+            { "eta": "2026-09-03", "reason": "Singapore transshipment connection missed", "occurredAt": "2026-08-15" }
+          ],
+          "containers": [
+            ["EITU7724101", "in_transit"],
+            ["EITU7724102", "in_transit"],
+            ["EITU7724103", "booking_confirmed"]
+          ],
+          "vesselPosition": { "lat": 19.24, "lng": -121.61, "updatedAt": "2026-08-28" }
+        },
+        {
+          "id": "bkg-pacific-003",
+          "companyIds": ["company-pacific-home"],
+          "carrier": "COSCO",
+          "vessel": "COSCO Shipping Azalea",
+          "originPort": "CNSHA",
+          "destinationPort": "USOAK",
+          "etd": "2026-08-19",
+          "eta": "2026-09-15",
+          "delays": [],
+          "containers": [["CSNU6698441", "booking_confirmed"]]
+        }
+      ],
+      "context": {
+        "emails": [
+          {
+            "source": "outlook",
+            "messageId": "email-pacific-001",
+            "from": "inbound@pacifichome.co",
+            "to": "ops@sispaniers.demo",
+            "subject": "Fall replenishment import plan — PO 45821 / 45834 / 45851",
+            "receivedAt": "2026-07-22",
+            "bodyText": "Please prioritize the Los Angeles containers. Retail promotion starts September 10 and the ceramic dinnerware cannot miss the launch window."
+          },
+          {
+            "source": "make",
+            "messageId": "email-pacific-014",
+            "from": "notice@one-line.com",
+            "to": "ops@sispaniers.demo",
+            "subject": "Revised ETA — bkg-pacific-001",
+            "receivedAt": "2026-08-02",
+            "bodyText": "Typhoon-related congestion has moved arrival from August 20 to August 24. Cargo remains loaded and vessel departure is confirmed."
+          },
+          {
+            "source": "gmail",
+            "messageId": "email-pacific-019",
+            "from": "broker@clearpathcustoms.com",
+            "to": "ops@sispaniers.demo",
+            "subject": "Customs documentation needed — ONEU4819204 / ONEU4819205",
+            "receivedAt": "2026-08-26",
+            "bodyText": "CBP requested a revised commercial invoice with country-of-origin detail for two ceramic SKU lines. Entry is on hold pending corrected invoice."
+          },
+          {
+            "source": "manual",
+            "messageId": "email-pacific-022",
+            "from": "merchandising@pacifichome.co",
+            "to": "ops@sispaniers.demo",
+            "subject": "Priority split for September launch",
+            "receivedAt": "2026-08-27",
+            "bodyText": "Release ONEU4819204 first if partial clearance is possible. It contains launch assortment; ONEU4819205 may follow two days later."
+          },
+          {
+            "source": "make",
+            "messageId": "email-pacific-025",
+            "from": "updates@evergreen-marine.com",
+            "to": "ops@sispaniers.demo",
+            "subject": "Connection missed — bkg-pacific-002",
+            "receivedAt": "2026-08-15",
+            "bodyText": "The Singapore connection was missed. Evergreen rebooked the cargo and revised ETA to September 3."
+          }
+        ],
+        "documents": [
+          {
+            "id": "doc-pacific-po-45821",
+            "type": "PO",
+            "format": "pdf",
+            "bucketKey": "operations/op-pacific-home-001/po-45821.pdf",
+            "sourceEmailId": "email-pacific-001",
+            "extractedData": { "poNumber": "45821", "supplier": "Yantian Ceramics Ltd.", "incoterm": "FOB Yantian", "currency": "USD", "total": 78420, "requestedDelivery": "2026-09-08", "priority": "launch assortment" },
+            "receivedAt": "2026-07-22"
+          },
+          {
+            "id": "doc-pacific-bc-001",
+            "type": "BookingConfirmation",
+            "format": "pdf",
+            "bucketKey": "operations/op-pacific-home-001/booking-one-001.pdf",
+            "bookingId": "bkg-pacific-001",
+            "extractedData": { "booking": "bkg-pacific-001", "carrier": "ONE", "vessel": "ONE Harmony", "cutoff": "2026-07-25", "commodity": "ceramic dinnerware" },
+            "receivedAt": "2026-07-24"
+          },
+          {
+            "id": "doc-pacific-inv-001",
+            "type": "Invoice",
+            "format": "spreadsheet",
+            "bucketKey": "operations/op-pacific-home-001/invoice-45821.xlsx",
+            "bookingId": "bkg-pacific-001",
+            "sourceEmailId": "email-pacific-019",
+            "extractedData": { "invoiceNumber": "YC-2026-771", "currency": "USD", "total": 78420, "countryOfOrigin": "China", "hsCodes": ["6912.00", "6911.10"], "correctionRequired": true },
+            "receivedAt": "2026-08-26"
+          },
+          {
+            "id": "doc-pacific-pl-002",
+            "type": "PackingList",
+            "format": "spreadsheet",
+            "bucketKey": "operations/op-pacific-home-001/packing-list-45834.xlsx",
+            "bookingId": "bkg-pacific-002",
+            "extractedData": { "poNumber": "45834", "cartons": 1260, "grossWeightKg": 18950, "pallets": 28, "commodity": "bamboo storage furniture" },
+            "receivedAt": "2026-08-03"
+          },
+          {
+            "id": "doc-pacific-bl-001",
+            "type": "BillOfLading",
+            "format": "pdf",
+            "bucketKey": "operations/op-pacific-home-001/bl-one-001.pdf",
+            "bookingId": "bkg-pacific-001",
+            "extractedData": { "blNumber": "ONEYTN6A12345", "freightTerms": "collect", "consignee": "Pacific Home Retail LLC", "originalsReleased": false },
+            "receivedAt": "2026-08-10"
+          },
+          {
+            "id": "doc-pacific-an-001",
+            "type": "ArrivalNotice",
+            "format": "pdf",
+            "bucketKey": "operations/op-pacific-home-001/arrival-one-001.pdf",
+            "bookingId": "bkg-pacific-001",
+            "extractedData": { "port": "Los Angeles", "freeTimeExpires": "2026-09-01", "demurragePerDayUsd": 265, "lastFreeDay": "2026-08-31" },
+            "receivedAt": "2026-08-27"
+          }
+        ]
+      },
+      "narrative": [
+        { "text": "Fall replenishment plan received for three purchase orders and a September retail launch.", "at": "2026-07-22", "status": "brand" },
+        { "text": "ONE booking confirmed from Yantian with four containers of launch dinnerware.", "at": "2026-07-24", "status": "neutral" },
+        { "text": "Typhoon congestion moved ONE Harmony arrival four days, to August 24.", "at": "2026-08-02", "status": "warning" },
+        { "text": "Evergreen shipment missed its Singapore connection and moved to September 3.", "at": "2026-08-15", "status": "warning" },
+        { "text": "Two ONE containers entered customs hold pending country-of-origin invoice correction.", "at": "2026-08-26", "status": "danger" },
+        { "text": "Merchandising prioritized ONEU4819204 for partial release before the September 10 launch.", "at": "2026-08-27", "status": "info" }
+      ]
     }
   ],
   "companies": [
@@ -456,19 +629,45 @@
       "id": "company-andes-textiles",
       "name": "Andes Textiles",
       "contactEmails": ["ops@andestextiles.co", "finanzas@andestextiles.co"],
-      "preferredNotificationChannel": "email"
+      "preferredNotificationChannel": "email",
+      "generalContext": [
+        "Andes Textiles prioritizes container release before invoice reconciliation.",
+        "Notify ops@andestextiles.co for ETA changes over 48 hours and finance for invoices above USD 25,000.",
+        "Cartagena customs broker needs Bill of Lading and packing list before arrival."
+      ]
     },
     {
       "id": "company-cafe-del-valle",
       "name": "Café del Valle",
       "contactEmails": ["exports@cafedelvalle.co"],
-      "preferredNotificationChannel": "email"
+      "preferredNotificationChannel": "email",
+      "generalContext": [
+        "Coffee lots must preserve harvest and farm traceability through every document.",
+        "Route changes above two days require an English update to exports@cafedelvalle.co.",
+        "Do not combine release status across shared bookings without identifying each consignee."
+      ]
     },
     {
       "id": "company-flores-tropicales",
       "name": "Flores Tropicales",
       "contactEmails": ["compras@florestropicales.co"],
-      "preferredNotificationChannel": "slack"
+      "preferredNotificationChannel": "slack",
+      "generalContext": [
+        "Flower shipments are time-sensitive and require booking confirmation before carrier cutoff.",
+        "Escalate missing bookings to procurement on the same business day.",
+        "Use Slack for routine follow-up and email for carrier documentation."
+      ]
+    },
+    {
+      "id": "company-pacific-home",
+      "name": "Pacific Home Retail",
+      "contactEmails": ["inbound@pacifichome.co", "merchandising@pacifichome.co"],
+      "preferredNotificationChannel": "email",
+      "generalContext": [
+        "September 10 retail launch cargo is priority one; flag any risk to launch assortment immediately.",
+        "Customs holds and free-time expiry require a same-day update to inbound and merchandising.",
+        "Partial container release is acceptable when it protects launch assortment, but record the container number and remaining hold."
+      ]
     }
   ],
   "users": [
@@ -525,6 +724,22 @@
       "email": "user@florestropicales.co",
       "password": "flores-dev",
       "name": "Flores Tropicales User",
+      "role": "user"
+    },
+    {
+      "id": "user-pacific-home-admin",
+      "companyId": "company-pacific-home",
+      "email": "admin@pacifichome.co",
+      "password": "pacific-dev",
+      "name": "Pacific Home Admin",
+      "role": "admin"
+    },
+    {
+      "id": "user-pacific-home-user",
+      "companyId": "company-pacific-home",
+      "email": "user@pacifichome.co",
+      "password": "pacific-dev",
+      "name": "Pacific Home User",
       "role": "user"
     }
   ]
