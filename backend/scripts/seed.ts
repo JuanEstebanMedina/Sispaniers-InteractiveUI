@@ -148,6 +148,7 @@ function buildBooking(seed: BookingSeed): Booking {
 function buildOperation(seed: OperationSeed): Operation {
   return {
     id: seed.id,
+    ...(seed.companyId !== undefined ? { companyId: seed.companyId } : {}),
     bookings: seed.bookings.map(buildBooking),
     context: {
       emails: seed.context.emails.map(buildEmail),
