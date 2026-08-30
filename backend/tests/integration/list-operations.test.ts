@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { InMemoryCompanyRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-company-repository.js";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 import { createApp } from "../../src/infrastructure/config/composition.js";
+import { authHeader } from "../support/auth.js";
 import { FakeAttachmentStorage } from "../support/fakes.js";
 import { anOperation } from "../support/operation-fixtures.js";
 
@@ -29,6 +30,7 @@ test("an empty database answers with an empty operations list", async () => {
     method: "POST",
     url: "/api/operations/search",
     payload: {},
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(200);
@@ -43,6 +45,7 @@ test("the endpoint exposes the whole aggregate with its derived status", async (
     method: "POST",
     url: "/api/operations/search",
     payload: {},
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(200);
@@ -79,6 +82,7 @@ test("searching with an empty body lists everything", async () => {
     method: "POST",
     url: "/api/operations/search",
     payload: {},
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(200);
@@ -93,6 +97,7 @@ test("searching by free text narrows the list", async () => {
     method: "POST",
     url: "/api/operations/search",
     payload: { search: "andes" },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.json().operations.map((o: { id: string }) => o.id)).toEqual([
@@ -108,6 +113,7 @@ test("searching sorts by the requested field and direction", async () => {
     method: "POST",
     url: "/api/operations/search",
     payload: { sort_by: "id", sort_dir: "asc" },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.json().operations.map((o: { id: string }) => o.id)).toEqual(["op-a", "op-b"]);
@@ -118,6 +124,7 @@ test("an unknown sort field is rejected instead of silently ignored", async () =
     method: "POST",
     url: "/api/operations/search",
     payload: { sort_by: "whatever" },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(400);
@@ -128,6 +135,7 @@ test("date cannot be combined with from/to, same as the GET", async () => {
     method: "POST",
     url: "/api/operations/search",
     payload: { date: "2026-07-01", from: "2026-07-01" },
+    headers: authHeader("superadmin"),
   });
 
   expect(response.statusCode).toBe(400);

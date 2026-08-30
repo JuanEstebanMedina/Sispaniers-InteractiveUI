@@ -82,6 +82,20 @@ export class InvalidComponentPathError extends Error {
   }
 }
 
+export class UnknownCommandError extends Error {
+  constructor(name: string) {
+    super(`Unknown command: ${name}`);
+    this.name = "UnknownCommandError";
+  }
+}
+
+export class InvalidCommandInputError extends Error {
+  constructor(reason: string) {
+    super(`Invalid command input: ${reason}`);
+    this.name = "InvalidCommandInputError";
+  }
+}
+
 export class BookingNotFoundError extends Error {
   constructor(id: string) {
     super(`Booking not found: ${id}`);
@@ -114,5 +128,33 @@ export class CompanyDisabledError extends Error {
   constructor(email: string) {
     super(`Cannot send email to ${email}: its company is disabled`);
     this.name = "CompanyDisabledError";
+  }
+}
+
+export class UserNotFoundError extends Error {
+  constructor(id: string) {
+    super(`User not found: ${id}`);
+    this.name = "UserNotFoundError";
+  }
+}
+
+export class InvalidCredentialsError extends Error {
+  constructor() {
+    super("Invalid email or password");
+    this.name = "InvalidCredentialsError";
+  }
+}
+
+export class EmailConflictError extends Error {
+  constructor(email: string) {
+    super(`A user with email ${email} already exists`);
+    this.name = "EmailConflictError";
+  }
+}
+
+export class ForbiddenCompanyScopeError extends Error {
+  constructor() {
+    super("Actor cannot act outside their own company");
+    this.name = "ForbiddenCompanyScopeError";
   }
 }

@@ -22,12 +22,17 @@ export async function completeOrThrow(
   aiCompletionPort: AiCompletionPort,
   prompt: string,
 ): Promise<{ text: string }> {
+  let result: Awaited<ReturnType<AiCompletionPort["complete"]>>;
   try {
-    return await aiCompletionPort.complete({ prompt });
+    result = await aiCompletionPort.complete({ prompt });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     throw new AiCompletionError(reason);
   }
+  if (result.kind !== "text") {
+    throw new AiCompletionError(`unexpected result kind "${result.kind}" from a no-tools request`);
+  }
+  return result;
 }
 
 export function stripMarkdownCodeFence(text: string): string {

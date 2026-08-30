@@ -1,77 +1,90 @@
-import { useEffect, useRef } from 'react'
+import { useCallback } from 'react'
+import { z } from 'zod'
 
-import { componentSchema, type GeneratedComponent } from '@/schemas/component.schema'
-import { operationEventsUrl, operationStreams, type SharedStream } from './streamPool'
+import { endpoints } from '@/api/endpoints'
+import { operationResponseSchema, type Operation } from '@/schemas/operation.schema'
+import {
+  WIDGET_SIZE_NAMES,
+  componentSchema,
+  type GeneratedComponent,
+} from '@/schemas/component.schema'
+import { useSse } from './useSse'
 
 /**
- * `GET /api/operations/:id/events` — the components of ONE operation. It says
- * nothing about the list, so it replaces neither the grid's polling nor the
- * rail's.
+ * `GET /api/operations/:id/events` — todo lo que pasa en UNA operación: sus
+ * componentes Y la operación misma. No habla de la lista, así que no
+ * reemplaza el sondeo de la grilla ni del riel.
  *
- * The connection is shared: see `streamPool`. This only adds its own listeners
- * and takes them away again, and never closes what it did not open.
+ * El backend abre un `text/event-stream` y publica cinco eventos con nombre:
+ * `component-pending` (antes de saber qué construirá el agente, con un
+ * tamaño estimado), `component-created`/`component-updated` (el componente ya
+ * serializado en `data`), y `operation-updated`/`simulation-completed` (la
+ * operación completa, para que la cabecera se entere sin sondear).
  *
- * The callback lives in a ref so a repaint does not reconnect the stream.
+ * `useSse` usa fetch para poder enviar el JWT; `EventSource` no admite headers.
  */
 
-export type OperationEventName = 'component-created' | 'component-updated'
+export type OperationEventName =
+  | 'component-created'
+  | 'component-updated'
+  | 'component-pending'
+  | 'operation-updated'
+  | 'simulation-completed'
+
+const componentPendingSchema = z.object({
+  operationId: z.string(),
+  tempId: z.string(),
+  estimatedSize: z.enum(WIDGET_SIZE_NAMES),
+})
+
+export type ComponentPendingEvent = z.infer<typeof componentPendingSchema>
 
 export type OperationEventHandler = (
   event: OperationEventName,
-  component: GeneratedComponent | null,
+  payload: GeneratedComponent | ComponentPendingEvent | Operation | null,
 ) => void
 
-const COMPONENT_EVENTS: readonly OperationEventName[] = ['component-created', 'component-updated']
+/** Estado de la conexión, para que un contenido viejo nunca pase por en vivo. */
+export type StreamStatus = 'connecting' | 'live' | 'offline' | 'ended'
 
-export function bindOperationEvents(
-  source: SharedStream,
+export function useOperationEvents(
+  operationId: string,
   onEvent: OperationEventHandler,
-): () => void {
-  const stop: (() => void)[] = []
+): StreamStatus {
+  const handleSseEvent = useCallback(
+    (name: string, data: string) => {
+      if (!isOperationEventName(name)) return
+      onEvent(name, parsePayload(name, data))
+    },
+    [onEvent],
+  )
 
-  for (const name of COMPONENT_EVENTS) {
-    const listener = (event: MessageEvent<string>) => {
-      // The component is a bonus: if the backend changes its shape, the news
-      // that something moved still has to arrive so the screen can refresh.
-      onEvent(name, safeParse(event.data))
-    }
-
-    source.addEventListener(name, listener)
-    stop.push(() => source.removeEventListener(name, listener))
-  }
-
-  return () => {
-    for (const off of stop) off()
-    stop.length = 0
-  }
+  return useSse(operationId ? endpoints.ai.events(operationId) : '', handleSseEvent)
 }
 
-export function useOperationEvents(operationId: string, onEvent: OperationEventHandler): void {
-  const handler = useRef(onEvent)
-  handler.current = onEvent
-
-  useEffect(() => {
-    // An empty id would leave a connection hanging against a route that 404s.
-    if (!operationId) return
-
-    const lease = operationStreams.acquire(operationEventsUrl(operationId))
-    const unbind = bindOperationEvents(lease.stream, (event, component) =>
-      handler.current(event, component),
-    )
-
-    return () => {
-      unbind()
-      lease.release()
-    }
-  }, [operationId])
+function isOperationEventName(value: string): value is OperationEventName {
+  return (
+    value === 'component-created' ||
+    value === 'component-updated' ||
+    value === 'component-pending' ||
+    value === 'operation-updated' ||
+    value === 'simulation-completed'
+  )
 }
 
-function safeParse(data: string): GeneratedComponent | null {
+function parsePayload(
+  name: OperationEventName,
+  data: string,
+): GeneratedComponent | ComponentPendingEvent | Operation | null {
+  // Un evento ilegible no tumba el stream: el consumidor refresca por HTTP.
   try {
-    return componentSchema.parse(JSON.parse(data))
+    const json = JSON.parse(data)
+    if (name === 'component-pending') return componentPendingSchema.parse(json)
+    if (name === 'operation-updated' || name === 'simulation-completed') {
+      return operationResponseSchema.parse(json)
+    }
+    return componentSchema.parse(json)
   } catch {
-    // An unreadable event does not bring the stream down: the consumer
-    // refreshes over HTTP.
     return null
   }
 }

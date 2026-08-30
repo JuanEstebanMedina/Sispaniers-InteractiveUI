@@ -34,6 +34,40 @@
       "enabled": "{{name}} foi habilitada"
     }
   },
+  "user": {
+    "title": "Usuários",
+    "subtitle": "Todos que têm acesso à plataforma.",
+    "emptyTitle": "Ainda não há usuários",
+    "emptyHint": "Crie o primeiro para dar acesso a alguém.",
+    "actions": {
+      "create": "Novo usuário"
+    },
+    "modal": {
+      "title": "Novo usuário",
+      "editTitle": "Editar usuário",
+      "description": "O e-mail não pode ser alterado depois que a conta é criada."
+    },
+    "fields": {
+      "name": "Nome",
+      "email": "E-mail",
+      "password": "Senha",
+      "passwordEdit": "Nova senha",
+      "passwordPlaceholder": "Deixe em branco para manter a senha atual",
+      "role": "Papel",
+      "company": "Empresa",
+      "companyNone": "Sem empresa",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Ativo",
+      "disabled": "Desabilitado"
+    },
+    "toasts": {
+      "saved": "{{name}} está pronto",
+      "disabled": "{{name}} foi desabilitado",
+      "enabled": "{{name}} foi habilitado"
+    }
+  },
   "operation": {
     "title": "Operações",
     "subtitle": "Tudo o que os agentes estão executando agora. O que se moveu por último, primeiro.",
@@ -102,7 +136,8 @@
       "deleteTitle": "Excluir este componente?",
       "deleteMessage": "“{{title}}” será removido da interface desta execução. Não é possível desfazer.",
       "deleteConfirm": "Excluir componente",
-      "deleteError": "Não foi possível excluir o componente."
+      "deleteError": "Não foi possível excluir o componente.",
+      "pendingTitle": "Gerando…"
     },
     "chat": {
       "title": "Falar com o agente",

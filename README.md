@@ -127,6 +127,13 @@ docker compose --env-file backend/.env --env-file frontend/.env down -v
 > the API fails to authenticate. `down -v` is the reset. Dropping `-v` keeps the data —
 > and keeps that mismatch.
 
+Mongo's own log noise is silenced (`logging: driver: "none"` in `docker-compose.yml`);
+to follow the backend's application/AI-flow logs:
+
+```bash
+docker compose logs -f backend
+```
+
 Or, for the fast development loop, run only the database in Docker and the API on the
 host with autoreload:
 

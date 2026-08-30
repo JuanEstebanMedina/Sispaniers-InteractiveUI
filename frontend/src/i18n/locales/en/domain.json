@@ -34,6 +34,40 @@
       "enabled": "{{name}} was enabled"
     }
   },
+  "user": {
+    "title": "Users",
+    "subtitle": "Everyone with access to the platform.",
+    "emptyTitle": "No users yet",
+    "emptyHint": "Create the first one to give someone access.",
+    "actions": {
+      "create": "New user"
+    },
+    "modal": {
+      "title": "New user",
+      "editTitle": "Edit user",
+      "description": "The email can't be changed once the account is created."
+    },
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "passwordEdit": "New password",
+      "passwordPlaceholder": "Leave blank to keep the current password",
+      "role": "Role",
+      "company": "Company",
+      "companyNone": "No company",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "toasts": {
+      "saved": "{{name}} is ready",
+      "disabled": "{{name}} was disabled",
+      "enabled": "{{name}} was enabled"
+    }
+  },
   "operation": {
     "title": "Operations",
     "subtitle": "Everything the agents are running right now. Most recently moved, first.",
@@ -102,7 +136,8 @@
       "deleteTitle": "Delete this component?",
       "deleteMessage": "“{{title}}” will be removed from this run’s interface. This cannot be undone.",
       "deleteConfirm": "Delete component",
-      "deleteError": "The component could not be deleted."
+      "deleteError": "The component could not be deleted.",
+      "pendingTitle": "Generating…"
     },
     "chat": {
       "title": "Talk to the agent",

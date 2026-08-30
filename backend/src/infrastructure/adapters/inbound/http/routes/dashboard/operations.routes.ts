@@ -169,7 +169,13 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
       const { id } = request.params;
 
       try {
-        const result = await deps.getOperation({ id });
+        const { actor } = request;
+        const result = await deps.getOperation({
+          id,
+          ...(actor.role !== "superadmin" && actor.companyId !== undefined
+            ? { requesterCompanyId: actor.companyId }
+            : {}),
+        });
         reply.code(200).send(toOperationResponse(result.operation, result.status));
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
@@ -208,10 +214,13 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
       const body = request.body;
 
       try {
+        const { actor } = request;
+        const companyId = actor.role === "superadmin" ? body.company_id : actor.companyId;
+
         const results = await deps.listOperations({
           ...(body.status !== undefined ? { status: body.status } : {}),
           ...(body.health !== undefined ? { health: body.health } : {}),
-          ...(body.company_id !== undefined ? { companyId: body.company_id } : {}),
+          ...(companyId !== undefined ? { companyId } : {}),
           ...(body.search !== undefined ? { search: body.search } : {}),
           ...(body.from !== undefined ? { from: new Date(body.from) } : {}),
           ...(body.to !== undefined ? { to: new Date(body.to) } : {}),

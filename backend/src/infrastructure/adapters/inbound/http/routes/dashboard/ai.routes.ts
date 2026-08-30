@@ -2,7 +2,6 @@ import type { FastifyPluginAsyncZod, ZodTypeProvider } from "fastify-type-provid
 import { z } from "zod";
 
 import type { GenerateComponentFromAiInput } from "../../../../../../application/use-cases/dashboard/generate-component-from-ai.use-case.js";
-import type { RespondToChatInput } from "../../../../../../application/use-cases/dashboard/respond-to-chat.use-case.js";
 import type { Component } from "../../../../../../domain/components/component.js";
 import {
   AiCompletionError,
@@ -23,8 +22,7 @@ const operationParamsSchema = z.object({ id: z.string().min(1) });
 export interface AiRouteDeps {
   generateComponentFromAi: (
     input: GenerateComponentFromAiInput,
-  ) => Promise<{ component: Component; reply: string }>;
-  respondToChat: (input: RespondToChatInput) => Promise<{ reply: string }>;
+  ) => Promise<{ component: Component | null; reply: string }>;
 }
 
 export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps) => {
@@ -48,7 +46,11 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
       const { message } = request.body;
 
       try {
-        const result = await deps.respondToChat({ operationId: id, message });
+        const result = await deps.generateComponentFromAi({
+          operationId: id,
+          trigger: "chat",
+          input: message,
+        });
         reply.code(201).send({ reply: result.reply });
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
@@ -93,6 +95,9 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
           trigger: "auto",
           input: JSON.stringify({ event, payload }),
         });
+        if (component === null) {
+          throw new InvalidAiComponentError("auto trigger resolved without a component");
+        }
         reply.code(202).send(toComponentWireShape(component));
       } catch (error) {
         if (error instanceof OperationNotFoundError) {

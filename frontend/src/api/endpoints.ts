@@ -17,6 +17,12 @@ export const endpoints = {
     update: (id: string) => `/companies/${id}`,
   },
 
+  users: {
+    list: '/users',
+    create: '/users',
+    update: (id: string) => `/users/${id}`,
+  },
+
   operations: {
     /**
      * El ÚNICO listado. Es POST porque texto libre + estado + salud + rango de
@@ -53,6 +59,7 @@ export const endpoints = {
   ai: {
     chat: (operationId: string) => `/operations/${operationId}/chat`,
     events: (operationId: string) => `/operations/${operationId}/events`,
+    operationEvents: '/operations/events',
     components: (operationId: string, cols: 2 | 4 | 8) =>
       `/operations/${operationId}/components?cols=${cols}`,
   },
@@ -67,6 +74,10 @@ export const queryKeys = {
   companies: {
     all: ['companies'] as const,
     list: () => ['companies', 'list'] as const,
+  },
+  users: {
+    all: ['users'] as const,
+    list: () => ['users', 'list'] as const,
   },
   operations: {
     all: ['operations'] as const,

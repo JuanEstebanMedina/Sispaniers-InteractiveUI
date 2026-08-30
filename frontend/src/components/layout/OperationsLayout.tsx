@@ -53,9 +53,6 @@ export default function OperationsLayout() {
     // descargaba la lista entera para no mostrarla, EN PARALELO con el POST
     // /operations/search que sí alimenta la grilla.
     enabled: hasDetail,
-    // Lo que hace cierto el "ver si hay cambios en las otras". Sin esto el riel
-    // es una foto del momento en que se hizo clic.
-    refetchInterval: 15_000,
     refetchOnWindowFocus: true,
   })
 

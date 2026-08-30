@@ -1,113 +1,110 @@
 import { expect, test } from "vitest";
 import { createGenerateComponentFromAiUseCase } from "../../src/application/use-cases/dashboard/generate-component-from-ai.use-case.js";
-import type { Component } from "../../src/domain/components/component.js";
-import { ATOMIC_NODE_KINDS } from "../../src/domain/enums/widget-kind.js";
-import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
-import { InMemoryComponentRepository, aComponent } from "../support/component-fixtures.js";
-import { anOperation } from "../support/operation-fixtures.js";
+import { CommandRegistry } from "../../src/domain/commands/command-registry.js";
+import type { Operation } from "../../src/domain/logistics/operation.js";
+import {
+  InvalidAiComponentError,
+  InvalidComponentTreeError,
+} from "../../src/domain/model/errors.js";
+import type { AiCompletionPort } from "../../src/domain/ports/ai-completion-port.js";
+import type { ComponentRepository } from "../../src/domain/ports/component.repository.js";
+import type { OperationRepository } from "../../src/domain/ports/operation.repository.js";
 
-const A_VALID_RESPONSE = JSON.stringify({
-  children: [{ kind: "title", order: 0, props: { text: "ETA" } }],
-  reply: "Here is the ETA.",
-  layout: { cols: 2, rows: 2 },
-  supersedes: null,
-});
+const OPERATION_ID = "op-1";
 
-async function buildUseCase(responses: string[] = [A_VALID_RESPONSE]) {
-  const operationRepository = new InMemoryOperationRepository();
-  const componentRepository = new InMemoryComponentRepository();
-  const operation = anOperation();
-  await operationRepository.save(operation);
+function buildUseCase(
+  aiCompletionPort: AiCompletionPort = {
+    complete: async () => ({ kind: "tool_call", toolName: "create_component", input: {} }),
+  },
+) {
+  const commandRegistry = new CommandRegistry();
+  commandRegistry.register({
+    name: "create_component",
+    description: "stub",
+    inputSchema: { type: "object", properties: {} },
+    execute: async () => {
+      throw new InvalidComponentTreeError("unknown node kind: NotificationSent");
+    },
+  });
 
-  const prompts: string[] = [];
-  let call = 0;
-  const created: Array<{ size: string }> = [];
-
-  return {
-    operation,
-    prompts,
-    created,
-    componentRepository,
-    generate: createGenerateComponentFromAiUseCase({
-      operationRepository,
-      componentRepository,
-      aiCompletionPort: {
-        complete: async ({ prompt }) => {
-          prompts.push(prompt);
-          const text = responses[Math.min(call, responses.length - 1)] ?? "";
-          call += 1;
-          return { text };
-        },
-      },
-      createComponent: async (input) => {
-        created.push({ size: input.size });
-        return aComponent({ operationId: input.operationId, size: input.size }) as Component;
-      },
-      updateComponentContent: async () => aComponent() as Component,
-      promptTemplate: "TEMPLATE",
-    }),
+  const operationRepository: OperationRepository = {
+    findById: async () => ({ id: OPERATION_ID }) as unknown as Operation,
+    findAll: async () => [],
+    save: async () => {},
   };
+
+  const componentRepository: ComponentRepository = {
+    findByOperationId: async () => [],
+    findById: async () => null,
+    save: async () => {},
+    setField: async () => {},
+    deleteById: async () => {},
+  };
+
+  return createGenerateComponentFromAiUseCase({
+    operationRepository,
+    componentRepository,
+    aiCompletionPort,
+    commandRegistry,
+    promptTemplate: "{{trigger}} {{input}}",
+  });
 }
 
 /**
- * The prompt used to carry a hand-written kind list. It offered "button-group",
- * which the validator has never accepted, and omitted "layout", the only kind
- * that may carry children — so the agent was steered straight into a 400.
+ * The AI once produced a node kind the domain does not know about
+ * (`NotificationSent`). That surfaced as a bare 500 on /chat because
+ * InvalidComponentTreeError was not one of the errors the use case treats as
+ * an invalid AI response — it must be, same as UnknownCommandError.
  */
-test("the prompt offers the agent every kind the validator accepts", async () => {
-  const { operation, prompts, generate } = await buildUseCase();
+test("an invalid component tree from a tool call is treated as an invalid AI response, not a raw 500", async () => {
+  const generateComponentFromAi = buildUseCase();
 
-  await generate({ operationId: operation.id, trigger: "chat", input: "status" });
-
-  for (const kind of ATOMIC_NODE_KINDS) {
-    expect(prompts[0], `the prompt must offer "${kind}"`).toContain(`"${kind}"`);
-  }
+  await expect(
+    generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "hola" }),
+  ).rejects.toThrow(InvalidAiComponentError);
 });
 
-test("the prompt never offers a kind the validator rejects", async () => {
-  const { operation, prompts, generate } = await buildUseCase();
+test("chat does not offer update_component to the AI", async () => {
+  const commandRegistry = new CommandRegistry();
+  const execute = async () => ({ component: {}, reply: "creado" });
+  commandRegistry.register({
+    name: "create_component",
+    description: "stub",
+    inputSchema: { type: "object", properties: {} },
+    execute,
+  });
+  commandRegistry.register({
+    name: "update_component",
+    description: "stub",
+    inputSchema: { type: "object", properties: {} },
+    execute,
+  });
 
-  await generate({ operationId: operation.id, trigger: "chat", input: "status" });
+  let offeredTools: string[] = [];
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as unknown as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async ({ tools }) => {
+        offeredTools = (tools ?? []).map((tool) => tool.name);
+        return { kind: "tool_call", toolName: "create_component", input: {} };
+      },
+    },
+    commandRegistry,
+    promptTemplate: "{{trigger}} {{input}}",
+  });
 
-  expect(prompts[0]).not.toContain("button-group");
-});
+  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "crea uno" });
 
-test("a size the agent names by hand is the size that gets created", async () => {
-  const { operation, created, generate } = await buildUseCase([
-    JSON.stringify({
-      children: [{ kind: "title", order: 0, props: { text: "ETA" } }],
-      reply: "Here is the ETA.",
-      size: "banner",
-      layout: { cols: 2, rows: 2 },
-      supersedes: null,
-    }),
-  ]);
-
-  await generate({ operationId: operation.id, trigger: "chat", input: "status" });
-
-  expect(created[0]?.size).toBe("banner");
-});
-
-test("without a named size the grid dimensions still pick the nearest one", async () => {
-  const { operation, created, generate } = await buildUseCase();
-
-  await generate({ operationId: operation.id, trigger: "chat", input: "status" });
-
-  expect(created[0]?.size).toBe("small");
-});
-
-test("an invented size name falls back to the grid dimensions", async () => {
-  const { operation, created, generate } = await buildUseCase([
-    JSON.stringify({
-      children: [{ kind: "title", order: 0, props: { text: "ETA" } }],
-      reply: "Here is the ETA.",
-      size: "gigantic",
-      layout: { cols: 4, rows: 1 },
-      supersedes: null,
-    }),
-  ]);
-
-  await generate({ operationId: operation.id, trigger: "chat", input: "status" });
-
-  expect(created[0]?.size).toBe("banner");
+  expect(offeredTools).toEqual(["create_component"]);
 });

@@ -34,6 +34,40 @@
       "enabled": "{{name}} fue habilitada"
     }
   },
+  "user": {
+    "title": "Usuarios",
+    "subtitle": "Todos los que tienen acceso a la plataforma.",
+    "emptyTitle": "Todavía no hay usuarios",
+    "emptyHint": "Creá el primero para darle acceso a alguien.",
+    "actions": {
+      "create": "Nuevo usuario"
+    },
+    "modal": {
+      "title": "Nuevo usuario",
+      "editTitle": "Editar usuario",
+      "description": "El correo no se puede cambiar una vez creada la cuenta."
+    },
+    "fields": {
+      "name": "Nombre",
+      "email": "Correo",
+      "password": "Contraseña",
+      "passwordEdit": "Nueva contraseña",
+      "passwordPlaceholder": "Dejar en blanco para mantener la contraseña actual",
+      "role": "Rol",
+      "company": "Compañía",
+      "companyNone": "Sin compañía",
+      "status": "Estado"
+    },
+    "status": {
+      "active": "Activo",
+      "disabled": "Deshabilitado"
+    },
+    "toasts": {
+      "saved": "{{name}} está listo",
+      "disabled": "{{name}} fue deshabilitado",
+      "enabled": "{{name}} fue habilitado"
+    }
+  },
   "operation": {
     "title": "Operaciones",
     "subtitle": "Todo lo que los agentes están ejecutando ahora mismo. Lo que se movió último, primero.",
@@ -102,7 +136,8 @@
       "deleteTitle": "¿Eliminar este componente?",
       "deleteMessage": "«{{title}}» se va a quitar de la interfaz de este run. No se puede deshacer.",
       "deleteConfirm": "Eliminar componente",
-      "deleteError": "No se pudo eliminar el componente."
+      "deleteError": "No se pudo eliminar el componente.",
+      "pendingTitle": "Generando…"
     },
     "chat": {
       "title": "Hablar con el agente",
