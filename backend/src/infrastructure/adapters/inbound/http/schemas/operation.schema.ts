@@ -58,10 +58,6 @@ export const searchOperationsBodySchema = z.object({
 export type SearchOperationsBody = z.infer<typeof searchOperationsBodySchema>;
 export type ListOperationsQuery = z.infer<typeof listOperationsQuerySchema>;
 
-export const listOperationsResponseSchema = z.object({
-  operations: z.array(operationResponseSchema),
-});
-
 export const documentPreviewUrlResponseSchema = z.object({
   url: z.string(),
   expires_in_seconds: z.number(),

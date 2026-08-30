@@ -5,10 +5,15 @@ import { useTranslation } from 'react-i18next'
 import { FilterSelect } from '@/components/ui/FilterSelect'
 import { SearchInput } from '@/components/ui/Input'
 import { useDebouncedValue } from '@/hooks'
-import { CONTAINER_STATES, OPERATION_HEALTH, type OperationsSearch } from '@/schemas'
+import {
+  CONTAINER_STATES,
+  OPERATION_HEALTH,
+  OPERATIONS_SEARCH_DEFAULTS,
+} from '@/schemas'
 
 interface OperationsFiltersProps {
-  search: OperationsSearch
+  /** Ya resueltos: sin `undefined`. Ver `resolveOperationsSearch`. */
+  search: ReturnType<typeof import('@/schemas').resolveOperationsSearch>
   total: number | undefined
 }
 
@@ -32,10 +37,20 @@ export function OperationsFilters({ search, total }: OperationsFiltersProps) {
     setQuery(search.q ?? '')
   }, [search.q])
 
-  const update = (patch: Partial<OperationsSearch>) => {
+  /**
+   * Escribe en la URL, pero OMITE lo que ya es el valor por defecto: así
+   * `/operations` se queda limpio y sólo aparece lo que alguien tocó.
+   */
+  const update = (patch: Record<string, string | undefined>) => {
     void navigate({
       to: '/operations',
-      search: (previous) => ({ ...previous, ...patch }),
+      search: (previous) => {
+        const next = { ...previous, ...patch } as Record<string, string | undefined>
+        for (const [key, fallback] of Object.entries(OPERATIONS_SEARCH_DEFAULTS)) {
+          if (next[key] === fallback) next[key] = undefined
+        }
+        return next
+      },
     })
   }
 

@@ -8,7 +8,7 @@ import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { OperationsFilters } from '@/components/operations/OperationsFilters'
 import { OperationsGrid } from '@/components/operations/OperationsGrid'
-import { operationListSchema } from '@/schemas'
+import { operationListSchema, resolveOperationsSearch } from '@/schemas'
 
 /** La web habla en su vocabulario; el backend en el suyo. La traducción vive
  *  acá, en el único sitio que conoce los dos. */
@@ -38,7 +38,9 @@ const SORT_TO_BACKEND: Record<string, string> = {
 
 export default function OperationsPage() {
   const { t } = useTranslation('domain')
-  const search = useSearch({ from: '/app/operations/' })
+  // La URL sólo lleva lo que alguien cambió; acá se rellenan los ausentes.
+  const raw = useSearch({ from: '/app/operations/' })
+  const search = resolveOperationsSearch(raw)
   const navigate = useNavigate()
 
   // El backend filtra Y ordena: la web ya no lo hace en memoria, porque el
@@ -81,7 +83,9 @@ export default function OperationsPage() {
         onClearFilters={() =>
           void navigate({
             to: '/operations',
-            search: { q: undefined, status: 'all', health: 'all' },
+            // `undefined` en todos: limpiar filtros deja la URL en
+            // `/operations` pelada, que es lo que "sin filtros" significa.
+            search: { q: undefined, status: undefined, health: undefined },
           })
         }
       />

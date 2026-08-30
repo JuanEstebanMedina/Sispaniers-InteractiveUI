@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useCopyToClipboard } from '@/hooks'
 import { cn } from '@/lib/cn'
-import { formatDate, formatRelative } from '@/lib/format'
+import { formatCalendarDate, formatRelative } from '@/lib/format'
 import type { Operation } from '@/schemas'
 import { useRailStore } from '@/stores/railStore'
 import { HealthChip, OperationStatusBadge } from './OperationStatus'
