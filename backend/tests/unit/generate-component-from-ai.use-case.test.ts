@@ -223,6 +223,31 @@ test("auto flow can ingest, query, then create a component", async () => {
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository: {
       findById: async () => ({ id: OPERATION_ID }) as Operation,
+test("chat can query company concepts before answering without creating a component", async () => {
+  const prompts: string[] = [];
+  const commandRegistry = new CommandRegistry();
+  commandRegistry.register({
+    name: "query_company_concepts",
+    description: "stub",
+    inputSchema: {
+      type: "object",
+      properties: { conceptIds: { type: "array", items: { type: "string" } } },
+      required: ["conceptIds"],
+    },
+    execute: async () => ({
+      concepts: [
+        {
+          id: "monthly-volume",
+          name: "Volumen mensual",
+          values: [{ observedAt: "2026-08-01T00:00:00.000Z", containers: 42 }],
+        },
+      ],
+    }),
+  });
+  let calls = 0;
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as unknown as Operation,
       findAll: async () => [],
       save: async () => {},
     },
@@ -237,6 +262,14 @@ test("auto flow can ingest, query, then create a component", async () => {
       complete: async ({ prompt }) => {
         prompts.push(prompt);
         return responses.shift() ?? { kind: "text", text: "unexpected" };
+        calls += 1;
+        return calls === 1
+          ? {
+              kind: "tool_call",
+              toolName: "query_company_concepts",
+              input: { conceptIds: ["monthly-volume"] },
+            }
+          : { kind: "text", text: "Volumen mensual registrado: 42 contenedores." };
       },
     },
     commandRegistry,
@@ -248,4 +281,15 @@ test("auto flow can ingest, query, then create a component", async () => {
   ).resolves.toEqual({ component: { id: "component-1" }, reply: "Created." });
   expect(prompts).toHaveLength(3);
   expect(prompts[2]).toContain("query_company_concepts result");
+  const result = await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "¿Cuál fue volumen mensual?",
+  });
+
+  expect(result).toEqual({
+    component: null,
+    reply: "Volumen mensual registrado: 42 contenedores.",
+  });
+  expect(prompts[1]).toContain('"containers":42');
 });

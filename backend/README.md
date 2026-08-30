@@ -26,6 +26,7 @@ root README.
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `JWT_SECRET` | — | **required**, `JwtTokenAdapter` throws at boot if it is empty |
 | `MONGO_PASSWORD` | — | **required**, compose refuses to start without it |
 | `MONGO_USER` | `sispaniers` | Mongo root user |
 | `MONGO_DB` | `sispaniers` | database name |
@@ -33,9 +34,12 @@ root README.
 | `BACKEND_PORT` | `8000` | host port the API container is published on |
 | `MONGODB_URI` | derived | full connection string; overrides the four vars above |
 | `PORT` | `8000` | port the Node process listens on (inside the container it stays `8000`) |
+| `CORS_ORIGIN` | unset | `*` for open demo access; unset means same-origin only |
 | `GMAIL_USER` | — | Gmail address used by `POST /api/emails/send` |
 | `GMAIL_APP_PASSWORD` | — | Gmail **App Password** (not OAuth, no spaces, needs 2FA) |
-| `OPENAI_MODEL` | `gpt-4o-mini` | model id for the OpenAI adapter |
+| `OPENAI_API_KEY` | — | primary AI provider; without it every AI call fails with an auth error |
+| `OPENAI_MODEL` | `gpt-5.6-luna` | model id for the OpenAI adapter |
+| `GEMINI_API_KEY` | — | fallback AI provider, used when OpenAI fails |
 | `GEMINI_MODEL` | `gemini-2.0-flash` | model id for the Gemini adapter |
 | `SUPABASE_URL` | — | project URL, used to upload email attachments to Storage |
 | `SUPABASE_SERVICE_ROLE_KEY` | — | service role (secret) key — bypasses RLS for server-side uploads |
@@ -47,9 +51,20 @@ against `localhost` → `mongodb://localhost:27017/sispaniers`.
 
 ## Seed
 
-The collection starts empty. `make seed` loads four synthetic operations covering every
-container state, a booking whose ETA slipped, a two-booking operation and one with no
-bookings at all. It runs on the host against `localhost`, so Mongo must already be up.
+The collections start empty. `make seed` loads three companies, their users, and four
+synthetic operations covering every container state, a booking whose ETA slipped, a
+two-booking operation and one with no bookings at all. It runs on the host against
+`localhost`, so Mongo must already be up.
+
+The seeded users are what you log in with — every password is in
+`scripts/seed-data.json`, in plain text, because this is a hackathon fixture and nothing
+else. The one that sees everything:
+
+```
+admin@sispaniers.com / sispaniers-dev     (superadmin)
+```
+
+Each company also gets an `admin@…` and a `user@…` scoped to it.
 
 The seed **upserts by id** and is safe to re-run; it does not wipe the collection. To
 start from scratch, from the repo root (both `--env-file` flags are required):
@@ -62,14 +77,63 @@ docker compose --env-file backend/.env --env-file frontend/.env up -d mongo
 ## API
 
 Base URL `http://127.0.0.1:8000`. Everything under `/api` except `/health`.
-CORS is open (`origin: true`). **No authentication yet** — do not expose this publicly.
+CORS is whatever `CORS_ORIGIN` says (`*` for the demo, same-origin when unset).
 
 Request and response bodies use `snake_case`; the domain internally uses `camelCase`.
-Dates are ISO-8601 strings.
+Dates are ISO-8601 strings. The auth endpoints are the exception — they speak
+`camelCase` (`accessToken`, `refreshToken`, `expiresIn`), since they were written
+against the frontend's session store rather than the logistics wire format.
+
+### Authentication
+
+Everything is behind a bearer token except `/health`, `/api/auth/*` and `/api/emails/*`
+— the email endpoints stay open because Make.com posts into them with no session of its
+own (**TODO**: they need a shared secret before this faces anything real).
+
+```bash
+TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "admin@sispaniers.com", "password": "sispaniers-dev" }' | jq -r .accessToken)
+
+curl http://127.0.0.1:8000/api/operations/search -X POST \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{}'
+```
+
+A missing or expired token is `401` → `unauthorized`, from a `preHandler` hook that
+runs on a nested Fastify plugin. The nesting is the point: Fastify scopes hooks to the
+instance a plugin is registered on, so registering the login routes *before* that child
+context is what keeps the hook from leaking backwards onto them.
 
 ### `GET /health`
 
 Liveness probe used by the compose healthcheck and `make smoke`. Returns `{"status":"ok"}`.
+
+### `POST /api/auth/login` · `POST /api/auth/refresh` · `POST /api/auth/logout` · `GET /api/auth/me`
+
+`login` takes `{ email, password }` and returns `{ accessToken, refreshToken, expiresIn,
+user }`. The access token lives **30 minutes**, the refresh token **7 days**; `refresh`
+takes `{ refresh_token }` and returns a fresh pair. `logout` is a client-side courtesy —
+nothing is revoked server-side, there is no token blacklist, so a stolen access token
+stays valid until it expires. `me` returns the caller's own user from the token's `sub`.
+
+`401` → `invalid_credentials` (wrong email/password, or a refresh token that no longer
+verifies). `404` → `user_not_found`.
+
+### `GET /api/users` · `POST /api/users` · `PATCH /api/users/:id`
+
+Roles are `user` < `admin` < `superadmin`, ordered. The rule is company scope, and it
+lives in the use cases, not in the routes:
+
+- a **superadmin** sees and edits every user, may pass `?company_id=` to filter the list,
+  may set `company_id` on creation, and is the only role that can mint or promote another
+  superadmin
+- anyone else is pinned to their own `companyId` — the list is filtered to it, a created
+  user inherits it regardless of what the body asked for, and touching a user from another
+  company is `403` → `forbidden`
+
+`POST` takes `{ email, password, name, role, company_id? }` and returns `201`. `PATCH`
+takes any of `{ name, role, active, password }`. There is no `DELETE`: a user is
+disabled with `{ "active": false }`, same as a company. `409` → `email_conflict`.
 
 > These endpoints are `/api/operations`, not `/api/flows`. A *flow* is the sequence of
 > steps an agent executes (see the glossary in the root README); an *operation* is the
@@ -162,24 +226,24 @@ of `company_id`/`company` given) or `validation_error`. `404` → `company_not_f
 
 ### `POST /api/operations/search`
 
-El **único** listado. Había también un `GET /api/operations` y se eliminó: dos
-rutas para lo mismo son dos contratos que mantener y dos sitios donde arreglar
-un bug de filtrado. Los filtros de la web —texto libre, estado, salud, empresa,
-rango de fechas y orden— no caben en una query string legible, así que la que
-sobrevive es la que puede con todo. Un body vacío lista todo.
+The **only** listing. There used to be a `GET /api/operations` as well, and it was
+removed: two routes for the same thing are two contracts to maintain and two places to
+fix a filtering bug. The web's filters — free text, status, health, company, date range
+and ordering — do not fit in a readable query string, so the one that survives is the
+one that can carry all of them.
 
-Todos los campos son opcionales; un body vacío lista todo.
+Every field is optional; an empty body lists everything.
 
-| Campo | Tipo | Comportamiento |
+| Field | Type | Behaviour |
 |---|---|---|
-| `search` | string | subcadena sin distinguir mayúsculas sobre el id de la operación, los ids de empresa y los puertos |
-| `status` | container state | filtra sobre el status **derivado**, en memoria |
-| `health` | `ok` \| `warning` \| `error` | filtra en Mongo |
-| `company_id` | string | la empresa dueña o cualquier parte de una reserva, en Mongo |
-| `from` / `to` | fecha ISO | rango sobre `created_at` |
-| `date` | fecha ISO | ese día UTC; **no se combina** con `from`/`to` |
-| `sort_by` | `updatedAt` \| `company` \| `id` | `updatedAt` es derivado: el cambio de ETA más reciente, o la creación |
-| `sort_dir` | `asc` \| `desc` | por defecto `desc` |
+| `search` | string | case-insensitive substring over the operation id, the company ids and the ports |
+| `status` | container state | filters on the **derived** status, in memory |
+| `health` | `ok` \| `warning` \| `error` | filtered in Mongo |
+| `company_id` | string | the owning company or any party on a booking, in Mongo |
+| `from` / `to` | ISO date | range over `created_at` |
+| `date` | ISO date | that UTC day; **does not combine** with `from`/`to` |
+| `sort_by` | `updatedAt` \| `company` \| `id` | `updatedAt` is derived: the most recent ETA change, or the creation |
+| `sort_dir` | `asc` \| `desc` | defaults to `desc` |
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/operations/search \
@@ -265,13 +329,101 @@ Three event types share the stream, distinguished by SSE's `event:` field:
 |---|---|---|
 | `operation-updated` | the full operation object (same shape as `GET /api/operations/:id`) | the simulator's timer, `POST .../tracking-events`, or enrolling a new operation |
 | `simulation-completed` | the full operation object, same shape | the simulator's timer, once that operation's script has no steps left |
-| `component-created` / `component-updated` | a generated-UI component | the dashboard component endpoints (`operation-components.routes.ts` — not documented here yet) |
+| `component-created` / `component-updated` | a generated-UI component, same shape as `GET .../components` returns | the component endpoints below, and the agent when a chat turn builds or rewrites a widget |
 
 `simulation-completed` is terminal: the server writes that one event and then closes
 the connection (`reply.raw.end()`) — there's nothing left to stream once a script runs
 out, so the stream ends instead of sitting open silently forever. A client that wants
 to know when an operation's story is "done" watches for this event rather than for the
 connection just going quiet.
+
+### `GET /api/operations/:id/components?cols=<2|4|8>`
+
+The generated dashboard of one operation: the widgets and where they go.
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:8000/api/operations/op-andes-textiles-001/components?cols=4"
+```
+
+`200` → `{ "components": [ ... ], "layout": [ { id, col, row, w, h } ] }`. `cols` is
+required and must be `2`, `4` or `8` — the layout is **packed on demand** for the column
+count you ask for, never stored per breakpoint (see the note further down). `404` →
+`operation_not_found`.
+
+A component is `id`, `operation_id`, `kind`, `title?`, `content` (the `ComponentNode[]`
+tree), `size`, `priority`, `created_at`. `size` is one of `tile` (1×1), `small` (2×2),
+`wide` (4×2), `tall` (2×4), `large` (4×4), `banner` (4×1) — every width divides 2, 4 and
+8, which is what makes one packing serve all three column counts.
+
+### `PATCH /api/operations/:id/components/:componentId/placement`
+
+Moves or renames a widget. `{ position?: number, title?: string }`, at least one of the
+two, and nothing else — a widget is never resized here. `position` is an index in the
+operation's sequence, not a coordinate.
+
+`200` → the component. `404` → `operation_not_found` or `component_not_found`.
+
+### `PATCH /api/operations/:id/components/:componentId`
+
+Rewrites content. Two mutually exclusive body shapes: `{ content: ComponentNode[] }`
+replaces the whole tree, `{ path, value }` writes one node in place (this is the surgical
+edit the agent's `update_component` skill uses).
+
+`200` → the component, and a `component-updated` event on that operation's SSE stream.
+`400` → `invalid_component_content`. `404` → `operation_not_found` or
+`component_not_found`.
+
+### `POST /api/operations/:id/components/test-create` · `DELETE /api/operations/:id/components/:componentId`
+
+`test-create` is the manual counterpart to what the agent does — the name says what it is
+for. Body: `{ kind, size, children, priority? }`. `201` → the component. `400` →
+`invalid_component_tree`. `404` → `operation_not_found`.
+
+`DELETE` removes one widget; the rest keep their relative order and the layout repacks
+itself on the next `GET`, which is why there is no cascade to run.
+
+### `POST /api/operations/:id/chat`
+
+The agent. A message goes in, and either a widget comes out on the operation's SSE
+stream, or the agent just answers.
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/operations/op-andes-textiles-001/chat \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "message": "Show me the containers still in customs" }'
+```
+
+| Field | Type | Required |
+|---|---|---|
+| `message` | string, non-empty | yes |
+| `componentIds` | string[], **max 3** | no — the widgets the user is pointing at |
+
+`componentIds` is the `@` button on a widget's header: those components' full content is
+handed to the agent, so the user can ask *about* a widget ("what does this chart say?")
+or ask for it to be changed ("make this one show weeks instead of days") without
+describing it. The cap exists because each one is inlined into the prompt whole.
+
+`201` → `{ "reply": string, "component_created": boolean }`. **The component is not in
+this response** — it arrives on `GET /api/operations/:id/events` as `component-created`
+or `component-updated`. `component_created: false` means the turn was pure text and
+nothing is coming, so the frontend can drop the pending skeleton instead of waiting for a
+widget that will never arrive.
+
+`404` → `operation_not_found`. `502` → `invalid_ai_component` (the model produced a tree
+that fails validation) or `ai_service_unavailable` (both providers failed).
+
+### `POST /api/operations/:id/webhook`
+
+The same agent on the `auto` trigger: `{ event, payload? }` from an external system
+instead of a human. Here a component is **mandatory** — nobody reads a text reply from a
+webhook — so a text-only answer is turned into `invalid_ai_component`. The chat-only
+`save_company_context` tool is withheld on this trigger, because there is no user to
+confirm what is worth remembering.
+
+`202` → the component itself (unlike `chat`, which streams it). Same `404`/`502` codes.
+
+**TODO**: no HMAC or shared secret on this endpoint — see the comment in `ai.routes.ts`.
 
 ### `POST /api/operations/:id/documents`
 
@@ -302,7 +454,9 @@ it is, so it's not hardcoded here.
 "url": "...", "expires_in_seconds": 300 }`. `404` → `operation_not_found`. `502` →
 `document_upload_failed`.
 
-**TODO**: no auth yet — see the comment in `operations.routes.ts`.
+**TODO**: this endpoint is behind the bearer token like the rest, but nothing scopes it
+further — any authenticated user can upload onto any operation. The `TODO` comment in
+`operations.routes.ts` predates the auth layer and still reads as if there were none.
 
 ### `GET /api/operations/:id/documents/:documentId/preview-url`
 
@@ -435,15 +589,25 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 | `400` | `validation_error` | body, params or querystring failed the zod schema; adds a `details` array |
 | `400` | `invalid_filter_combination` | `date` sent together with `from`/`to` |
 | `400` | `company_reference_required` | `POST /api/operations` sent with neither `company_id` nor `company` |
+| `400` | `invalid_component_content` | a content `PATCH` whose path or tree does not validate |
+| `400` | `invalid_component_tree` | `test-create` given a children tree that does not validate |
+| `401` | `unauthorized` | bearer token missing, invalid or expired |
+| `401` | `invalid_credentials` | wrong email/password, or an unusable refresh token |
+| `403` | `forbidden` | a non-superadmin reaching outside its own company, or minting a superadmin |
 | `404` | `operation_not_found` | no operation with that id |
 | `404` | `company_not_found` | no company with that id |
+| `404` | `component_not_found` | no component with that id on that operation |
+| `404` | `user_not_found` | no user with that id |
 | `404` | `document_not_found` | no document with that id on that operation |
 | `404` | `booking_not_found` | no booking with that id on that operation |
 | `404` | `container_not_found` | no container with that id on that booking |
 | `409` | `company_name_conflict` | `PATCH /api/companies/:id` renamed to a name another company already has |
+| `409` | `email_conflict` | `POST /api/users` with an email that already exists |
 | `403` | `company_disabled` | `POST /api/emails/send` targeted a disabled company's contact email |
 | `502` | `email_send_failed` | SMTP rejected the message |
 | `502` | `document_upload_failed` | Supabase Storage rejected the upload |
+| `502` | `invalid_ai_component` | the model returned a component tree that fails validation |
+| `502` | `ai_service_unavailable` | OpenAI **and** the Gemini fallback both failed |
 
 ## Things the code will not tell you at a glance
 
@@ -478,8 +642,39 @@ whole operation in customs — the pessimistic reading is the useful one for a s
 **Relative imports carry a `.js` extension even in `.ts` files.** The project is ESM with
 `moduleResolution: NodeNext`. That is correct, not a typo.
 
-**The OpenAI and Gemini adapters are not wired in.** They exist and read
-`OPENAI_MODEL` / `GEMINI_MODEL`, but nothing instantiates them in the composition root.
+**The agent's prompt is assembled at boot from Markdown, not from TypeScript.**
+`composition.ts` reads `src/application/prompts/ari-system-prompt.md` and every
+`src/application/skills/*.skill.md`, and concatenates them. A skill is not a separate
+file the model is told about: it is the prose that ships **with** the command it
+documents, glued onto the system prompt in the same pass that registers the tool. That is
+why `src/application/{prompts,skills}` is copied straight into the runtime Docker stage —
+`.md` never goes through `tsc`, so `dist/` alone is not enough to boot.
+
+**Tools are a registry, not a switch statement.** `CommandRegistry` holds `create_component`,
+`update_component` and `save_company_context`; each carries a JSON Schema that is both
+what the model is handed and what validates the model's answer before it executes.
+Adding a tool is registering one `Command` — nothing in the use case knows their names,
+with one exception it states out loud: `save_company_context` is filtered out on the
+`auto` trigger.
+
+**Two AI providers, one port, an ordered fallback.** `FallbackAiCompletionAdapter` tries
+OpenAI and drops to Gemini when it throws; only both failing surfaces as
+`ai_service_unavailable`. Both SDKs throw at *construction* on a falsy API key, so the
+composition root passes a placeholder string when the env var is missing — boot survives
+without a key and the failure shows up as a normal auth error on the first real call,
+instead of a crash at startup.
+
+**Chat history is in memory, keyed by operation.** `InMemoryChatHistoryStore` is what
+gives the agent continuity across turns on the same operation; restarting the API forgets
+every thread. Same for the simulation registry. Nothing about the agent's memory is
+persisted yet.
+
+**The agent finds a component by its label, not by its id.** The user says "the ETA
+widget", never `cmp-7f3a`. Every existing component is offered to the model as
+`{ id, label, size, childCount }` — `componentLabel()` derives that label the same way the
+UI does — and the model picks one and passes its `id` back. The instruction is
+deliberately conservative: when more than one matches, or nothing does, it creates rather
+than overwrites.
 
 **HTTP endpoints have no integration tests.** Tests are unit tests over the domain and
 the use cases, with an in-memory repository as the double; endpoints are verified
