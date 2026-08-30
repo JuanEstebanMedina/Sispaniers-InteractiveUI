@@ -3,8 +3,12 @@ import {
   ATOMIC_NODE_KINDS,
   type ActionKind,
   type AtomicNodeKind,
+  LAYOUT_DIRECTIONS,
+  type LayoutDirection,
+  NESTABLE_ATOMIC_NODE_KINDS,
 } from "../enums/widget-kind.js";
 import { InvalidComponentPathError, InvalidComponentTreeError } from "../model/errors.js";
+import { type WidgetSizeName, fitsChart, isChartNodeKind } from "./widget-size.js";
 
 export const MAX_COMPONENT_NODE_DEPTH = 4;
 
@@ -14,10 +18,10 @@ interface ComponentNodeBase {
 }
 
 export type ComponentNode =
-  | (ComponentNodeBase & { kind: "button-group"; children: ComponentNode[] })
+  | (ComponentNodeBase & { kind: "layout"; children: ComponentNode[] })
   | (ComponentNodeBase & { kind: "button"; action: ActionKind })
   | (ComponentNodeBase & {
-      kind: Exclude<AtomicNodeKind, "button-group" | "button">;
+      kind: Exclude<AtomicNodeKind, "layout" | "button">;
     });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -26,6 +30,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isActionKind(value: unknown): value is ActionKind {
   return typeof value === "string" && (ACTION_KINDS as readonly string[]).includes(value);
+}
+
+function isLayoutDirection(value: unknown): value is LayoutDirection {
+  return typeof value === "string" && (LAYOUT_DIRECTIONS as readonly string[]).includes(value);
 }
 
 function validateComponentNode(node: unknown, remainingDepth: number): void {
@@ -58,21 +66,29 @@ function validateComponentNode(node: unknown, remainingDepth: number): void {
     throw new InvalidComponentTreeError(`action is not permitted on kind: ${kind}`);
   }
 
-  if (kind === "button-group") {
-    if (children === undefined) {
-      return;
+  if (!NESTABLE_ATOMIC_NODE_KINDS.has(kind as AtomicNodeKind)) {
+    if (Array.isArray(children) && children.length > 0) {
+      throw new InvalidComponentTreeError(`kind ${kind} cannot carry children`);
     }
+    return;
+  }
+
+  // Omitting direction is fine — the renderer stacks by default. Sending a
+  // value that is not row or column is not: it would silently arrange the
+  // children some way nobody asked for.
+  if (props.direction !== undefined && !isLayoutDirection(props.direction)) {
+    throw new InvalidComponentTreeError(
+      `layout direction must be one of ${LAYOUT_DIRECTIONS.join(", ")}`,
+    );
+  }
+
+  if (children !== undefined) {
     if (!Array.isArray(children)) {
       throw new InvalidComponentTreeError("children must be an array");
     }
     for (const child of children) {
       validateComponentNode(child, remainingDepth - 1);
     }
-    return;
-  }
-
-  if (Array.isArray(children) && children.length > 0) {
-    throw new InvalidComponentTreeError(`kind ${kind} cannot carry children`);
   }
 }
 
@@ -83,6 +99,28 @@ export function validateComponentTree(children: unknown): asserts children is Co
   for (const child of children) {
     validateComponentNode(child, MAX_COMPONENT_NODE_DEPTH);
   }
+}
+
+function containsChart(nodes: ComponentNode[]): boolean {
+  return nodes.some(
+    (node) =>
+      isChartNodeKind(node.kind) ||
+      ("children" in node && node.children !== undefined && containsChart(node.children)),
+  );
+}
+
+/**
+ * A chart in a `tile` or a `banner` is one cell tall. It renders, but nobody
+ * can read it — so the container is rejected rather than shipped illegible.
+ *
+ * Separate from validateComponentTree because that one only ever sees the tree;
+ * this rule is about the tree AND the slot it was given.
+ */
+export function validateComponentSize(size: WidgetSizeName, children: ComponentNode[]): void {
+  if (fitsChart(size) || !containsChart(children)) {
+    return;
+  }
+  throw new InvalidComponentTreeError(`size ${size} is too small to hold a chart`);
 }
 
 function resolveParent(

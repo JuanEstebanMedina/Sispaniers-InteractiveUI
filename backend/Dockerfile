@@ -26,6 +26,11 @@ COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/package.json ./package.json
 
+# `composition.ts` lee el prompt del agente desde `src/` en tiempo de ejecución
+# porque tsc no copia los .md a dist/. Mientras eso siga así, la imagen tiene
+# que llevar ese .md o el proceso muere al arrancar.
+COPY --from=builder --chown=node:node /app/src/application/prompts ./src/application/prompts
+
 USER node
 
 EXPOSE 8000
