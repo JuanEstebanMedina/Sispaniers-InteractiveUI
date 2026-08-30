@@ -21,7 +21,7 @@ export function createSaveCompanyContextUseCase(deps: SaveCompanyContextDeps) {
       throw new OperationNotFoundError(input.operationId);
     }
     if (operation.companyId === undefined) {
-      throw new CompanyNotFoundError("for operation " + input.operationId);
+      throw new CompanyNotFoundError(`for operation ${input.operationId}`);
     }
 
     const company = await companyRepository.findById(operation.companyId);
