@@ -19,6 +19,9 @@ test("queries only current operation company", async () => {
       conceptIds = receivedConceptIds;
       return [{ id: "volume", name: "Volume", values: [] }];
     },
+    findDefinitions: async () => [],
+    saveDefinitions: async () => {},
+    saveObservations: async () => {},
   };
   const queryCompanyConcepts = createQueryCompanyConceptsUseCase({
     operationRepository,
@@ -41,6 +44,9 @@ test("does not query when operation has no company", async () => {
     findForCompany: async () => {
       throw new Error("must not query concepts without a company");
     },
+    findDefinitions: async () => [],
+    saveDefinitions: async () => {},
+    saveObservations: async () => {},
   };
   const queryCompanyConcepts = createQueryCompanyConceptsUseCase({
     operationRepository: noCompanyOperationRepository,
@@ -55,6 +61,9 @@ test("does not query when operation has no company", async () => {
 test("rejects another company's operation", async () => {
   const companyConceptRepository: CompanyConceptRepository = {
     findForCompany: async () => [],
+    findDefinitions: async () => [],
+    saveDefinitions: async () => {},
+    saveObservations: async () => {},
   };
   const queryCompanyConcepts = createQueryCompanyConceptsUseCase({
     operationRepository,
