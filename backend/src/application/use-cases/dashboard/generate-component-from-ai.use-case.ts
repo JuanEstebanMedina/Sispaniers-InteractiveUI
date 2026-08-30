@@ -7,11 +7,17 @@ import {
   OperationNotFoundError,
 } from "../../../domain/model/errors.js";
 import type { AiCompletionPort } from "../../../domain/ports/ai-completion-port.js";
+import type { ChatHistoryPort } from "../../../domain/ports/chat-history.port.js";
+import type { ClientMemoryPort } from "../../../domain/ports/client-memory.port.js";
+import type { CompanyKnowledgePort } from "../../../domain/ports/company-knowledge.port.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
+import type { EpisodicMemoryPort } from "../../../domain/ports/episodic-memory.port.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 import {
+  type PromptContext,
   buildBasePrompt,
-  completeOrThrow,
+  completeWithParseRetry,
+  fetchPromptContext,
   stripMarkdownCodeFence,
   truncateForDebugging,
 } from "./ai-response.helpers.js";
@@ -30,6 +36,10 @@ export interface GenerateComponentFromAiDeps {
   operationRepository: OperationRepository;
   componentRepository: ComponentRepository;
   aiCompletionPort: AiCompletionPort;
+  chatHistoryPort: ChatHistoryPort;
+  companyKnowledgePort: CompanyKnowledgePort;
+  clientMemoryPort: ClientMemoryPort;
+  episodicMemoryPort: EpisodicMemoryPort;
   createComponent: (input: CreateComponentInput) => Promise<Component>;
   updateComponentContent: (input: UpdateComponentContentInput) => Promise<Component>;
   promptTemplate: string;
@@ -62,8 +72,9 @@ function buildPrompt(
   trigger: AiTrigger,
   currentInput: string,
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
+  context: PromptContext,
 ): string {
-  const base = buildBasePrompt(template, trigger, currentInput, GRID_COLUMNS);
+  const base = buildBasePrompt(template, trigger, currentInput, GRID_COLUMNS, context);
 
   return `${base}\n\n${buildOutputContractOverride(existingComponents)}`;
 }
@@ -149,6 +160,10 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     operationRepository,
     componentRepository,
     aiCompletionPort,
+    chatHistoryPort,
+    companyKnowledgePort,
+    clientMemoryPort,
+    episodicMemoryPort,
     createComponent,
     updateComponentContent,
     promptTemplate,
@@ -170,20 +185,25 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       }),
     );
 
-    const prompt = buildPrompt(promptTemplate, input.trigger, input.input, existingComponents);
-    const response = await completeOrThrow(aiCompletionPort, prompt);
+    const promptContext = await fetchPromptContext(
+      { chatHistoryPort, companyKnowledgePort, clientMemoryPort, episodicMemoryPort },
+      input.operationId,
+      operation.companyId,
+    );
 
-    let parsed: ParsedAiComponent;
-    try {
-      parsed = parseAiResponse(response.text);
-    } catch (error) {
-      if (!(error instanceof InvalidAiComponentError)) {
-        throw error;
-      }
-      console.warn("generateComponentFromAi: retrying after invalid AI response");
-      const retryResponse = await completeOrThrow(aiCompletionPort, prompt);
-      parsed = parseAiResponse(retryResponse.text);
-    }
+    const prompt = buildPrompt(
+      promptTemplate,
+      input.trigger,
+      input.input,
+      existingComponents,
+      promptContext,
+    );
+    const parsed = await completeWithParseRetry(
+      aiCompletionPort,
+      prompt,
+      parseAiResponse,
+      "generateComponentFromAi",
+    );
 
     if (parsed.supersedes !== null) {
       const target = await componentRepository.findById(parsed.supersedes);

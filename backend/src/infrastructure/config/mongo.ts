@@ -41,6 +41,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
     db.collection("operations").createIndex({ companyId: 1 }),
     db.collection("operations").createIndex({ "bookings.companyIds": 1 }),
     db.collection("operations").createIndex({ health: 1, createdAt: -1 }),
+    db.collection("flow_milestones").createIndex({ operationId: 1 }),
   ]);
 }
 

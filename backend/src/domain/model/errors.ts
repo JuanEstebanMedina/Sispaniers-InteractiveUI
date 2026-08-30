@@ -95,3 +95,10 @@ export class ContainerNotFoundError extends Error {
     this.name = "ContainerNotFoundError";
   }
 }
+
+export class InvalidMilestoneTypeError extends Error {
+  constructor(reason: string) {
+    super(`Invalid milestone type: ${reason}`);
+    this.name = "InvalidMilestoneTypeError";
+  }
+}

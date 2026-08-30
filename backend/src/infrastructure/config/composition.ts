@@ -22,9 +22,13 @@ import { createUpsertOperationFromEmailUseCase } from "../../application/use-cas
 import type { AiCompletionPort } from "../../domain/ports/ai-completion-port.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
 import type { AttachmentStorage } from "../../domain/ports/attachment-storage.port.js";
+import type { ChatHistoryPort } from "../../domain/ports/chat-history.port.js";
+import type { ClientMemoryPort } from "../../domain/ports/client-memory.port.js";
+import type { CompanyKnowledgePort } from "../../domain/ports/company-knowledge.port.js";
 import type { CompanyRepository } from "../../domain/ports/company.repository.js";
 import type { ComponentRepository } from "../../domain/ports/component.repository.js";
 import type { EmailSender } from "../../domain/ports/email-sender.port.js";
+import type { EpisodicMemoryPort } from "../../domain/ports/episodic-memory.port.js";
 import type { OperationEventPublisher } from "../../domain/ports/operation-event-publisher.port.js";
 import type { OperationRepository } from "../../domain/ports/operation.repository.js";
 import type { SimulationRegistry } from "../../domain/ports/simulation-registry.port.js";
@@ -36,8 +40,12 @@ import { InMemoryOperationEventPublisher } from "../adapters/outbound/events/in-
 import { FallbackAiCompletionAdapter } from "../adapters/outbound/fallback-ai-completion-adapter.js";
 import { GeminiCompletionAdapter } from "../adapters/outbound/gemini-completion-adapter.js";
 import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.js";
+import { InMemoryChatHistoryStore } from "../adapters/outbound/memory/in-memory-chat-history-store.js";
+import { StubClientMemoryAdapter } from "../adapters/outbound/memory/stub-client-memory-adapter.js";
+import { StubCompanyKnowledgeAdapter } from "../adapters/outbound/memory/stub-company-knowledge-adapter.js";
 import { MongoCompanyRepository } from "../adapters/outbound/mongo/company.repository.js";
 import { MongoComponentRepository } from "../adapters/outbound/mongo/component.repository.js";
+import { MongoEpisodicMemoryRepository } from "../adapters/outbound/mongo/milestone.repository.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
 import { OpenAiCompletionAdapter } from "../adapters/outbound/openai-completion-adapter.js";
 import { InMemorySimulationRegistry } from "../adapters/outbound/simulation/in-memory-simulation-registry.js";
@@ -68,6 +76,10 @@ export interface CreateAppOverrides {
   componentRepository?: ComponentRepository;
   simulationRegistry?: SimulationRegistry;
   operationEventPublisher?: OperationEventPublisher;
+  chatHistoryPort?: ChatHistoryPort;
+  companyKnowledgePort?: CompanyKnowledgePort;
+  clientMemoryPort?: ClientMemoryPort;
+  episodicMemoryPort?: EpisodicMemoryPort;
 }
 
 function buildEmailSender(override: EmailSender | undefined): EmailSender {
@@ -94,21 +106,28 @@ interface RepositorySources {
   operationRepository: OperationRepository;
   companyRepository: CompanyRepository;
   componentRepository: ComponentRepository;
+  episodicMemoryPort: EpisodicMemoryPort;
   close?: () => Promise<void>;
 }
 
-async function buildRepositories(overrides: CreateAppOverrides): Promise<RepositorySources> {
-  const { operationRepository, companyRepository, componentRepository } = overrides;
+async function buildRepositories(
+  overrides: CreateAppOverrides,
+  idGenerator: CryptoIdGenerator,
+): Promise<RepositorySources> {
+  const { operationRepository, companyRepository, componentRepository, episodicMemoryPort } =
+    overrides;
 
   if (
     operationRepository !== undefined &&
     companyRepository !== undefined &&
-    componentRepository !== undefined
+    componentRepository !== undefined &&
+    episodicMemoryPort !== undefined
   ) {
     return {
       operationRepository,
       companyRepository,
       componentRepository,
+      episodicMemoryPort,
     };
   }
 
@@ -118,6 +137,8 @@ async function buildRepositories(overrides: CreateAppOverrides): Promise<Reposit
     operationRepository: operationRepository ?? new MongoOperationRepository(mongo.db),
     companyRepository: companyRepository ?? new MongoCompanyRepository(mongo.db),
     componentRepository: componentRepository ?? new MongoComponentRepository(mongo.db),
+    episodicMemoryPort:
+      episodicMemoryPort ?? new MongoEpisodicMemoryRepository(mongo.db, idGenerator),
     close: mongo.close,
   };
 }
@@ -127,8 +148,14 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const emailSender = buildEmailSender(overrides.emailSender);
   const attachmentExtractor = overrides.attachmentExtractor ?? new MultiFormatAttachmentExtractor();
   const attachmentStorage = buildAttachmentStorage(overrides.attachmentStorage);
-  const { operationRepository, companyRepository, componentRepository, close } =
-    await buildRepositories(overrides);
+  const { operationRepository, companyRepository, componentRepository, episodicMemoryPort, close } =
+    await buildRepositories(overrides, idGenerator);
+  const chatHistoryPort: ChatHistoryPort =
+    overrides.chatHistoryPort ?? new InMemoryChatHistoryStore();
+  const companyKnowledgePort: CompanyKnowledgePort =
+    overrides.companyKnowledgePort ?? new StubCompanyKnowledgeAdapter();
+  const clientMemoryPort: ClientMemoryPort =
+    overrides.clientMemoryPort ?? new StubClientMemoryAdapter();
 
   const receiveEmail = createReceiveEmailUseCase({
     idGenerator,
@@ -217,6 +244,10 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     operationRepository,
     componentRepository,
     aiCompletionPort,
+    chatHistoryPort,
+    companyKnowledgePort,
+    clientMemoryPort,
+    episodicMemoryPort,
     createComponent,
     updateComponentContent,
     promptTemplate: ARI_SYSTEM_PROMPT,
@@ -224,6 +255,10 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const respondToChat = createRespondToChatUseCase({
     operationRepository,
     aiCompletionPort,
+    chatHistoryPort,
+    companyKnowledgePort,
+    clientMemoryPort,
+    episodicMemoryPort,
     promptTemplate: ARI_SYSTEM_PROMPT,
   });
 
