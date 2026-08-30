@@ -25,10 +25,9 @@ export const endpoints = {
     search: '/operations/search',
     detail: (id: string) => `/operations/${id}`,
     components: (id: string) => `/operations/${id}/components`,
-      // Move and rename one widget at a time. There is deliberately no PATCH of
-    // the whole layout: position is an index in the sequence, and the grid
-    // packs the coordinates back out of it.
-  componentPlacement: (id: string, componentId: string) =>
+    companyConcepts: (id: string, conceptIds: string[]) =>
+      `/operations/${id}/company-concepts?ids=${encodeURIComponent(conceptIds.join(','))}`,
+    componentPlacement: (id: string, componentId: string) =>
       `/operations/${id}/components/${componentId}/placement`,
     componentContent: (id: string, componentId: string) =>
       `/operations/${id}/components/${componentId}`,
@@ -73,6 +72,8 @@ export const queryKeys = {
     detail: (id: string) => ['operations', 'detail', id] as const,
     componentsAll: (id: string) => ['operations', 'components', id] as const,
     components: (id: string, cols: number) => ['operations', 'components', id, cols] as const,
+    companyConcepts: (id: string, conceptIds: string[]) =>
+      ['operations', 'company-concepts', id, conceptIds] as const,
   },
   notifications: {
     all: ['notifications'] as const,
