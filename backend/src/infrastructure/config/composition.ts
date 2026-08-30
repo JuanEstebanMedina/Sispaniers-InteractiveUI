@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
-import { createCreateOrUpdateComponentCommand } from "../../application/commands/create-or-update-component.command.js";
+import { createCreateComponentCommand } from "../../application/commands/create-component.command.js";
+import { createUpdateComponentCommand } from "../../application/commands/update-component.command.js";
 import { createApplyTrackingEventUseCase } from "../../application/use-cases/dashboard/apply-tracking-event.use-case.js";
 import { createCreateComponentUseCase } from "../../application/use-cases/dashboard/create-component.use-case.js";
 import { createCreateOperationUseCase } from "../../application/use-cases/dashboard/create-operation.use-case.js";
@@ -215,11 +216,12 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     geminiAdapter,
   );
   const commandRegistry = new CommandRegistry();
+  commandRegistry.register(createCreateComponentCommand({ createComponent }));
   commandRegistry.register(
-    createCreateOrUpdateComponentCommand({
-      componentRepository,
-      createComponent,
+    createUpdateComponentCommand({
       updateComponentContent,
+      componentRepository,
+      eventPublisher: componentEventPublisher,
     }),
   );
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({

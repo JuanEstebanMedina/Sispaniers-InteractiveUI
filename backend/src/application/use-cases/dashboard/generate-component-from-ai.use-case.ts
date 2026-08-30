@@ -34,7 +34,7 @@ function buildExistingComponentsHint(
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
 ): string {
   return `---
-Componentes existentes de esta operación (usa su "id" en "supersedes" si tu salida reemplaza a uno; si no reemplazas nada, "supersedes": null):
+Componentes existentes de esta operación (usa su "id" como "componentId" al llamar a update_component si tu salida reemplaza a uno; si no reemplazas nada, llama a create_component):
 ${JSON.stringify(existingComponents)}`;
 }
 
