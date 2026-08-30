@@ -22,9 +22,9 @@ interface AgentChatProps {
  * Talking to the agent directly, for the manual asks the generated UI has no
  * widget for — "send the client an email", "hold this until I check".
  *
- * The agent never replies with free text — it responds by generating or
- * updating a UI component (see `POST /operations/:id/chat`). So a successful
- * send appends a generic acknowledgment, not an invented answer.
+ * The agent always generates or updates a UI component alongside a short,
+ * user-facing `reply` message (see `POST /operations/:id/chat`), which is
+ * appended to the chat as the agent's response.
  */
 export function AgentChat({ operationId, className }: AgentChatProps) {
   const { t } = useTranslation('domain')
@@ -61,8 +61,10 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
     setDraft('')
 
     try {
-      await http.post(endpoints.ai.chat(operationId), { message: body })
-      appendAgentMessage(t('operation.chat.componentGenerated'))
+      const { reply } = await http.post<{ reply: string }>(endpoints.ai.chat(operationId), {
+        message: body,
+      })
+      appendAgentMessage(reply)
     } catch {
       toast.error(t('operation.chat.sendError'))
     }
