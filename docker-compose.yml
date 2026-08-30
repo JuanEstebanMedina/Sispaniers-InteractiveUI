@@ -56,6 +56,12 @@ services:
         VITE_API_URL: ${VITE_API_URL:-/api}
         VITE_USE_MOCKS: ${VITE_USE_MOCKS:-true}
         VITE_DEMO_MODE: ${VITE_DEMO_MODE:-true}
+        VITE_API_TIMEOUT: ${VITE_API_TIMEOUT:-15000}
+        VITE_MOCK_DELAY: ${VITE_MOCK_DELAY:-320}
+        VITE_THEME: ${VITE_THEME:-light}
+        VITE_APP_NAME: ${VITE_APP_NAME:-Sispaniers}
+        VITE_AUTH_STORAGE: ${VITE_AUTH_STORAGE:-localStorage}
+        VITE_DEVTOOLS: ${VITE_DEVTOOLS:-false}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-5173}:80"
