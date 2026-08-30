@@ -137,7 +137,8 @@
       "deleteMessage": "“{{title}}” será removido da interface desta execução. Não é possível desfazer.",
       "deleteConfirm": "Excluir componente",
       "deleteError": "Não foi possível excluir o componente.",
-      "pendingTitle": "Gerando…"
+      "pendingTitle": "Gerando…",
+      "referenceWidget": "Perguntar ao agente sobre {{title}}"
     },
     "chat": {
       "title": "Falar com o agente",
@@ -148,7 +149,9 @@
       "removeFile": "Remover {{name}}",
       "emptyTitle": "Algo para fazer na mão?",
       "componentGenerated": "Componente atualizado no painel.",
-      "sendError": "Não foi possível enviar a mensagem ao agente."
+      "sendError": "Não foi possível enviar a mensagem ao agente.",
+      "referencing": "Widgets aos quais esta mensagem se refere",
+      "removeReference": "Parar de referenciar {{title}}"
     },
     "files": {
       "title": "Arquivos",

@@ -1,42 +1,41 @@
-## Herramienta: `create_component`
+## Tool: `create_component`
 
-Esta es la herramienta **por defecto**. Úsala siempre, salvo que el mensaje
-del usuario mencione de forma explícita e inequívoca que quiere modificar,
-actualizar, cambiar o reemplazar un componente que ya existe (ver
-`update_component`).
+This is the **default** tool. Use it unless the user's message explicitly and
+unambiguously states they want to modify, update, change or replace a component
+that already exists (see `update_component`).
 
-Cualquier petición genérica, nueva o ambigua usa `create_component` — incluso
-si ya existen otros componentes en la operación. Ejemplos que van aquí, no a
-`update_component`: "crea un componente", "muéstrame algo de envíos",
-"agrega un widget", "quiero ver estadísticas". Ninguno de estos menciona un
-componente existente concreto, así que ninguno califica para `update_component`.
+Any generic, new or ambiguous request uses `create_component` — even when other
+components already exist in the operation. Examples that belong here and not in
+`update_component`: "create a component", "show me something about shipments",
+"add a widget", "I want to see statistics". None of these names a specific
+existing component, so none of them qualifies for `update_component`.
 
-Si tienes cualquier duda sobre si el mensaje referencia explícitamente un
-componente existente, no la tienes: usa `create_component`. Es más seguro
-añadir un componente de más que actualizar uno equivocado.
+If you have any doubt about whether the message explicitly references an
+existing component, you do not: use `create_component`. Adding one component too
+many is safer than updating the wrong one.
 
-### Argumentos
+### Arguments
 
 ```json
 {
   "children": [
-    { "kind": "<uno de component_catalog>", "order": <n>, "props": { ... } }
+    { "kind": "<one of component_catalog>", "order": <n>, "props": { ... } }
   ],
   "layout": { "cols": <n>, "rows": <n> },
-  "reply": "<mensaje breve en lenguaje natural, dirigido directamente al usuario final y mostrado tal cual en una burbuja de chat>"
+  "reply": "<short natural-language message, addressed directly to the end user and shown verbatim in a chat bubble>"
 }
 ```
 
-- IMPORTANTE: `kind` debe ser EXACTAMENTE uno de estos valores, nunca inventes
-  otros: `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`,
-  `label`, `button`, `layout`. Cualquier otro valor será rechazado.
-- `layout` es **obligatorio** — declara cuántas celdas ocupa el componente en
-  la grilla de `{{grid_columns}}` columnas.
-- `reply` es **obligatorio** — mensaje conversacional para el usuario final,
-  sin jerga interna, sin HTML ni markdown ni código, nunca vacío.
-- Respeta siempre el rango permitido por el `kind` elegido
-  (`minCols/maxCols`, `minRows/maxRows`) — si no lo respetas, el backend
-  rechaza la salida y el step se reintenta.
-- Usa el tamaño más chico que comunique la información completa.
-- No calcules posición (`x`, `y`) — eso lo asigna el backend al insertar el
-  evento; solo declaras el tamaño.
+- IMPORTANT: `kind` must be EXACTLY one of these values, never invent others:
+  `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`, `label`,
+  `button`, `layout`. Any other value is rejected.
+- `layout` is **required** — it declares how many cells the component takes on
+  the `{{grid_columns}}`-column grid.
+- `reply` is **required** — a conversational message for the end user, with no
+  internal jargon, no HTML, no markdown, no code, never empty.
+- Always respect the range allowed by the chosen `kind` (`minCols/maxCols`,
+  `minRows/maxRows`) — if you do not, the backend rejects the output and the
+  step is retried.
+- Use the smallest size that communicates the whole information.
+- Do not compute a position (`x`, `y`) — the backend assigns it on insert; you
+  only declare the size.

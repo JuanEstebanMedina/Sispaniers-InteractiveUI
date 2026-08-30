@@ -23,6 +23,7 @@ export interface GenerateComponentFromAiInput {
   operationId: string;
   trigger: AiTrigger;
   input: string;
+  referencedComponentIds?: string[];
 }
 
 export interface GenerateComponentFromAiDeps {
@@ -55,18 +56,36 @@ function buildExistingComponentsHint(
 ): string {
   if (trigger === "chat") {
     return `---
-Para mensajes de chat no esta disponible update_component. Usa create_component: siempre agrega un componente nuevo y nunca modifica uno existente.`;
+update_component is not available for chat messages. When the user asks a question or wants an explanation, answer in plain text and call no tool. Use create_component only when they ask for a new component: it always adds one and never modifies an existing one.`;
   }
 
   return `---
-Componentes existentes de esta operación (usa update_component SOLO si el mensaje del usuario menciona explicitamente que quiere modificar/actualizar/reemplazar un componente EXISTENTE, ej. menciona su contenido o proposito actual, usando su "id" como "componentId"; para cualquier peticion nueva o generica, usa siempre create_component, incluso si ya existen otros componentes):
+Existing components of this operation (use update_component ONLY when the user's message explicitly states they want to modify/update/replace an EXISTING component — for example by naming its current content or purpose — passing its "id" as "componentId"; for any new or generic request always use create_component, even when similar components already exist):
 ${JSON.stringify(existingComponents)}`;
+}
+
+function buildReferencedComponentsHint(referenced: Component[]): string {
+  if (referenced.length === 0) {
+    return "";
+  }
+
+  const readable = referenced.map(({ id, title, size, children }) => ({
+    id,
+    title,
+    size,
+    children,
+  }));
+
+  return `\n\n---
+The user is pointing at these components of their dashboard, and this is their full content. Answer about them:
+${JSON.stringify(readable)}`;
 }
 
 function buildSystemPrompt(
   template: string,
   trigger: AiTrigger,
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
+  referenced: Component[],
   context?: PromptContext,
 ): string {
   const base = buildBasePrompt(
@@ -77,7 +96,7 @@ function buildSystemPrompt(
     context,
   );
 
-  return `${base}\n\n${buildExistingComponentsHint(trigger, existingComponents)}`;
+  return `${base}\n\n${buildExistingComponentsHint(trigger, existingComponents)}${buildReferencedComponentsHint(referenced)}`;
 }
 
 export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFromAiDeps) {
@@ -162,13 +181,15 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       throw new OperationNotFoundError(input.operationId);
     }
 
-    const existingComponents = (await componentRepository.findByOperationId(input.operationId)).map(
-      (component) => ({
-        id: component.id,
-        size: component.size,
-        childCount: component.children.length,
-      }),
-    );
+    const components = await componentRepository.findByOperationId(input.operationId);
+    const existingComponents = components.map((component) => ({
+      id: component.id,
+      size: component.size,
+      childCount: component.children.length,
+    }));
+
+    const referencedIds = new Set(input.referencedComponentIds ?? []);
+    const referencedComponents = components.filter((component) => referencedIds.has(component.id));
 
     const promptContext =
       input.trigger === "chat" && chatHistoryPort !== undefined
@@ -183,6 +204,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       promptTemplate,
       input.trigger,
       existingComponents,
+      referencedComponents,
       promptContext,
     );
 

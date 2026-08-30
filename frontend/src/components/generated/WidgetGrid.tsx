@@ -1,4 +1,4 @@
-import { GripVertical, Pencil, Trash2 } from 'lucide-react'
+import { AtSign, GripVertical, Pencil, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -74,6 +74,8 @@ interface WidgetGridProps {
    * only when it comes back missing from `widgets`.
    */
   onDeleteRequest?: (id: string) => void
+  /** Fires with the widget the user wants the agent to look at in the chat. */
+  onReferenceRequest?: (id: string) => void
   className?: string
 }
 
@@ -92,6 +94,7 @@ export function WidgetGrid({
   onMove,
   onColsChange,
   onDeleteRequest,
+  onReferenceRequest,
   reserve = 0,
   className,
 }: WidgetGridProps) {
@@ -359,6 +362,19 @@ export function WidgetGrid({
                   >
                     <Pencil className="size-3" aria-hidden />
                   </button>
+
+                  {onReferenceRequest && (
+                    <button
+                      type="button"
+                      title={t('operation.generated.referenceWidget', { title })}
+                      aria-label={t('operation.generated.referenceWidget', { title })}
+                      className={cn(HEADER_ACTION, 'hover:bg-brand-subtle hover:text-brand')}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={() => onReferenceRequest(item.id)}
+                    >
+                      <AtSign className="size-3" aria-hidden />
+                    </button>
+                  )}
 
                   {onDeleteRequest && (
                     <button

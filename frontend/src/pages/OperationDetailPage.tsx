@@ -28,6 +28,7 @@ import {
   type Operation,
 } from '@/schemas'
 import { needsAttention } from '@/lib/operation'
+import { useChatReferenceStore } from '@/stores/chatReferenceStore'
 import { useRailStore } from '@/stores/railStore'
 
 const DEFAULT_COLS = 4
@@ -109,6 +110,9 @@ export default function OperationDetailPage() {
 
   const railOpen = useRailStore((state) => state.open)
   const railWidth = useRailStore((state) => state.width)
+  const setRailOpen = useRailStore((state) => state.setOpen)
+  const openSection = useRailStore((state) => state.openSection)
+  const addReference = useChatReferenceStore((state) => state.reference)
 
   const operation = detail.data
   const generated = components.data
@@ -193,6 +197,19 @@ export default function OperationDetailPage() {
     [persistable],
   )
 
+  // Pointing at a widget is only half the gesture: the other half is the chat
+  // the reference lands in, so it comes into view with it.
+  const handleReferenceRequest = useCallback(
+    (id: string) => {
+      const widget = widgets.find((item) => item.id === id)
+      if (!widget) return
+      addReference(trackId, { id, title: widget.title })
+      setRailOpen(true)
+      openSection('chat')
+    },
+    [widgets, addReference, trackId, setRailOpen, openSection],
+  )
+
   const pendingTitle = widgets.find((widget) => widget.id === pendingDelete)?.title ?? ''
 
   return (
@@ -225,6 +242,7 @@ export default function OperationDetailPage() {
                 onTitleChange={handleTitleChange}
                 onColsChange={setCols}
                 onDeleteRequest={handleDeleteRequest}
+                onReferenceRequest={handleReferenceRequest}
                 reserve={railOpen ? railWidth : 0}
               />
             </ComponentDataProvider>

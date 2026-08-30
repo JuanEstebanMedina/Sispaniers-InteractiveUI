@@ -43,13 +43,14 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
     },
     async (request, reply) => {
       const { id } = request.params;
-      const { message } = request.body;
+      const { message, componentIds } = request.body;
 
       try {
         const result = await deps.generateComponentFromAi({
           operationId: id,
           trigger: "chat",
           input: message,
+          referencedComponentIds: componentIds ?? [],
         });
         reply.code(201).send({ reply: result.reply });
       } catch (error) {

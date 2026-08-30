@@ -8,7 +8,7 @@ import type { CompanyKnowledgePort } from "../../../domain/ports/company-knowled
 import type { EpisodicMemoryPort } from "../../../domain/ports/episodic-memory.port.js";
 import type { AiTrigger } from "./generate-component-from-ai.use-case.js";
 
-const NOT_AVAILABLE = "N/A (no disponible en esta versión)";
+const NOT_AVAILABLE = "N/A (not available in this version)";
 
 export interface PromptContext {
   companyKnowledge: string[];

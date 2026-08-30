@@ -1,4 +1,4 @@
-import { FileText, Sparkles } from 'lucide-react'
+import { AtSign, FileText, Sparkles } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -54,6 +54,13 @@ function Bubble({ message }: { message: ChatMessage }) {
       )}
     >
       {message.body}
+
+      {message.refs.map((title) => (
+        <span key={title} className="mt-1 flex items-center gap-1.5 text-xs text-fg-muted">
+          <AtSign className="size-3.5 shrink-0" aria-hidden />
+          <span className="truncate">{title}</span>
+        </span>
+      ))}
 
       {message.docs.map((type) => (
         <span key={type} className="mt-1 flex items-center gap-1.5 text-xs text-fg-muted">

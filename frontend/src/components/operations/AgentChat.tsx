@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn'
 import { toast } from '@/lib/toast'
 import type { LogisticsDocument } from '@/schemas'
 import { useChatAttachStore } from '@/stores/chatAttachStore'
+import { useChatReferenceStore } from '@/stores/chatReferenceStore'
 import { useChatStore } from '@/stores/chatStore'
 import { ChatComposer } from './ChatComposer'
 import { ChatHistory } from './ChatHistory'
@@ -17,6 +18,7 @@ interface AgentChatProps {
 }
 
 const EMPTY_MESSAGES: never[] = []
+const EMPTY_REFERENCES: never[] = []
 
 export function AgentChat({ operationId, className }: AgentChatProps) {
   const { t } = useTranslation('domain')
@@ -24,26 +26,44 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
   const [isSending, setIsSending] = useState(false)
   const messages = useChatStore((state) => state.messagesByOperation[operationId] ?? EMPTY_MESSAGES)
   const appendMessage = useChatStore((state) => state.append)
+  const references = useChatReferenceStore((state) =>
+    state.operationId === operationId ? state.references : EMPTY_REFERENCES,
+  )
+  const unreference = useChatReferenceStore((state) => state.unreference)
+  const clearReferences = useChatReferenceStore((state) => state.clear)
   const docs = useChatAttachStore((state) => state.documents)
   const detachDoc = useChatAttachStore((state) => state.detach)
   const clearDocs = useChatAttachStore((state) => state.clear)
 
-  function append(author: 'agent' | 'human', body: string, cited: string[] = []) {
-    appendMessage(operationId, { author, body, docs: cited })
+  function append(
+    author: 'agent' | 'human',
+    body: string,
+    cited: string[] = [],
+    pointedAt: string[] = [],
+  ) {
+    appendMessage(operationId, { author, body, docs: cited, refs: pointedAt })
   }
 
   async function send() {
     const body = draft.trim()
-    if (isSending || (!body && docs.length === 0)) return
+    if (isSending || (!body && docs.length === 0 && references.length === 0)) return
 
-    append('human', body, docs.map((document) => document.type))
+    const componentIds = references.map((reference) => reference.id)
+    append(
+      'human',
+      body,
+      docs.map((document) => document.type),
+      references.map((reference) => reference.title),
+    )
     setDraft('')
     clearDocs()
+    clearReferences()
     setIsSending(true)
 
     try {
       const { reply } = await http.post<{ reply: string }>(endpoints.ai.chat(operationId), {
         message: withDocs(body, docs),
+        ...(componentIds.length > 0 && { componentIds }),
       })
       append('agent', reply)
     } catch {
@@ -65,6 +85,8 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
         onSend={send}
         docs={docs}
         onDetach={detachDoc}
+        references={references}
+        onUnreference={unreference}
         disabled={isSending}
       />
     </section>
