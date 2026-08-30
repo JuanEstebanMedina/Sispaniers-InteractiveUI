@@ -44,6 +44,14 @@ describe("writeSseHead", () => {
     });
   });
 
+  it("asks proxies not to buffer the stream", () => {
+    const { reply, written } = fakeReply({});
+
+    writeSseHead(reply);
+
+    expect(written.headers?.["X-Accel-Buffering"]).toBe("no");
+  });
+
   it("lets the stream headers win over a conflicting reply header", () => {
     const { reply, written } = fakeReply({ "content-type": "application/json" });
 
