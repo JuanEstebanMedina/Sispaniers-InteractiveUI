@@ -27,8 +27,12 @@ services:
       MONGODB_URI: mongodb://${MONGO_USER:-sispaniers}:${MONGO_PASSWORD:?set MONGO_PASSWORD in .env, see .env.example}@mongo:27017/${MONGO_DB:-sispaniers}?authSource=admin
       GMAIL_USER: ${GMAIL_USER:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -49,8 +53,8 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: /api
-        VITE_USE_MOCKS: "true"
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_USE_MOCKS: ${VITE_USE_MOCKS:-true}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-5173}:80"
