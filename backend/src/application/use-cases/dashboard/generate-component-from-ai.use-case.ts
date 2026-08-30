@@ -248,22 +248,12 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
 
     let result: { component: Component | null; reply: string };
     try {
-      try {
-        result = await completeAndDispatch(
-          systemPrompt,
-          input.input,
-          input.operationId,
-          input.trigger,
-        );
-      } catch (error) {
-        if (!(error instanceof InvalidAiComponentError)) throw error;
-        result = await completeAndDispatch(
-          systemPrompt,
-          input.input,
-          input.operationId,
-          input.trigger,
-        );
-      }
+      result = await completeAndDispatch(
+        systemPrompt,
+        input.input,
+        input.operationId,
+        input.trigger,
+      );
     } catch (error) {
       if (!(error instanceof InvalidAiComponentError)) {
         if (componentExpected) {
