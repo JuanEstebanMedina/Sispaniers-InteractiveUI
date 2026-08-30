@@ -298,7 +298,11 @@ test("chat publishes a placeholder only after AI calls a component-building tool
     idGenerator: { newId: () => "pending-1" },
   });
 
-  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "Crea un panel" });
+  await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "Crea un panel",
+  });
 
   expect(events).toEqual(["component-pending"]);
 });
