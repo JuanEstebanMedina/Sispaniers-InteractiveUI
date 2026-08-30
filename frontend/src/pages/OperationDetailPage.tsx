@@ -45,7 +45,7 @@ export default function OperationDetailPage() {
   // Same key the layout and the grid use, so this is a cache read, not a fetch.
   const others = useQuery({
     queryKey: queryKeys.operations.list(),
-    queryFn: () => api$.get(endpoints.operations.list, operationListSchema),
+    queryFn: () => api$.post(endpoints.operations.search, operationListSchema, {}),
   })
   // `needs_decision` no existe en el backend: el status se deriva del estado
   // de los contenedores y sólo puede ser uno de los cinco reales. Hasta que el

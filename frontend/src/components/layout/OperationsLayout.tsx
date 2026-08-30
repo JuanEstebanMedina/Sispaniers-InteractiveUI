@@ -47,7 +47,7 @@ export default function OperationsLayout() {
   const list = useQuery({
     queryKey: queryKeys.operations.list(),
     queryFn: () =>
-      api$.get(endpoints.operations.list, operationListSchema),
+      api$.post(endpoints.operations.search, operationListSchema, {}),
     // Sólo cuando hay un detalle abierto. En la grilla este layout igual se
     // monta, pero `hasDetail` es false y el riel no se renderiza: sin esto se
     // descargaba la lista entera para no mostrarla, EN PARALELO con el POST

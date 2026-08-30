@@ -83,30 +83,13 @@ curl -X POST http://127.0.0.1:8000/api/operations \
 
 `201` returns the operation object.
 
-### `GET /api/operations`
-
-Lists operations. All query parameters are optional.
-
-| Parameter | Type | Behaviour |
-|---|---|---|
-| `status` | container state | filters on the **derived** status, in memory |
-| `health` | `ok` \| `warning` \| `error` | filters in Mongo |
-| `company_id` | string | reads `Company.operationIds` and narrows to those ids |
-| `from` / `to` | ISO date | `created_at` range |
-| `date` | ISO date | that whole UTC day; **cannot be combined** with `from`/`to` |
-
-```bash
-curl "http://127.0.0.1:8000/api/operations?status=in_transit&company_id=company-andes-textiles"
-```
-
-`200` → `{ "operations": [ ... ] }`
-
 ### `POST /api/operations/search`
 
-El listado con filtros en el cuerpo. Existe además del `GET` porque los filtros
-de la web —texto libre, estado, salud, empresa, rango de fechas y orden— no
-caben en una query string legible, y porque ordenar en el cliente sólo ordena
-lo que ya se descargó.
+El **único** listado. Había también un `GET /api/operations` y se eliminó: dos
+rutas para lo mismo son dos contratos que mantener y dos sitios donde arreglar
+un bug de filtrado. Los filtros de la web —texto libre, estado, salud, empresa,
+rango de fechas y orden— no caben en una query string legible, así que la que
+sobrevive es la que puede con todo. Un body vacío lista todo.
 
 Todos los campos son opcionales; un body vacío lista todo.
 

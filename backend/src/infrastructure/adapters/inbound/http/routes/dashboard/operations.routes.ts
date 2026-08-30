@@ -162,5 +162,4 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
       }
     },
   );
-
 };

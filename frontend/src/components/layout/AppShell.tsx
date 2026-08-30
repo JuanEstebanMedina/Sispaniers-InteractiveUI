@@ -19,7 +19,7 @@ export function AppShell() {
   const { data: pendingDecisions } = useQuery({
     queryKey: queryKeys.operations.list(),
     queryFn: () =>
-      api$.get(endpoints.operations.list, operationListSchema),
+      api$.post(endpoints.operations.search, operationListSchema, {}),
     select: (list) => list.operations.filter((o) => o.health === 'critical').length,
     // 60s y no 30: esto alimenta UN PUNTO en el menú, y el punto no necesita
     // precisión de medio minuto. En las pantallas de operaciones la lista se

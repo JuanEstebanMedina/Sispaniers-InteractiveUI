@@ -19,9 +19,11 @@ export const endpoints = {
   },
 
   operations: {
-    list: '/operations',
-    /** El listado con filtros. Es POST porque texto libre + estado + salud +
-     *  rango de fechas + orden ya no caben en una query string legible. */
+    /**
+     * El ÚNICO listado. Es POST porque texto libre + estado + salud + rango de
+     * fechas + orden no caben en una query string legible. Un body vacío lista
+     * todo, que es lo que hacía el `GET /operations` que se eliminó.
+     */
     search: '/operations/search',
     detail: (id: string) => `/operations/${id}`,
     components: (id: string) => `/operations/${id}/components`,
