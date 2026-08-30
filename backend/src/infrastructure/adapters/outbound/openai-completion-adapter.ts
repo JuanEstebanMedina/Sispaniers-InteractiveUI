@@ -20,6 +20,17 @@ function toOpenAiTools(tools: AiToolDefinition[]): OpenAI.Chat.ChatCompletionToo
 }
 
 /**
+ * reasoning_effort only exists on the reasoning families. Every other model
+ * rejects the whole request with a 400 ("Unrecognized request argument"), so
+ * the parameter has to follow the configured model, not the code's default.
+ */
+const REASONING_MODEL_PREFIXES = ["gpt-5", "o1", "o3", "o4"];
+
+function supportsReasoningEffort(model: string): boolean {
+  return REASONING_MODEL_PREFIXES.some((prefix) => model.startsWith(prefix));
+}
+
+/**
  * The client is built on first use, not in the constructor.
  *
  * `new OpenAI({})` throws when the key is missing, and the composition root
@@ -55,7 +66,7 @@ export class OpenAiCompletionAdapter implements AiCompletionPort {
           : [{ role: "developer" as const, content: request.systemPrompt }]),
         { role: "user", content: request.prompt },
       ],
-      reasoning_effort: "none",
+      ...(supportsReasoningEffort(this.model) ? { reasoning_effort: "none" as const } : {}),
       // "required" forces an actual function call whenever tools are offered
       // — left on "auto", the model is free to answer in plain prose, which
       // is right for a caller with a legitimate "nothing to show" case (see
