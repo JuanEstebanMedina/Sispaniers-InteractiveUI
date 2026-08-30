@@ -5,6 +5,12 @@ export interface OperationQueryFilter {
   ids?: string[];
   companyId?: string;
   health?: OperationHealth;
+  /**
+   * Texto libre, sin distinguir mayúsculas. Coincide contra el id de la
+   * operación, los ids de sus empresas y los puertos de sus reservas — que es
+   * lo que la persona tiene delante cuando escribe en el buscador.
+   */
+  search?: string;
   createdFrom?: Date;
   createdTo?: Date;
 }

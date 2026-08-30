@@ -8,7 +8,7 @@ import { endpoints, queryKeys } from '@/api/endpoints'
 import { ErrorBoundary } from '@/components/feedback/ErrorBoundary'
 import { Button } from '@/components/ui/Button'
 import { useDisclosure, useLocalStorage } from '@/hooks'
-import { flowListSchema } from '@/schemas'
+import { operationListSchema } from '@/schemas'
 import { Sidebar } from './Sidebar'
 
 export function AppShell() {
@@ -19,9 +19,17 @@ export function AppShell() {
   const { data: pendingDecisions } = useQuery({
     queryKey: queryKeys.operations.list(),
     queryFn: () =>
-      api$.get(endpoints.operations.list, flowListSchema),
-    select: (list) => list.flows.filter((o) => o.health === 'critical').length,
-    refetchInterval: 30_000,
+      api$.post(endpoints.operations.search, operationListSchema, {}),
+    select: (list) => list.operations.filter((o) => o.health === 'critical').length,
+    // 60s y no 30: esto alimenta UN PUNTO en el menú, y el punto no necesita
+    // precisión de medio minuto. En las pantallas de operaciones la lista se
+    // refresca cada 15s por su cuenta —misma clave de caché, así que este
+    // observador se entera gratis—; el intervalo propio existe sólo para las
+    // otras pantallas, donde nadie más la está pidiendo.
+    //
+    // El intervalo es POR OBSERVADOR, no por clave: dos componentes mirando la
+    // misma lista con intervalos distintos disparan dos series de peticiones.
+    refetchInterval: 60_000,
   })
 
   const [collapsed, setCollapsed] = useLocalStorage('yn.sidebar.collapsed', false)

@@ -5,16 +5,15 @@ import { idSchema, isoDateSchema } from './common.schema'
 /**
  * OPERACIÓN LOGÍSTICA — contrato real del backend + modelo de vista
  *
- * El backend llama "flow" a lo que la UI llama "operación", y responde el
- * nivel superior en snake_case mientras que `bookings` y `documents` viajan en
+ * El backend responde el nivel superior en snake_case mientras que `bookings` y `documents` viajan en
  * camelCase, tal como salen del dominio. Este archivo hace dos cosas:
  *
- *   1. PARSEA el contrato tal cual llega (`flowSchema`), sin maquillarlo.
+ *   1. PARSEA el contrato tal cual llega (`operationResponseSchema`), sin maquillarlo.
  *   2. Lo TRANSFORMA a un modelo de vista plano (`Operation`), que es lo que
  *      consumen la tarjeta, el riel y el detalle.
  *
  * La transformación vive acá y no en los componentes a propósito: si mañana el
- * backend renombra `client_id` o mueve la ETA de sitio, se toca este archivo y
+ * backend renombra un campo o mueve la ETA de sitio, se toca este archivo y
  * ninguno de los componentes que muestran operaciones.
  *
  * DOS EJES DE COLOR. `status` responde «¿en qué punto va?» y `health` «¿va
@@ -111,8 +110,10 @@ const HEALTH_FROM_BACKEND: Record<BackendHealth, OperationHealth> = {
 export interface Operation {
   /** El id del backend. Es lo que va en la URL y lo que la gente copia. */
   trackId: string
-  clientId: string
-  /** Nombre legible derivado del id — ver `clientName`. */
+  /** Una operación puede involucrar a varias empresas (exportador, importador,
+   *  agente). La tarjeta muestra la primera. */
+  companyIds: string[]
+  /** Nombre legible derivado del id — ver `companyName`. */
   shipper: string
   status: string
   health: OperationHealth
@@ -133,22 +134,21 @@ export interface Operation {
 /**
  * Nombre legible a partir del id del cliente.
  *
- *   `client-andes-textiles` → `Andes Textiles`
+ *   `company-andes-textiles` → `Andes Textiles`
  *
- * ⚠️ ES UN PARCHE, no una solución. El backend expone `client_id` pero no hay
- * endpoint de clientes, y el dominio SÍ tiene `Client { name }`. En cuanto
- * exista `GET /api/clients` esta función se borra y se usa el nombre real: un
- * id troceado no es un nombre, y con un cliente cuyo id no siga la convención
- * se va a ver mal.
+ * ⚠️ ES UN PARCHE, no una solución. El backend expone `company_ids` pero no hay
+ * endpoint que devuelva sus nombres. En cuanto exista `GET /api/companies`
+ * esta función se borra: un id troceado no es un nombre, y con una empresa
+ * cuyo id no siga la convención se va a ver mal.
  */
-export function clientName(clientId: string): string {
+export function companyName(companyId: string): string {
   return (
-    clientId
-      .replace(/^client[-_]/, '')
+    companyId
+      .replace(/^company[-_]/, '')
       .split(/[-_]/)
       .filter(Boolean)
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ') || clientId
+      .join(' ') || companyId
   )
 }
 
@@ -162,15 +162,22 @@ function latestScheduleChange(bookings: Booking[]): ScheduleChange | null {
   )
 }
 
-export const flowSchema = z
+export const operationResponseSchema = z
   .object({
     id: idSchema,
-    client_id: z.string(),
+    company_ids: z.array(z.string()).default([]),
     status: z.string(),
     health: z.enum(BACKEND_HEALTH).catch('ok'),
     created_at: isoDateSchema,
     bookings: z.array(bookingSchema).default([]),
-    documents: z.array(documentSchema).default([]),
+    // Los documentos se movieron dentro de `context`, que ahora además trae
+    // los correos que originaron la operación.
+    context: z
+      .object({
+        emails: z.array(z.unknown()).default([]),
+        documents: z.array(documentSchema).default([]),
+      })
+      .default({ emails: [], documents: [] }),
   })
   .transform((flow): Operation => {
     const [first] = flow.bookings
@@ -178,8 +185,8 @@ export const flowSchema = z
 
     return {
       trackId: flow.id,
-      clientId: flow.client_id,
-      shipper: clientName(flow.client_id),
+      companyIds: flow.company_ids,
+      shipper: flow.company_ids[0] ? companyName(flow.company_ids[0]) : '—',
       status: flow.status,
       health: HEALTH_FROM_BACKEND[flow.health],
       origin: first?.originPort ?? '',
@@ -194,10 +201,12 @@ export const flowSchema = z
       updatedAt: change?.occurredAt ?? flow.created_at,
       lastEvent: change ? `ETA movida · ${change.reason}` : null,
       bookings: flow.bookings,
-      documents: flow.documents,
+      documents: flow.context.documents,
     }
   })
 
-/** `GET /api/flows` responde `{ flows: [...] }` — sin paginación. */
-export const flowListSchema = z.object({ flows: z.array(flowSchema) })
-export type FlowList = z.infer<typeof flowListSchema>
+/** `GET /api/operations` responde `{ operations: [...] }` — sin paginación. */
+export const operationListSchema = z.object({
+  operations: z.array(operationResponseSchema),
+})
+export type OperationList = z.infer<typeof operationListSchema>

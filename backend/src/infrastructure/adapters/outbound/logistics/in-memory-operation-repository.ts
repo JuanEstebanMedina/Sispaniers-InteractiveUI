@@ -11,6 +11,23 @@ function companyMatches(operation: Operation, companyId: string): boolean {
   );
 }
 
+function matchesSearch(operation: Operation, search: string): boolean {
+  const needle = search.toLowerCase();
+  // Una operación se relaciona con empresas por dos vías: la dueña y las partes
+  // de cada reserva. Las dos entran acá, igual que en `companyMatches`.
+  const haystack = [
+    operation.id,
+    ...(operation.companyId !== undefined ? [operation.companyId] : []),
+    ...operation.bookings.flatMap((booking) => [
+      ...booking.companyIds,
+      booking.originPort,
+      booking.destinationPort,
+    ]),
+  ];
+
+  return haystack.some((value) => value.toLowerCase().includes(needle));
+}
+
 export class InMemoryOperationRepository implements OperationRepository {
   private readonly operations = new Map<string, Operation>();
 
@@ -27,6 +44,9 @@ export class InMemoryOperationRepository implements OperationRepository {
         return false;
       }
       if (filter.health !== undefined && operation.health !== filter.health) {
+        return false;
+      }
+      if (filter.search !== undefined && !matchesSearch(operation, filter.search)) {
         return false;
       }
       if (

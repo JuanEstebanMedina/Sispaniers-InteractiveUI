@@ -21,7 +21,7 @@ export function GeneratedSurface({ children, className }: GeneratedSurfaceProps)
   return (
     <section
       // A little padding so the widgets' shadows are not clipped by the scroll box.
-      className={cn('min-h-0 overflow-y-auto overflow-x-hidden p-1', className)}
+      className={cn('min-h-0 overflow-auto p-1', className)}
       aria-label={t('operation.generated.label')}
     >
       {children ?? (

@@ -50,7 +50,9 @@
       "title": "Active operations",
       "backToGrid": "View all",
       "show": "Show the other operations",
-      "hide": "Hide the panel"
+      "hide": "Hide the panel",
+      "resize": "Resize the panel",
+      "panel": "Side panel"
     },
     "generated": {
       "label": "Generated interface",
@@ -63,9 +65,12 @@
     },
     "chat": {
       "title": "Talk to the agent",
-      "empty": "Ask for something the interface does not cover: send an email, hold the dispatch, request a document.",
+      "empty": "Write to it like you would a colleague: “tell the client about the delay”, “hold the dispatch until I check the BL”, “ask the supplier for the certificate of origin”.",
       "placeholder": "Type what you need…",
-      "send": "Send"
+      "send": "Send",
+      "attach": "Attach a file",
+      "removeFile": "Remove {{name}}",
+      "emptyTitle": "Something to do by hand?"
     }
   }
 }
