@@ -1,7 +1,4 @@
-import {
-  assertFactualDataUnchanged,
-  assertSentEmailsUnchanged,
-} from "../../../domain/components/component-data-integrity.js";
+import { assertFactualDataUnchanged } from "../../../domain/components/component-data-integrity.js";
 import {
   setComponentTreePath,
   validateComponentSize,
@@ -54,7 +51,6 @@ export function createUpdateComponentContentUseCase(deps: UpdateComponentContent
     // field is a narrower edit, never a wider permission, and the field it
     // writes can just as easily be the company's own record.
     assertFactualDataUnchanged(existing.children, updatedChildren);
-    assertSentEmailsUnchanged(existing.children, updatedChildren);
 
     const updatedSize = isPathScoped ? existing.size : (input.size ?? existing.size);
 

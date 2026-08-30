@@ -228,10 +228,12 @@ export default function OperationDetailPage() {
     [pending, t],
   )
 
+  const dropComponent = removeComponent.mutate
+
   const widgets = useMemo(() => {
-    const base = generated ? toWidgets(generated.components, generated.layout) : []
+    const base = generated ? toWidgets(generated.components, generated.layout, dropComponent) : []
     return [...base, ...pendingWidgets]
-  }, [generated, pendingWidgets])
+  }, [generated, pendingWidgets, dropComponent])
 
   const persist = savePlacement.mutate
   const persistable = (generated?.components.length ?? 0) > 0

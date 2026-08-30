@@ -16,25 +16,33 @@ export function NodeProvider({ node, children }: { node: ComponentNode; children
   return <NodeCtx.Provider value={node}>{children}</NodeCtx.Provider>
 }
 
-const ComponentIdCtx = createContext<string | undefined>(undefined)
+interface ComponentIdentity {
+  componentId: string
+  onEmailSent?: (componentId: string) => void
+}
+
+const ComponentIdCtx = createContext<ComponentIdentity | undefined>(undefined)
 
 /**
- * Which stored component a part belongs to. Only the interactive parts need
- * it — sending an email has to tell the backend which draft left, and the node
- * itself carries no identity of its own.
+ * Which stored component a part belongs to, and how it asks to be taken off
+ * the grid. Only the interactive parts need it: a sent email is no longer a
+ * draft anyone can act on, and the node itself carries no identity of its own.
  */
 export function ComponentIdProvider({
   componentId,
+  onEmailSent,
   children,
-}: {
-  componentId: string
-  children: ReactNode
-}) {
-  return <ComponentIdCtx.Provider value={componentId}>{children}</ComponentIdCtx.Provider>
+}: ComponentIdentity & { children: ReactNode }) {
+  const identity = useMemo(() => ({ componentId, onEmailSent }), [componentId, onEmailSent])
+  return <ComponentIdCtx.Provider value={identity}>{children}</ComponentIdCtx.Provider>
 }
 
 export function useComponentId(): string | undefined {
-  return useContext(ComponentIdCtx)
+  return useContext(ComponentIdCtx)?.componentId
+}
+
+export function useOnEmailSent(): ((componentId: string) => void) | undefined {
+  return useContext(ComponentIdCtx)?.onEmailSent
 }
 
 export function useNode(): ComponentNode {

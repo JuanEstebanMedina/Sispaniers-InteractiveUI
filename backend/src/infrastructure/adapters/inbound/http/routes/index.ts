@@ -37,7 +37,6 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
   const {
     receiveEmail,
     sendEmail,
-    markEmailSent,
     upsertOperationFromEmail,
     createOperation,
     getOperation,
@@ -71,7 +70,6 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
   await fastify.register(emailsRoutes, {
     receiveEmail,
     sendEmail,
-    markEmailSent,
     upsertOperationFromEmail,
     enrollOperationInSimulation,
     generateComponentFromAi,

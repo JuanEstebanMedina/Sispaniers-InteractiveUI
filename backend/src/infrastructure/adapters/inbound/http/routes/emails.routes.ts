@@ -1,7 +1,6 @@
 import type { FastifyPluginAsyncZod, ZodTypeProvider } from "fastify-type-provider-zod";
 import type { EnrollOperationInSimulationInput } from "../../../../../application/use-cases/dashboard/enroll-operation-in-simulation.use-case.js";
 import type { GenerateComponentFromAiInput } from "../../../../../application/use-cases/dashboard/generate-component-from-ai.use-case.js";
-import type { MarkEmailSentInput } from "../../../../../application/use-cases/email/mark-email-sent.use-case.js";
 import type { ReceiveEmailResult } from "../../../../../application/use-cases/email/receive-email.use-case.js";
 import type {
   SendEmailInput,
@@ -24,7 +23,6 @@ import { sendEmailBodySchema, sendEmailResponseSchema } from "../schemas/send-em
 export interface EmailsRouteDeps {
   receiveEmail: (email: NormalizedEmail) => Promise<ReceiveEmailResult>;
   sendEmail: (input: SendEmailInput) => Promise<SendEmailResult>;
-  markEmailSent: (input: MarkEmailSentInput) => Promise<unknown>;
   upsertOperationFromEmail: (
     input: UpsertOperationFromEmailInput,
   ) => Promise<UpsertOperationFromEmailResult | undefined>;
@@ -172,19 +170,6 @@ export const emailsRoutes: FastifyPluginAsyncZod<EmailsRouteDeps> = async (fasti
         });
 
         request.log.warn({ run_id: dto.run_id, email_id: result.emailId }, "email sent");
-
-        // The widget the draft came from has to stop offering to send it, and
-        // the agent has to be able to see it left. Both read the component, so
-        // the send is only a fact once it is written back onto that node.
-        if (dto.component_id !== undefined) {
-          await deps.markEmailSent({
-            componentId: dto.component_id,
-            to: dto.to,
-            subject: dto.subject,
-            body: dto.body_text,
-            sentAt: new Date(),
-          });
-        }
 
         reply.code(201).send({ email_id: result.emailId, status: "sent" as const });
       } catch (error) {

@@ -43,25 +43,6 @@ test("rejects a path edit that rewrites a frozen figure", async () => {
   ).rejects.toThrow(/owned by the company/i);
 });
 
-test("rejects a path edit that rewrites an email somebody already received", async () => {
-  stored = component([
-    {
-      kind: "email-action",
-      order: 0,
-      props: { to: "a@b.co", subject: "Booking", body: "Hi", sentAt: "2026-08-30T12:00:00.000Z" },
-    } as ComponentNode,
-  ]);
-
-  await expect(
-    useCase()({
-      operationId: "op-1",
-      componentId: "cmp-1",
-      path: "children.0.props.subject",
-      value: "Booking — urgent",
-    }),
-  ).rejects.toThrow(/already sent/i);
-});
-
 test("allows a path edit that only restyles", async () => {
   stored = component([
     { kind: "stat", order: 0, props: { label: "Containers", value: 42 } } as ComponentNode,

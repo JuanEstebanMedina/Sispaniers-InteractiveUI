@@ -204,9 +204,6 @@ const NODE_SPECS: Record<AtomicNodeKind, Omit<NodeSpec, "nestable" | "forbiddenS
       to: "string — proposed recipient; leave empty if unknown, the user fills it in",
       subject: "string — proposed subject",
       body: "string — proposed message body",
-      sentAt:
-        "string — set by the system when the user sends it; never write it yourself, and never " +
-        "change a node that has one",
     },
     example: {
       to: "ops@andestextiles.co",
