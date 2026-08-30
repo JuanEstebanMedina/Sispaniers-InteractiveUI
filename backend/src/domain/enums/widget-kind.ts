@@ -21,6 +21,8 @@ export const ATOMIC_NODE_KINDS = [
   "divider",
   "sparkline",
   "file",
+  "map",
+  "email-action",
 ] as const;
 
 export type AtomicNodeKind = (typeof ATOMIC_NODE_KINDS)[number];
@@ -55,6 +57,7 @@ export const DATA_SOURCE_NAMES = [
   "documents",
   "containers-by-state",
   "schedule-changes",
+  "vessel-positions",
 ] as const;
 
 export type DataSourceName = (typeof DATA_SOURCE_NAMES)[number];

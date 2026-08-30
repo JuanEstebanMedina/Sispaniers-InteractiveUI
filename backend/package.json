@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "smoke": "tsx scripts/smoke.ts",
-    "seed": "tsx --env-file-if-exists=../.env --env-file-if-exists=.env scripts/seed.ts"
+    "seed": "tsx --env-file-if-exists=../.env --env-file-if-exists=.env scripts/seed.ts",
+    "seed:files": "tsx --env-file-if-exists=../.env --env-file-if-exists=.env scripts/upload-seed-files.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.0",

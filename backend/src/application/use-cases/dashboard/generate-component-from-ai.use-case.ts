@@ -205,7 +205,11 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         ? null
         : await companyRepository.findById(operation.companyId);
     const promptContext: PromptContext = {
-      companyKnowledge: company?.generalContext ?? [],
+      // The company's own id is an internal identifier, never the model's
+      // answer to "what's the client called" — leading with the real name
+      // here is what keeps it from guessing (or worse, inventing a
+      // plausible-looking id) when asked who the operation is for.
+      companyKnowledge: company ? [`Company name: ${company.name}`, ...company.generalContext] : [],
       clientMemory: [],
       runHistory:
         input.trigger === "chat" && chatHistoryPort !== undefined

@@ -84,16 +84,48 @@ const SLICES: Record<string, (operation: Operation) => DataRow[]> = {
     return [...counts].map(([name, value]) => ({ name, x: name, value, count: value }))
   },
 
-  /** Every ETA move the agent recorded, oldest first: the delay story. */
+  /**
+   * Every ETA move the agent recorded, oldest first: the delay story.
+   * `value` is days late versus the booking's original ETA as of that
+   * change — a flat "1 per change" line says nothing about how bad the
+   * slip actually got; this one climbs (or drops) with it.
+   */
   'schedule-changes': (operation) =>
+    operation.bookings
+      .flatMap((booking) =>
+        booking.schedule.changes.map((change) => {
+          const daysLate = Math.round(
+            (Date.parse(change.newEta) - Date.parse(booking.schedule.etaOriginal)) / 86_400_000,
+          )
+          return {
+            x: change.occurredAt.slice(0, 10),
+            at: change.occurredAt,
+            text: change.reason,
+            value: daysLate,
+            booking: booking.id,
+          }
+        }),
+      )
+      .sort((a, b) => Date.parse(a.at) - Date.parse(b.at)),
+
+  /**
+   * One row per booking that has a reported position — a booking nobody has
+   * tracked yet is absent, not a row with empty coordinates.
+   */
+  'vessel-positions': (operation) =>
     operation.bookings.flatMap((booking) =>
-      booking.schedule.changes.map((change) => ({
-        x: change.occurredAt.slice(0, 10),
-        at: change.occurredAt,
-        text: change.reason,
-        value: 1,
-        booking: booking.id,
-      })),
+      booking.vesselPosition
+        ? [
+            {
+              bookingId: booking.id,
+              vessel: booking.vessel,
+              carrier: booking.carrier,
+              lat: booking.vesselPosition.lat,
+              lng: booking.vesselPosition.lng,
+              updatedAt: booking.vesselPosition.updatedAt,
+            },
+          ]
+        : [],
     ),
 }
 

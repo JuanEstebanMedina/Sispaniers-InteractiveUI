@@ -140,6 +140,16 @@
       "pendingTitle": "Gerando…",
       "referenceWidget": "Perguntar ao agente sobre {{title}}"
     },
+    "emailAction": {
+      "to": "Para",
+      "subject": "Assunto",
+      "body": "Mensagem",
+      "send": "Enviar",
+      "sending": "Enviando…",
+      "sent": "Enviado",
+      "sendError": "Não foi possível enviar o e-mail.",
+      "missingFields": "Preencha o destinatário, o assunto e a mensagem antes de enviar."
+    },
     "chat": {
       "title": "Falar com o agente",
       "empty": "Escreva como escreveria a um colega: «avise o cliente do atraso», «segure o despacho até eu revisar o BL», «peça o certificado de origem ao fornecedor».",
