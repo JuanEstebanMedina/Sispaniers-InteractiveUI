@@ -176,6 +176,50 @@ test("chat includes prior conversation on later messages", async () => {
   expect(prompts[1]).toContain("user: Hola");
 });
 
+test("chat includes durable company knowledge", async () => {
+  let systemPrompt = "";
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID, companyId: "company-1" }) as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    companyRepository: {
+      findById: async () => ({
+        id: "company-1",
+        name: "Acme",
+        contactEmails: [],
+        preferredNotificationChannel: "email",
+        generalContext: ["Salida semanal desde Cartagena."],
+        active: true,
+      }),
+      findByName: async () => null,
+      findByContactEmail: async () => null,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async ({ systemPrompt: prompt }) => {
+        systemPrompt = prompt ?? "";
+        return { kind: "text", text: "Entendido." };
+      },
+    },
+    commandRegistry: new CommandRegistry(),
+    promptTemplate: "{{company_knowledge}}",
+  });
+
+  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "Hola" });
+
+  expect(systemPrompt).toContain("Salida semanal desde Cartagena.");
+});
+
 function componentStub(overrides: Partial<Component>): Component {
   return {
     id: "cmp-1",

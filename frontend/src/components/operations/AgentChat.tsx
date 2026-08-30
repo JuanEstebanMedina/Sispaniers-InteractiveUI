@@ -61,11 +61,22 @@ export function AgentChat({ operationId, className }: AgentChatProps) {
     setIsSending(true)
 
     try {
-      const { reply } = await http.post<{ reply: string }>(endpoints.ai.chat(operationId), {
+      const { reply, component_created: componentCreated } = await http.post<{
+        reply: string
+        component_created: boolean
+      }>(endpoints.ai.chat(operationId), {
         message: withDocs(body, docs),
         ...(componentIds.length > 0 && { componentIds }),
       })
-      append('agent', reply)
+
+      // No widget is coming for this turn — the reply is the whole answer.
+      // A transient notice fits that better than a line that sits in the
+      // history forever next to messages that did build something.
+      if (componentCreated) {
+        append('agent', reply)
+      } else {
+        toast.info(reply)
+      }
     } catch {
       toast.error(t('operation.chat.sendError'))
     } finally {

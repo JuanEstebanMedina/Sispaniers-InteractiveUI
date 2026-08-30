@@ -52,7 +52,7 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
           input: message,
           referencedComponentIds: componentIds ?? [],
         });
-        reply.code(201).send({ reply: result.reply });
+        reply.code(201).send({ reply: result.reply, component_created: result.component !== null });
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
           reply.code(404).send({ error: "operation_not_found", message: error.message });

@@ -31,12 +31,16 @@ even when a component is referenced.
 ```json
 {
   "children": [
-    { "kind": "<one of component_catalog>", "order": <n>, "props": { ... } }
+    { "kind": "<same index as create_component>", "order": <n>, "props": { ... } }
   ],
   "componentId": "<id of the existing component to update>",
   "reply": "<short natural-language message, addressed directly to the end user and shown verbatim in a chat bubble>"
 }
 ```
+
+`children` uses exactly the same `kind` index, the same props per component and
+the same data sources (`dataKey`) as `create_component` — there is no separate
+list for updates.
 
 - **`children` replaces the whole tree.** It is not a patch. Whatever you leave
   out is gone from the component. Start from the content you were given for that
@@ -48,6 +52,4 @@ even when a component is referenced.
   this operation is rejected.
 - `reply` is **required** — a conversational message for the end user, with no
   internal jargon, no HTML, no markdown, no code, never empty. Say what changed.
-- IMPORTANT: `kind` must be EXACTLY one of these values, never invent others:
-  `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`, `label`,
-  `button`, `layout`. Any other value is rejected and the whole update is lost.
+- There is no `layout` field: an update never resizes the component.

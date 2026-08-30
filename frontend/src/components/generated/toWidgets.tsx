@@ -64,7 +64,14 @@ export function toWidgets(components: GeneratedComponent[], layout: LayoutEntry[
         title: component.title ?? title ?? '—',
         priority: component.priority,
         fromAgent: component.title === undefined,
-        body: <>{createTree(rest, component.id)}</>,
+        // Parts that ask to fill the widget (`flex-1`, `h-full`) only get to —
+        // a chart's `flex-1` does nothing inside a bare Fragment, it needs a
+        // flex ancestor to grow against.
+        body: (
+          <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
+            {createTree(rest, component.id)}
+          </div>
+        ),
       },
     ]
   })

@@ -12,6 +12,7 @@ import {
 } from "../../../domain/model/errors.js";
 import type { AiCompletionPort } from "../../../domain/ports/ai-completion-port.js";
 import type { ChatHistoryPort } from "../../../domain/ports/chat-history.port.js";
+import type { CompanyRepository } from "../../../domain/ports/company.repository.js";
 import type { ComponentEventPublisher } from "../../../domain/ports/component-event-publisher.port.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
@@ -30,6 +31,7 @@ export interface GenerateComponentFromAiInput {
 export interface GenerateComponentFromAiDeps {
   operationRepository: OperationRepository;
   componentRepository: ComponentRepository;
+  companyRepository?: CompanyRepository;
   aiCompletionPort: AiCompletionPort;
   commandRegistry: CommandRegistry;
   promptTemplate: string;
@@ -112,6 +114,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
   const {
     operationRepository,
     componentRepository,
+    companyRepository,
     aiCompletionPort,
     commandRegistry,
     promptTemplate,
@@ -126,16 +129,27 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     operationId: string,
     trigger: AiTrigger,
   ): Promise<{ component: Component | null; reply: string }> {
-    const tools = commandRegistry.list().map((command) => ({
-      name: command.name,
-      description: command.description,
-      inputSchema: command.inputSchema,
-    }));
+    // save_company_context is a chat-only tool: a webhook has no user to
+    // confirm what is worth remembering about the company.
+    const tools = commandRegistry
+      .list()
+      .filter((command) => trigger !== "auto" || command.name !== "save_company_context")
+      .map((command) => ({
+        name: command.name,
+        description: command.description,
+        inputSchema: command.inputSchema,
+      }));
 
+    // "auto" always has to produce a component — nobody is reading a text
+    // reply from a webhook. "chat" may legitimately have nothing to show
+    // (the user asked for data the operation doesn't have), and forcing a
+    // tool call there just makes the model build an empty component to hang
+    // its answer on instead of saying so.
     const result = await aiCompletionPort.complete({
       prompt: input,
       systemPrompt,
       tools,
+      forceTool: trigger !== "chat",
     });
 
     if (result.kind === "text") {
@@ -143,6 +157,10 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         console.log(
           `generateComponentFromAi: chat trigger returned plain text for operation ${operationId}`,
         );
+        // No component is coming for this turn, so the placeholder from
+        // "component-pending" has nothing left to clear it — without this it
+        // sits on screen looking like a stuck blank widget until its timeout.
+        eventPublisher?.publish(operationId, "component-pending-cleared", null);
         return { component: null, reply: result.text };
       }
       console.warn(
@@ -198,15 +216,19 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     const referencedIds = new Set(input.referencedComponentIds ?? []);
     const referencedComponents = components.filter((component) => referencedIds.has(component.id));
 
-    const promptContext =
-      input.trigger === "chat" && chatHistoryPort !== undefined
-        ? {
-            companyKnowledge: [],
-            clientMemory: [],
-            runHistory: chatHistoryPort.get(input.operationId),
-            componentCatalog: [],
-          }
-        : undefined;
+    const company =
+      operation.companyId === undefined || companyRepository === undefined
+        ? null
+        : await companyRepository.findById(operation.companyId);
+    const promptContext = {
+      companyKnowledge: company?.generalContext ?? [],
+      clientMemory: [],
+      runHistory:
+        input.trigger === "chat" && chatHistoryPort !== undefined
+          ? chatHistoryPort.get(input.operationId)
+          : [],
+      componentCatalog: [],
+    };
     const prompt = buildSystemPrompt(
       promptTemplate,
       input.trigger,
