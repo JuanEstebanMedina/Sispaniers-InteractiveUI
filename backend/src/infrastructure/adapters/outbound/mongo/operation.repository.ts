@@ -31,9 +31,6 @@ export class MongoOperationRepository implements OperationRepository {
     // `$and`: un solo `query.$or` haría que el último escrito pisara al anterior.
     const clauses: Filter<OperationDocument>[] = [];
 
-    if (filter.ids !== undefined) {
-      query._id = { $in: filter.ids };
-    }
     if (filter.companyId !== undefined) {
       clauses.push({
         $or: [{ companyId: filter.companyId }, { "bookings.companyIds": filter.companyId }],

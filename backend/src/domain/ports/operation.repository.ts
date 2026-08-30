@@ -2,7 +2,6 @@ import type { OperationHealth } from "../enums/operation-health.js";
 import type { Operation } from "../logistics/operation.js";
 
 export interface OperationQueryFilter {
-  ids?: string[];
   companyId?: string;
   health?: OperationHealth;
   /**

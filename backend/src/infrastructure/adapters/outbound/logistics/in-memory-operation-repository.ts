@@ -37,9 +37,6 @@ export class InMemoryOperationRepository implements OperationRepository {
 
   async findAll(filter: OperationQueryFilter = {}): Promise<Operation[]> {
     return [...this.operations.values()].filter((operation) => {
-      if (filter.ids !== undefined && !filter.ids.includes(operation.id)) {
-        return false;
-      }
       if (filter.companyId !== undefined && !companyMatches(operation, filter.companyId)) {
         return false;
       }
