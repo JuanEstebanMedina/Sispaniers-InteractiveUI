@@ -63,3 +63,48 @@ test("an invalid component tree from a tool call is treated as an invalid AI res
     generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "hola" }),
   ).rejects.toThrow(InvalidAiComponentError);
 });
+
+test("chat does not offer update_component to the AI", async () => {
+  const commandRegistry = new CommandRegistry();
+  const execute = async () => ({ component: {}, reply: "creado" });
+  commandRegistry.register({
+    name: "create_component",
+    description: "stub",
+    inputSchema: { type: "object", properties: {} },
+    execute,
+  });
+  commandRegistry.register({
+    name: "update_component",
+    description: "stub",
+    inputSchema: { type: "object", properties: {} },
+    execute,
+  });
+
+  let offeredTools: string[] = [];
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as unknown as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async ({ tools }) => {
+        offeredTools = (tools ?? []).map((tool) => tool.name);
+        return { kind: "tool_call", toolName: "create_component", input: {} };
+      },
+    },
+    commandRegistry,
+    promptTemplate: "{{trigger}} {{input}}",
+  });
+
+  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "crea uno" });
+
+  expect(offeredTools).toEqual(["create_component"]);
+});

@@ -48,8 +48,14 @@ const ESTIMATED_PENDING_SIZE: WidgetSizeName = "small";
 const GRID_COLUMNS = 4;
 
 function buildExistingComponentsHint(
+  trigger: AiTrigger,
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
 ): string {
+  if (trigger === "chat") {
+    return `---
+Para mensajes de chat no esta disponible update_component. Usa create_component: siempre agrega un componente nuevo y nunca modifica uno existente.`;
+  }
+
   return `---
 Componentes existentes de esta operación (usa update_component SOLO si el mensaje del usuario menciona explicitamente que quiere modificar/actualizar/reemplazar un componente EXISTENTE, ej. menciona su contenido o proposito actual, usando su "id" como "componentId"; para cualquier peticion nueva o generica, usa siempre create_component, incluso si ya existen otros componentes):
 ${JSON.stringify(existingComponents)}`;
@@ -63,7 +69,7 @@ function buildPrompt(
 ): string {
   const base = buildBasePrompt(template, trigger, currentInput, GRID_COLUMNS);
 
-  return `${base}\n\n${buildExistingComponentsHint(existingComponents)}`;
+  return `${base}\n\n${buildExistingComponentsHint(trigger, existingComponents)}`;
 }
 
 export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFromAiDeps) {
@@ -82,11 +88,14 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     operationId: string,
     trigger: AiTrigger,
   ): Promise<{ component: Component | null; reply: string }> {
-    const tools = commandRegistry.list().map((command) => ({
+    const tools = commandRegistry
+      .list()
+      .filter((command) => trigger !== "chat" || command.name !== "update_component")
+      .map((command) => ({
       name: command.name,
       description: command.description,
       inputSchema: command.inputSchema,
-    }));
+      }));
 
     const result = await aiCompletionPort.complete({ prompt, tools });
 
