@@ -1,21 +1,20 @@
-## Herramienta: `create_component`
+## Tool: `create_component`
 
-Esta es la herramienta **por defecto**. Úsala siempre, salvo que el mensaje
-del usuario mencione de forma explícita e inequívoca que quiere modificar,
-actualizar, cambiar o reemplazar un componente que ya existe (ver
-`update_component`).
+This is the **default** tool. Always use it unless the user's message
+explicitly and unambiguously says they want to modify, update, change, or
+replace an existing component (see `update_component`).
 
-Cualquier petición genérica, nueva o ambigua usa `create_component` — incluso
-si ya existen otros componentes en la operación. Ejemplos que van aquí, no a
-`update_component`: "crea un componente", "muéstrame algo de envíos",
-"agrega un widget", "quiero ver estadísticas". Ninguno de estos menciona un
-componente existente concreto, así que ninguno califica para `update_component`.
+Any generic, new, or ambiguous request uses `create_component`, even when
+other components already exist in the operation. Examples that belong here,
+not in `update_component`: "create a component", "show me shipment data",
+"add a widget", "I want to see statistics". None mentions a concrete
+existing component, so none qualifies for `update_component`.
 
-Si tienes cualquier duda sobre si el mensaje referencia explícitamente un
-componente existente, no la tienes: usa `create_component`. Es más seguro
-añadir un componente de más que actualizar uno equivocado.
+If there is any doubt whether the message explicitly refers to an existing
+component, use `create_component`. Adding an extra component is safer than
+updating the wrong one.
 
-### Argumentos
+### Arguments
 
 ```json
 {
@@ -27,16 +26,15 @@ añadir un componente de más que actualizar uno equivocado.
 }
 ```
 
-- IMPORTANTE: `kind` debe ser EXACTAMENTE uno de estos valores, nunca inventes
-  otros: `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`,
-  `label`, `button`, `layout`. Cualquier otro valor será rechazado.
-- `layout` es **obligatorio** — declara cuántas celdas ocupa el componente en
-  la grilla de `{{grid_columns}}` columnas.
-- `reply` es **obligatorio** — mensaje conversacional para el usuario final,
-  sin jerga interna, sin HTML ni markdown ni código, nunca vacío.
-- Respeta siempre el rango permitido por el `kind` elegido
-  (`minCols/maxCols`, `minRows/maxRows`) — si no lo respetas, el backend
-  rechaza la salida y el step se reintenta.
-- Usa el tamaño más chico que comunique la información completa.
-- No calcules posición (`x`, `y`) — eso lo asigna el backend al insertar el
-  evento; solo declaras el tamaño.
+- IMPORTANT: `kind` must be EXACTLY one of these values; never invent others:
+  `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`,
+  `label`, `button`, `layout`. Any other value is rejected.
+- `layout` is **required**. It declares component grid cells in
+  `{{grid_columns}}` columns.
+- `reply` is **required**. It is a conversational message for the end user:
+  no internal jargon, HTML, markdown, or code; never empty.
+- Always follow chosen `kind` range (`minCols/maxCols`, `minRows/maxRows`).
+  Backend rejects invalid output and retries the step.
+- Use smallest size that communicates complete information.
+- Do not calculate position (`x`, `y`). Backend assigns it when inserting the
+  event; declare size only.
