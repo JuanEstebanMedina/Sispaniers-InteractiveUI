@@ -47,6 +47,13 @@ export class InvalidAiComponentError extends Error {
   }
 }
 
+export class AiCompletionError extends Error {
+  constructor(reason: string) {
+    super(`AI completion failed: ${reason}`);
+    this.name = "AiCompletionError";
+  }
+}
+
 export class DocumentNotFoundError extends Error {
   constructor(id: string) {
     super(`Document not found: ${id}`);

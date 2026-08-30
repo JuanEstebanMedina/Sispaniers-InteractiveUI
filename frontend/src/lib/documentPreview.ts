@@ -3,23 +3,11 @@ import type { LogisticsDocument, Operation } from '@/schemas'
 import { formatCalendarDate, humanize } from './format'
 
 /**
- * DOCUMENTO DE DEMOSTRACIÓN
+ * Hoja de demostración para cuando el archivo real no está en el bucket.
  *
- * El backend guarda los METADATOS de cada documento —tipo, formato, `bucketKey`,
- * lo que el agente extrajo— pero el seed no sube los archivos al bucket, así que
- * pedir la URL firmada devuelve `Object not found`. Esto rellena ese hueco:
- * arma en el navegador una hoja con los datos que sí tenemos.
- *
- * Tres reglas para que esto no se vuelva una mentira:
- *
- *   1. Sólo entra si el archivo REAL falló. Nunca se prefiere al de verdad.
- *   2. Sólo en modo demo (`VITE_DEMO_MODE`).
- *   3. La hoja se anuncia como simulada, arriba y en el título de la pestaña.
- *      Un documento logístico falso que se pueda confundir con uno real es un
- *      problema, no una demo.
- *
- * Los valores no se inventan: salen de la operación y de `extractedData`. Lo
- * único fabricado es la maquetación.
+ * Sólo entra si el archivo real falló y sólo en modo demo, y se anuncia como
+ * simulada. Los valores salen de la operación y de `extractedData`; lo único
+ * fabricado es la maquetación.
  */
 
 /** Los campos que dan contexto a cualquier documento de una operación. */

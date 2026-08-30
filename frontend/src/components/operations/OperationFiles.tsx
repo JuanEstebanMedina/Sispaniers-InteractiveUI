@@ -28,19 +28,8 @@ import { useChatAttachStore } from '@/stores/chatAttachStore'
 import { useRailStore } from '@/stores/railStore'
 
 /**
- * LOS ARCHIVOS QUE LLEGARON A LA OPERACIÓN
- *
- * No pide nada: los documentos ya vienen dentro de la operación (`context.documents`)
- * en la misma respuesta que alimenta la grilla y el riel. Una consulta aparte
- * para repintar lo que ya está en caché sería tráfico por gusto.
- *
- * Lo que sí se pide bajo demanda es la URL firmada para abrir uno, porque dura
- * cinco minutos: pedirla al listar la dejaría caducada antes de que nadie haga
- * clic.
- *
- * Cada archivo tiene dos salidas, y el orden no es casual: **Preguntar** primero
- * porque es lo que hace esta consola distinta de una carpeta compartida — el
- * agente ya leyó el documento y puede responder sobre él sin que nadie lo abra.
+ * Los documentos ya vienen dentro de la operación, así que listarlos no cuesta
+ * una consulta. La URL firmada sí se pide al abrir: dura cinco minutos.
  */
 
 const FORMAT_ICONS: Record<DocumentFormat, typeof File> = {
@@ -104,17 +93,13 @@ function FileRow({
   const openSection = useRailStore((state) => state.openSection)
 
   const Icon = FORMAT_ICONS[document.format]
-  // `type` viene del backend en PascalCase (`BillOfLading`). Se traduce si la
-  // clave existe; si el backend añade un tipo nuevo, se muestra crudo antes que
-  // en blanco.
+  // Si el backend añade un tipo nuevo, se muestra crudo antes que en blanco.
   const label = t(`operation.files.types.${document.type}`, { defaultValue: document.type })
 
   async function open() {
     if (!operation) return
 
-    // La pestaña se abre AHORA, sincrónicamente. Abrirla después del `await` la
-    // convierte en un popup que el navegador bloquea, porque ya no cuelga del
-    // clic.
+    // Sincrónico: abrirla tras el `await` la vuelve un popup y el navegador la bloquea.
     const tab = window.open('', '_blank')
     setOpening(true)
 
@@ -126,9 +111,7 @@ function FileRow({
       if (tab) tab.location.href = preview.url
       else window.location.href = preview.url
     } catch {
-      // El archivo real no está en el bucket (el seed sólo guarda metadatos).
-      // En demo se pinta la hoja con los datos que sí hay; fuera de demo, el
-      // error se dice y no se disimula.
+      // El archivo no está en el bucket. En demo se pinta la hoja con lo que hay.
       if (env.VITE_DEMO_MODE && tab) {
         const { html } = buildDocumentPreview(operation, document)
         tab.document.write(html)
@@ -156,8 +139,8 @@ function FileRow({
         <Icon className="mt-0.5 size-4 shrink-0 text-fg-subtle" aria-hidden />
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium text-fg">{label}</p>
-          <p className="mt-0.5 text-2xs text-fg-subtle">
+          <p className="truncate text-sm font-medium text-fg">{label}</p>
+          <p className="mt-0.5 text-xs text-fg-subtle">
             {formatCalendarDate(document.receivedAt)}
           </p>
         </div>
@@ -184,14 +167,13 @@ function FileRow({
         </div>
       </div>
 
-      {/* Lo que el agente extrajo. Es el motivo por el que el archivo está acá y
-          no en una carpeta: alguien ya lo leyó. */}
+      {/* Lo que el agente extrajo: el motivo por el que esto no es una carpeta. */}
       {facts.length > 0 && (
         <dl className="mt-1.5 flex flex-wrap gap-1 pl-6">
           {facts.map(([key, value]) => (
             <div
               key={key}
-              className="flex items-baseline gap-1 rounded bg-surface px-1.5 py-0.5 text-2xs"
+              className="flex items-baseline gap-1 rounded bg-surface px-1.5 py-0.5 text-xs"
             >
               <dt className="text-fg-subtle">{key}</dt>
               <dd className="font-medium tabular text-fg-muted">{String(value)}</dd>
