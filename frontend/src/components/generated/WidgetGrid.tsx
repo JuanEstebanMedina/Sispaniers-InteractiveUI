@@ -5,11 +5,36 @@ import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/cn'
 import { type GridItem, colsForWidth, moveItem, pack } from '@/lib/grid'
+import type { ComponentPriority } from '@/schemas/component.schema'
+
+/**
+ * Severity, worn on the frame.
+ *
+ * Someone scanning nine widgets has to see which one matters before reading any
+ * of them, so the signal is the border and a tinted header — the two things
+ * visible at a glance from across a room.
+ *
+ * Colour follows the palette's rule: red is cargo in trouble, amber wants a
+ * human. Neither is ever the agent's own voice, which stays cyan.
+ */
+const PRIORITY_FRAME: Record<ComponentPriority, string> = {
+  normal: 'border-line/40',
+  high: 'border-warning/50',
+  critical: 'border-danger/60',
+}
+
+const PRIORITY_HEADER: Record<ComponentPriority, string> = {
+  normal: 'border-line/40',
+  high: 'border-warning/40 bg-warning-subtle/40',
+  critical: 'border-danger/40 bg-danger-subtle/40',
+}
 
 const GAP_PX = 12
 
 export interface Widget extends GridItem {
   title: string
+  /** Drives the frame's severity tint. Absent reads as `normal`. */
+  priority?: ComponentPriority
   body: ReactNode
   fromAgent?: boolean
 }
@@ -219,6 +244,7 @@ export function WidgetGrid({
         // cursor — the drop outline is what shows where it is heading.
         const at = dragging ? (origins.get(item.id) ?? item) : item
         const title = renamed[item.id] ?? widget.title
+        const priority = widget.priority ?? 'normal'
 
         return (
           <article
@@ -227,7 +253,10 @@ export function WidgetGrid({
               'group/widget flex min-w-0 flex-col overflow-hidden rounded-xl border bg-surface',
               dragging
                 ? 'z-raised border-brand/40 shadow-xl'
-                : 'border-line/40 shadow-md transition-shadow duration-fast hover:shadow-lg',
+                : cn(
+                    PRIORITY_FRAME[priority],
+                    'shadow-md transition-shadow duration-fast hover:shadow-lg',
+                  ),
             )}
             style={{
               gridColumn: `${at.col + 1} / span ${at.w}`,
@@ -241,7 +270,8 @@ export function WidgetGrid({
             <header
               className={cn(
                 'flex shrink-0 touch-none select-none items-center gap-1.5 px-3 py-2',
-                'border-b border-line/40',
+                'border-b',
+                PRIORITY_HEADER[priority],
                 dragging ? 'cursor-grabbing' : 'cursor-grab',
                 widget.fromAgent && 'text-agent',
               )}

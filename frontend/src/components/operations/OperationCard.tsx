@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { ArrowRight, Container } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { useCompanyDirectory } from '@/hooks'
 import { cn } from '@/lib/cn'
 import { formatRelative } from '@/lib/format'
 import type { Operation } from '@/schemas'
@@ -15,8 +16,10 @@ interface OperationCardProps {
 
 export function OperationCard({ operation, active = false, className }: OperationCardProps) {
   const { t } = useTranslation(['domain', 'common'])
+  const companies = useCompanyDirectory()
 
   const needsAttention = operation.health === 'critical'
+  const shipper = companies[operation.companyIds[0] ?? ''] ?? operation.shipper
 
   return (
     <Link
@@ -45,9 +48,7 @@ export function OperationCard({ operation, active = false, className }: Operatio
       </div>
 
       <div className="mt-3 min-w-0 flex-1">
-        <p className="line-clamp-2 text-base font-medium leading-snug text-fg">
-          {operation.shipper}
-        </p>
+        <p className="line-clamp-2 text-base font-medium leading-snug text-fg">{shipper}</p>
 
         <p className="mt-1.5 flex items-center gap-1.5 text-sm text-fg-muted">
           <span className="truncate">{operation.origin}</span>

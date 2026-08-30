@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,9 +7,11 @@ import { api, api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
 import { SectionBoundary } from '@/components/feedback/ErrorBoundary'
 import { ErrorState } from '@/components/feedback/ErrorState'
+import { ComponentDataProvider } from '@/components/generated/ComponentData'
 import type { Widget } from '@/components/generated/WidgetGrid'
 import { WidgetGrid } from '@/components/generated/WidgetGrid'
 import { demoWidgets } from '@/components/generated/demoWidgets'
+import { sampleDatasets } from '@/components/generated/sampleComponents'
 import { toWidgets } from '@/components/generated/toWidgets'
 import { GeneratedSurface } from '@/components/operations/GeneratedSurface'
 import { OperationDetailHeader } from '@/components/operations/OperationDetailHeader'
@@ -21,6 +23,7 @@ import {
   componentsResponseSchema,
   operationListSchema,
   operationResponseSchema,
+  type Operation,
 } from '@/schemas'
 import { useRailStore } from '@/stores/railStore'
 
@@ -96,6 +99,7 @@ export default function OperationDetailPage() {
   const railOpen = useRailStore((state) => state.open)
   const railWidth = useRailStore((state) => state.width)
 
+  const queryClient = useQueryClient()
   const operation = detail.data
   const generated = components.data
 
@@ -122,14 +126,32 @@ export default function OperationDetailPage() {
         setPending((current) => [...current, pendingEvent])
         return
       }
-      // El chat de la operación es de un solo mensaje en vuelo a la vez, así
-      // que el placeholder más viejo es siempre el que este componente real
-      // reemplaza.
-      setPending((current) => current.slice(1))
+
+      if (event === 'component-created' || event === 'component-updated') {
+        // El chat de la operación es de un solo mensaje en vuelo a la vez, así
+        // que el placeholder más viejo es siempre el que este componente real
+        // reemplaza.
+        setPending((current) => current.slice(1))
+        // El backend empaqueta la grilla para `cols`; anexar en el cliente
+        // dejaría un componente en la cache que `toWidgets` nunca ubica.
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.operations.components(trackId, cols),
+        })
+        return
+      }
+
+      // `operation-updated` llega con la operación completa: directo a la
+      // cache, sin reempaquetar nada. El riel ordena por salud y actividad,
+      // así que también le toca enterarse.
+      const nextOperation = payload as Operation | null
+      if (nextOperation) {
+        queryClient.setQueryData(queryKeys.operations.detail(trackId), nextOperation)
+        void queryClient.invalidateQueries({ queryKey: queryKeys.operations.list() })
+      }
     },
-    [],
+    [queryClient, trackId, cols],
   )
-  useOperationEvents(trackId, onOperationEvent)
+  const stream = useOperationEvents(trackId, onOperationEvent)
 
   useEffect(() => {
     if (pending.length === 0) return
@@ -190,7 +212,7 @@ export default function OperationDetailPage() {
 
   return (
     <div className="flex h-dvh flex-col gap-3 px-2 py-4 sm:px-4">
-      {detail.isSuccess && <OperationDetailHeader operation={detail.data} waiting={waiting} />}
+      {detail.isSuccess && <OperationDetailHeader operation={detail.data} waiting={waiting} stream={stream} />}
 
       {detail.isPending && (
         <div className="grid grid-cols-4 gap-3">
@@ -209,13 +231,15 @@ export default function OperationDetailPage() {
       {detail.isSuccess && !components.isError && (
         <GeneratedSurface className="flex-1">
           <SectionBoundary name="generated-ui">
-            <WidgetGrid
-              widgets={widgets}
-              onMove={handleMove}
-              onTitleChange={handleTitleChange}
-              onColsChange={setCols}
-              reserve={railOpen ? railWidth : 0}
-            />
+            <ComponentDataProvider operation={operation} datasets={sampleDatasets}>
+              <WidgetGrid
+                widgets={widgets}
+                onMove={handleMove}
+                onTitleChange={handleTitleChange}
+                onColsChange={setCols}
+                reserve={railOpen ? railWidth : 0}
+              />
+            </ComponentDataProvider>
           </SectionBoundary>
         </GeneratedSurface>
       )}

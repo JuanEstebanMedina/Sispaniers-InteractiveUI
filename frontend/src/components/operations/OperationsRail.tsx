@@ -16,6 +16,7 @@ import {
   useRailStore,
 } from '@/stores/railStore'
 import { AgentChat } from './AgentChat'
+import { OperationFiles } from './OperationFiles'
 import { RailItem } from './RailItem'
 import { RailSection } from './RailSection'
 
@@ -60,9 +61,10 @@ export function OperationsRail({
 
   const onOperationEvent = useCallback(
     (eventName: OperationEventName) => {
-      // Pending placeholders are the grid's concern — the rail only reacts
-      // once a component actually exists to invalidate the cache for.
-      if (eventName === 'component-pending') return
+      // Pending placeholders and operation-level events are someone else's
+      // concern — the rail only reacts once a component actually exists to
+      // invalidate the cache for.
+      if (eventName !== 'component-created' && eventName !== 'component-updated') return
       toast.info(
         eventName === 'component-created'
           ? t('operation.events.componentCreated')
@@ -82,6 +84,14 @@ export function OperationsRail({
     [t, queryClient, activeTrackId],
   )
   useOperationEvents(activeTrackId ?? '', onOperationEvent)
+
+  // La operación abierta ya está en la lista que el riel recibe, así que esto
+  // es una lectura de lo que tiene en la mano — no una consulta más.
+  const active = useMemo(
+    () => operations.find((operation) => operation.trackId === activeTrackId),
+    [operations, activeTrackId],
+  )
+  const documents = active?.documents ?? []
 
   const sorted = useMemo(() => {
     const waiting = (operation: Operation) => (operation.health === 'critical' ? 0 : 1)
@@ -127,6 +137,16 @@ export function OperationsRail({
         weight={2}
       >
         <AgentChat operationId={activeTrackId ?? ''} className="min-h-0 flex-1" />
+      </RailSection>
+
+      <RailSection
+        title={t('operation.files.title')}
+        open={isOpen(sections, 'files', DEFAULT_SECTIONS.files)}
+        onToggle={() => toggleSection('files')}
+        badge={documents.length}
+        weight={2}
+      >
+        <OperationFiles operation={active} documents={documents} className="min-h-0 flex-1" />
       </RailSection>
 
       <RailSection

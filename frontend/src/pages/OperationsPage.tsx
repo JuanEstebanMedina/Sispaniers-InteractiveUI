@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { api$ } from '@/api/client'
@@ -24,19 +24,6 @@ const SORT_TO_BACKEND: Record<string, string> = {
   shipper: 'company',
   trackId: 'id',
 }
-
-/**
- * GRILLA DE OPERACIONES — la pantalla principal
- *
- * Esta página sólo se ocupa de la URL: lee los filtros de los search params,
- * pide los datos y se los pasa a `OperationsGrid`, que es quien pinta. Esa
- * división permite reusar la grilla en otro sitio sin arrastrar los search
- * params, y probarla sin montar un router.
- *
- * El orden por defecto es `updatedAt desc` y no fecha de creación: la pregunta
- * que responde la pantalla es «¿qué cambió mientras no estaba mirando?».
- */
-
 export default function OperationsPage() {
   const { t } = useTranslation('domain')
   // La URL sólo lleva lo que alguien cambió; acá se rellenan los ausentes.

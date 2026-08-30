@@ -35,11 +35,13 @@ const component = (
   id: string,
   size: GeneratedComponent['size'],
   content: GeneratedComponent['content'],
+  priority: GeneratedComponent['priority'] = 'normal',
 ): GeneratedComponent => ({
   id,
   operation_id: 'sample',
   kind: 'container',
   size,
+  priority,
   content,
   created_at: now,
 })
@@ -66,7 +68,7 @@ export const sampleComponents: GeneratedComponent[] = [
         },
       ],
     },
-  ]),
+  ], 'critical'),
 
   component('sample-trend', 'tall', [
     { kind: 'title', order: 0, props: { text: 'Retraso acumulado' } },

@@ -9,13 +9,12 @@ export const endpoints = {
     resetPassword: '/auth/reset-password',
   },
 
-  users: {
-    list: '/users',
-    detail: (id: string) => `/users/${id}`,
-    create: '/users',
-    update: (id: string) => `/users/${id}`,
-    remove: (id: string) => `/users/${id}`,
-    updateRole: (id: string) => `/users/${id}/role`,
+  companies: {
+    list: '/companies',
+    /** Idempotent by name: 200 if it already exists, 201 if it was created. */
+    create: '/companies',
+    /** Also how a company is disabled/re-enabled — `{ active: false/true }`. There's no remove. */
+    update: (id: string) => `/companies/${id}`,
   },
 
   operations: {
@@ -35,6 +34,12 @@ export const endpoints = {
       `/operations/${id}/components/${componentId}/placement`,
     componentContent: (id: string, componentId: string) =>
       `/operations/${id}/components/${componentId}`,
+    /**
+     * URL firmada y de vida corta (5 min) para ver un adjunto. No se pide al
+     * listar los archivos: se pide al abrir uno, porque caduca.
+     */
+    documentPreview: (id: string, documentId: string) =>
+      `/operations/${id}/documents/${documentId}/preview-url`,
   },
 
   notifications: {
@@ -57,10 +62,9 @@ export const queryKeys = {
   auth: {
     me: ['auth', 'me'] as const,
   },
-  users: {
-    all: ['users'] as const,
-    list: (filters?: unknown) => ['users', 'list', filters ?? {}] as const,
-    detail: (id: string) => ['users', 'detail', id] as const,
+  companies: {
+    all: ['companies'] as const,
+    list: () => ['companies', 'list'] as const,
   },
   operations: {
     all: ['operations'] as const,

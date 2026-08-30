@@ -8,6 +8,7 @@ import {
   nextOrderAfter,
 } from "../../../domain/components/component.js";
 import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
+import type { ComponentPriority } from "../../../domain/enums/widget-kind.js";
 import type { GridComponentKind } from "../../../domain/enums/widget-kind.js";
 import type { ComponentEventPublisher } from "../../../domain/ports/component-event-publisher.port.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
@@ -18,6 +19,7 @@ export interface CreateComponentInput {
   kind: GridComponentKind;
   children: ComponentNode[];
   size: WidgetSizeName;
+  priority?: ComponentPriority;
 }
 
 export interface CreateComponentDeps {
@@ -40,6 +42,7 @@ export function createCreateComponentUseCase(deps: CreateComponentDeps) {
       operationId: input.operationId,
       order: nextOrderAfter(siblings),
       size: input.size,
+      ...(input.priority !== undefined ? { priority: input.priority } : {}),
       kind: input.kind,
       children: input.children,
       createdAt: new Date(),

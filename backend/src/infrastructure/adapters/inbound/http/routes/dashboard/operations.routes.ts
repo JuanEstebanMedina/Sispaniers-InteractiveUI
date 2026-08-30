@@ -29,6 +29,7 @@ import type { Operation } from "../../../../../../domain/logistics/operation.js"
 import {
   BookingNotFoundError,
   CompanyNotFoundError,
+  CompanyReferenceRequiredError,
   ContainerNotFoundError,
   DocumentNotFoundError,
   DocumentUploadError,
@@ -108,7 +109,11 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
     {
       schema: {
         body: createOperationBodySchema,
-        response: { 201: operationResponseSchema, 404: errorResponseSchema },
+        response: {
+          201: operationResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+        },
       },
     },
     async (request, reply) => {
@@ -116,19 +121,35 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
 
       try {
         const result = await deps.createOperation({
-          companyId: dto.company_id,
+          ...(dto.company_id !== undefined ? { companyId: dto.company_id } : {}),
+          ...(dto.company !== undefined
+            ? {
+                company: {
+                  name: dto.company.name,
+                  ...(dto.company.contact_emails !== undefined
+                    ? { contactEmails: dto.company.contact_emails }
+                    : {}),
+                },
+              }
+            : {}),
           ...(dto.health !== undefined ? { health: dto.health } : {}),
         });
 
         await deps.enrollOperationInSimulation({
           operationId: result.operation.id,
-          companyId: dto.company_id,
+          ...(result.operation.companyId !== undefined
+            ? { companyId: result.operation.companyId }
+            : {}),
         });
 
         reply.code(201).send(toOperationResponse(result.operation, result.status));
       } catch (error) {
         if (error instanceof CompanyNotFoundError) {
           reply.code(404).send({ error: "company_not_found", message: error.message });
+          return;
+        }
+        if (error instanceof CompanyReferenceRequiredError) {
+          reply.code(400).send({ error: "company_reference_required", message: error.message });
           return;
         }
         throw error;

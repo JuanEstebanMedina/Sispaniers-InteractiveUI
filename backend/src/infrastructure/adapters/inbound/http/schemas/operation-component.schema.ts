@@ -1,12 +1,16 @@
 import { z } from "zod";
 import { WIDGET_SIZES, type WidgetSizeName } from "../../../../../domain/components/widget-size.js";
-import { GRID_COMPONENT_KINDS } from "../../../../../domain/enums/widget-kind.js";
+import {
+  COMPONENT_PRIORITIES,
+  GRID_COMPONENT_KINDS,
+} from "../../../../../domain/enums/widget-kind.js";
 import { componentChildrenSchema } from "./component-node.schema.js";
 
 const widgetSizeNames = Object.keys(WIDGET_SIZES) as [WidgetSizeName, ...WidgetSizeName[]];
 
 export const widgetSizeSchema = z.enum(widgetSizeNames);
 export const gridComponentKindSchema = z.enum(GRID_COMPONENT_KINDS);
+export const componentPrioritySchema = z.enum(COMPONENT_PRIORITIES);
 
 export const gridColsSchema = z.union([z.literal(2), z.literal(4), z.literal(8)]);
 
@@ -28,6 +32,7 @@ export const componentResponseSchema = z.object({
   title: z.string().optional(),
   content: z.array(z.unknown()),
   size: z.string(),
+  priority: z.string(),
   created_at: z.string(),
 });
 
@@ -63,5 +68,8 @@ export const updateComponentContentResponseSchema = componentResponseSchema;
 export const createComponentBodySchema = z.object({
   kind: gridComponentKindSchema,
   size: widgetSizeSchema,
+  // Optional so the agent only says it when it means it: everything is normal
+  // until something is not, and a required field invites a default that lies.
+  priority: componentPrioritySchema.optional(),
   children: componentChildrenSchema,
 });

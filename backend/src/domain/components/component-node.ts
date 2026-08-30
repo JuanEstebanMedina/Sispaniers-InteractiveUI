@@ -3,6 +3,7 @@ import {
   ATOMIC_NODE_KINDS,
   type ActionKind,
   type AtomicNodeKind,
+  DATA_SOURCE_NAMES,
   LAYOUT_DIRECTIONS,
   type LayoutDirection,
   NESTABLE_ATOMIC_NODE_KINDS,
@@ -64,6 +65,18 @@ function validateComponentNode(node: unknown, remainingDepth: number): void {
     }
   } else if (action !== undefined) {
     throw new InvalidComponentTreeError(`action is not permitted on kind: ${kind}`);
+  }
+
+  // A dataKey the frontend cannot resolve renders nothing and says nothing.
+  // Rejecting it here turns a silent blank widget into an error the agent can
+  // act on.
+  if (
+    props.dataKey !== undefined &&
+    !(DATA_SOURCE_NAMES as readonly string[]).includes(String(props.dataKey))
+  ) {
+    throw new InvalidComponentTreeError(
+      `unknown dataKey: ${String(props.dataKey)} (expected one of ${DATA_SOURCE_NAMES.join(", ")})`,
+    );
   }
 
   if (!NESTABLE_ATOMIC_NODE_KINDS.has(kind as AtomicNodeKind)) {

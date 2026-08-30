@@ -1,4 +1,39 @@
 {
+  "company": {
+    "title": "Empresas",
+    "subtitle": "Cada empresa com quem o agente trabalha, identificada pelo nome para nunca haver duplicatas.",
+    "emptyTitle": "Ainda não há empresas",
+    "emptyHint": "Crie a primeira, ou ela será criada automaticamente na primeira vez que uma operação a nomear.",
+    "actions": {
+      "create": "Nova empresa"
+    },
+    "modal": {
+      "title": "Nova empresa",
+      "editTitle": "Editar empresa",
+      "description": "As empresas são identificadas pelo nome — criar uma com um nome existente apenas a reutiliza."
+    },
+    "fields": {
+      "name": "Nome",
+      "namePlaceholder": "ex. Andes Textiles",
+      "contactEmail": "E-mail de contato",
+      "contactEmailPlaceholder": "ops@empresa.com",
+      "notificationChannel": "Canal de notificação",
+      "status": "Status"
+    },
+    "channels": {
+      "email": "E-mail",
+      "slack": "Slack"
+    },
+    "status": {
+      "active": "Ativa",
+      "disabled": "Desabilitada"
+    },
+    "toasts": {
+      "saved": "{{name}} está pronta",
+      "disabled": "{{name}} foi desabilitada",
+      "enabled": "{{name}} foi habilitada"
+    }
+  },
   "operation": {
     "title": "Operações",
     "subtitle": "Tudo o que os agentes estão executando agora. O que se moveu por último, primeiro.",
@@ -76,9 +111,32 @@
       "componentGenerated": "Componente atualizado no painel.",
       "sendError": "Não foi possível enviar a mensagem ao agente."
     },
+    "files": {
+      "title": "Arquivos",
+      "emptyTitle": "Ainda não chegou nada",
+      "empty": "Aqui aparecem os documentos que o agente recebeu por e-mail: BLs, faturas, listas de embalagem.",
+      "ask": "Perguntar à IA",
+      "alreadyAttached": "Já está no chat",
+      "open": "Abrir o arquivo",
+      "openError": "Não foi possível abrir o arquivo.",
+      "types": {
+        "PO": "Ordem de compra",
+        "BookingConfirmation": "Confirmação de reserva",
+        "BillOfLading": "Conhecimento de embarque",
+        "Invoice": "Fatura",
+        "PackingList": "Lista de embalagem",
+        "ArrivalNotice": "Aviso de chegada"
+      }
+    },
     "events": {
       "componentCreated": "Um novo componente foi gerado",
       "componentUpdated": "Um componente foi atualizado"
+    },
+    "stream": {
+      "live": "Ao vivo",
+      "connecting": "Conectando…",
+      "offline": "Sem conexão",
+      "ended": "Fluxo concluído"
     }
   }
 }

@@ -31,6 +31,7 @@ export function toWidgets(
         w: at.w,
         h: at.h,
         title: component.title ?? agentTitle ?? '—',
+        priority: component.priority,
         fromAgent: component.title === undefined,
         body: <ComponentNodeView nodes={body} />,
       },

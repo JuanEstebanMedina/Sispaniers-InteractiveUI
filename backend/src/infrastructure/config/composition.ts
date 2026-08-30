@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { createCreateComponentCommand } from "../../application/commands/create-component.command.js";
 import { createUpdateComponentCommand } from "../../application/commands/update-component.command.js";
 import { createApplyTrackingEventUseCase } from "../../application/use-cases/dashboard/apply-tracking-event.use-case.js";
+import { createCreateCompanyUseCase } from "../../application/use-cases/dashboard/create-company.use-case.js";
 import { createCreateComponentUseCase } from "../../application/use-cases/dashboard/create-component.use-case.js";
 import { createCreateOperationUseCase } from "../../application/use-cases/dashboard/create-operation.use-case.js";
 import { createDeleteComponentUseCase } from "../../application/use-cases/dashboard/delete-component.use-case.js";
@@ -12,14 +13,17 @@ import { createGenerateComponentFromAiUseCase } from "../../application/use-case
 import { createGetDocumentPreviewUrlUseCase } from "../../application/use-cases/dashboard/get-document-preview-url.use-case.js";
 import { createGetOperationComponentsUseCase } from "../../application/use-cases/dashboard/get-operation-components.use-case.js";
 import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
+import { createListCompaniesUseCase } from "../../application/use-cases/dashboard/list-companies.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
 import { createRunSimulationTickUseCase } from "../../application/use-cases/dashboard/run-simulation-tick.use-case.js";
+import { createUpdateCompanyUseCase } from "../../application/use-cases/dashboard/update-company.use-case.js";
 import { createUpdateComponentContentUseCase } from "../../application/use-cases/dashboard/update-component-content.use-case.js";
 import { createUpdateComponentPlacementUseCase } from "../../application/use-cases/dashboard/update-component-placement.use-case.js";
 import { createUploadOperationDocumentUseCase } from "../../application/use-cases/dashboard/upload-operation-document.use-case.js";
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import { createUpsertOperationFromEmailUseCase } from "../../application/use-cases/email/upsert-operation-from-email.use-case.js";
+import { createResolveCompanyUseCase } from "../../application/use-cases/shared/resolve-company.use-case.js";
 import { CommandRegistry } from "../../domain/commands/command-registry.js";
 import type { AiCompletionPort } from "../../domain/ports/ai-completion-port.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
@@ -146,14 +150,19 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     attachmentExtractor,
     attachmentStorage,
   });
-  const sendEmail = createSendEmailUseCase({ emailSender, idGenerator });
+  const sendEmail = createSendEmailUseCase({ emailSender, idGenerator, companyRepository });
+  const createCompany = createCreateCompanyUseCase({ companyRepository, idGenerator });
+  const listCompanies = createListCompaniesUseCase({ companyRepository });
+  const updateCompany = createUpdateCompanyUseCase({ companyRepository });
+  const resolveCompany = createResolveCompanyUseCase({ companyRepository, createCompany });
   const upsertOperationFromEmail = createUpsertOperationFromEmailUseCase({
     operationRepository,
+    resolveCompany,
     idGenerator,
   });
   const createOperation = createCreateOperationUseCase({
     operationRepository,
-    companyRepository,
+    resolveCompany,
     idGenerator,
   });
   const componentEventPublisher = new InMemoryComponentEventPublisher();
@@ -251,6 +260,9 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const app = buildApp({
     receiveEmail,
     sendEmail,
+    createCompany,
+    listCompanies,
+    updateCompany,
     upsertOperationFromEmail,
     createOperation,
     getOperation,

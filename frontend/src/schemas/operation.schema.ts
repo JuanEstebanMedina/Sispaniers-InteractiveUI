@@ -83,16 +83,34 @@ const bookingSchema = z.object({
 
 export type Booking = z.infer<typeof bookingSchema>
 
+/**
+ * Formatos que declara el backend. `catch('other')` y no un enum estricto: un
+ * formato nuevo debe salir con icono genérico, nunca tumbar la lista entera de
+ * archivos de la operación.
+ */
+export const DOCUMENT_FORMATS = ['pdf', 'spreadsheet', 'document', 'image', 'other'] as const
+export type DocumentFormat = (typeof DOCUMENT_FORMATS)[number]
+
 const documentSchema = z.object({
   id: idSchema,
   type: z.string(),
+  format: z.enum(DOCUMENT_FORMATS).catch('other'),
+  /** Ruta en el bucket. No es una URL: para verlo hay que pedir una firmada. */
+  bucketKey: z.string().default(''),
   bookingId: z.string().optional(),
   sourceEmailId: z.string().optional(),
+  /** Lo que el agente leyó del documento. Es el valor real del archivo acá. */
   extractedData: z.record(z.string(), z.unknown()).default({}),
   receivedAt: isoDateSchema,
 })
 
 export type LogisticsDocument = z.infer<typeof documentSchema>
+
+/** `{ url, expires_in_seconds }` — la firma dura 5 minutos. */
+export const documentPreviewSchema = z.object({
+  url: z.string(),
+  expires_in_seconds: z.number(),
+})
 
 /* ---------------------------------------------------------------------------
  * MODELO DE VISTA
@@ -113,7 +131,12 @@ export interface Operation {
   /** Una operación puede involucrar a varias empresas (exportador, importador,
    *  agente). La tarjeta muestra la primera. */
   companyIds: string[]
-  /** Nombre legible derivado del id — ver `companyName`. */
+  /**
+   * Nombre legible de la primera empresa, o su id crudo si `useCompanyDirectory`
+   * (que resuelve contra `GET /api/companies`) todavía no cargó o no la
+   * encuentra. Los componentes que lo muestran resuelven el nombre real ahí;
+   * esto es sólo el valor de arranque antes de que esa consulta responda.
+   */
   shipper: string
   status: string
   health: OperationHealth
@@ -129,27 +152,6 @@ export interface Operation {
   lastEvent: string | null
   bookings: Booking[]
   documents: LogisticsDocument[]
-}
-
-/**
- * Nombre legible a partir del id del cliente.
- *
- *   `company-andes-textiles` → `Andes Textiles`
- *
- * ⚠️ ES UN PARCHE, no una solución. El backend expone `company_ids` pero no hay
- * endpoint que devuelva sus nombres. En cuanto exista `GET /api/companies`
- * esta función se borra: un id troceado no es un nombre, y con una empresa
- * cuyo id no siga la convención se va a ver mal.
- */
-export function companyName(companyId: string): string {
-  return (
-    companyId
-      .replace(/^company[-_]/, '')
-      .split(/[-_]/)
-      .filter(Boolean)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ') || companyId
-  )
 }
 
 /** El cambio de ETA más reciente de toda la operación, si lo hubo. */
@@ -186,7 +188,7 @@ export const operationResponseSchema = z
     return {
       trackId: flow.id,
       companyIds: flow.company_ids,
-      shipper: flow.company_ids[0] ? companyName(flow.company_ids[0]) : '—',
+      shipper: flow.company_ids[0] ?? '—',
       status: flow.status,
       health: HEALTH_FROM_BACKEND[flow.health],
       origin: first?.originPort ?? '',
