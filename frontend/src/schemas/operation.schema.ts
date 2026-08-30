@@ -24,8 +24,6 @@ const scheduleChangeSchema = z.object({
 
 export type ScheduleChange = z.infer<typeof scheduleChangeSchema>
 
-// `state` is a loose string, not an enum: a state the backend invents paints
-// neutral instead of blanking the card.
 const containerSchema = z.object({
   id: idSchema,
   containerNumber: z.string(),
@@ -57,11 +55,15 @@ export type Booking = z.infer<typeof bookingSchema>
 export const DOCUMENT_FORMATS = ['pdf', 'spreadsheet', 'document', 'image', 'other'] as const
 export type DocumentFormat = (typeof DOCUMENT_FORMATS)[number]
 
+/**
+ * The wire shape is snake_case and the app speaks camelCase, so the rename
+ * happens here — at the boundary — not in every component that reads a
+ * document. Covers both paths: nested in an operation, and returned by upload.
+ */
 const documentSchema = z.object({
   id: idSchema,
   type: z.string(),
-  // A format nobody has seen yet gets the generic icon rather than taking the
-  // whole document list down with it.
+  filename: z.string().optional(),
   format: z.enum(DOCUMENT_FORMATS).catch('other'),
   bucketKey: z.string().default(''),
   bookingId: z.string().optional(),
@@ -71,6 +73,12 @@ const documentSchema = z.object({
 })
 
 export type LogisticsDocument = z.infer<typeof documentSchema>
+
+export const uploadDocumentResponseSchema = z.object({
+  document: documentSchema,
+  url: z.string(),
+  expires_in_seconds: z.number(),
+})
 
 export const documentPreviewSchema = z.object({
   url: z.string(),
@@ -142,9 +150,6 @@ export const operationResponseSchema = z
       containers: flow.bookings.reduce((total, booking) => total + booking.containers.length, 0),
       eta: first?.schedule.etaCurrent ?? null,
       etd: first?.schedule.etdOriginal ?? null,
-      // `created_at` is the only date the backend sends, but an operation
-      // created in July whose ETA moved yesterday moved YESTERDAY. The grid
-      // sorts by this, and creation time would lie about what changed.
       updatedAt: change?.occurredAt ?? flow.created_at,
       lastEvent: change ? `ETA movida · ${change.reason}` : null,
       bookings: flow.bookings,

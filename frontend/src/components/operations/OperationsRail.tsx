@@ -17,7 +17,7 @@ import {
   useRailStore,
 } from '@/stores/railStore'
 import { AgentChat } from './AgentChat'
-import { OperationFiles } from './OperationFiles'
+import { DirectUploadButton, OperationFiles } from './OperationFiles'
 import { RailItem } from './RailItem'
 import { RailSection } from './RailSection'
 
@@ -111,6 +111,7 @@ export function OperationsRail({
         open={isOpen(sections, 'files', DEFAULT_SECTIONS.files)}
         onToggle={() => toggleSection('files')}
         badge={documents.length}
+        action={activeTrackId && <DirectUploadButton operationId={activeTrackId} />}
         weight={2}
       >
         <OperationFiles operation={active} documents={documents} className="min-h-0 flex-1" />

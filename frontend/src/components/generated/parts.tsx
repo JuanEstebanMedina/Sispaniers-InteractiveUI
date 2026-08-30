@@ -1,4 +1,3 @@
-import type { LatLngExpression } from 'leaflet'
 import {
   File,
   FileArchive,
@@ -9,8 +8,7 @@ import {
   FileType,
   Presentation,
 } from 'lucide-react'
-import { Fragment, type ReactNode, useEffect, useState } from 'react'
-import { CircleMarker, MapContainer, TileLayer, Tooltip as LeafletTooltip, useMap } from 'react-leaflet'
+import { Fragment, lazy, Suspense, type ReactNode, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
 
@@ -34,21 +32,6 @@ import {
 import { useDataset, useOperation } from './ComponentData'
 import { useComponentId, useNode, useOnEmailSent, useProps, type PropReader } from './NodeContext'
 
-/**
- * THE PARTS
- *
- * Each one reads what it cares about from context and takes no props at all.
- *
- * That is the whole point. The agent's trees nest up to four levels, and with
- * props every layout in between would forward values it has no business
- * knowing: a chart two layouts deep reads its own `dataKey` and its own series,
- * and the layouts above it never learn a chart exists.
- *
- * `useProps()` is the single place the agent's `Record<string, unknown>` is
- * distrusted. A wrong type or an off-list value becomes the default there, so
- * no part below ever sees something it cannot render.
- */
-
 const DIRECTIONS = ['row', 'column'] as const
 const GAPS = ['none', 'xs', 'sm', 'md', 'lg'] as const
 const ALIGNS = ['start', 'center', 'end', 'stretch'] as const
@@ -58,11 +41,6 @@ type Gap = (typeof GAPS)[number]
 type Align = (typeof ALIGNS)[number]
 type Justify = (typeof JUSTIFIES)[number]
 
-/**
- * Design-system values only. The agent picks a name from a closed list, never a
- * raw length or colour — a `gap: "37px"` cannot reach the DOM, so a generated
- * screen cannot drift off the spacing rhythm or the palette.
- */
 const GAP_CLASS: Record<Gap, string> = {
   none: 'gap-0',
   xs: 'gap-1',
@@ -85,24 +63,15 @@ const JUSTIFY_CLASS: Record<Justify, string> = {
   between: 'justify-between',
 }
 
-/**
- * The colour a node asked for.
- *
- * Reads `color` first, then `tone` and `status` — the two names the earlier
- * parts used. Keeping the aliases costs one line and means a tree the agent
- * wrote yesterday does not suddenly render grey.
- */
-function colorOf(props: PropReader, fallback: ColorName): ColorName {
+export function colorOf(props: PropReader, fallback: ColorName): ColorName {
   for (const key of ['color', 'tone', 'status'] as const) {
     const value = props.str(key)
     if (isColorName(value)) return value
-    // `neutral` was the old name for "no colour".
     if (value === 'neutral') return 'muted'
   }
   return fallback
 }
 
-/** The only part that receives anything, and only the already-built subtree. */
 export function Layout({ children }: { children?: ReactNode }) {
   const props = useProps()
 
@@ -164,13 +133,6 @@ export function Stat() {
   )
 }
 
-/**
- * Rendered, and deliberately inert.
- *
- * The action vocabulary exists on both sides but nothing is wired to it yet. A
- * button that looks live and does nothing is worse in a supervision console
- * than one that plainly says it is not ready.
- */
 export function Button() {
   const props = useProps()
   return (
@@ -331,13 +293,6 @@ export function EmailAction() {
   )
 }
 
-/**
- * A series with no key would draw an axis off nothing, so it is dropped.
- *
- * `color` names one from the vocabulary — `"danger"` for the delayed bar. With
- * no name it falls back to the chart palette by position, which is what keeps
- * three unnamed series from all coming out the same colour.
- */
 const asSeries = (item: Record<string, unknown>, index: number): Series | null => {
   const key = typeof item.key === 'string' ? item.key : ''
   if (!key) return null
@@ -390,11 +345,6 @@ export function Category() {
   )
 }
 
-/**
- * A donut earns its hole: the centre carries the total, so nobody has to add up
- * slices. Sorted biggest-first, because a ring is read clockwise from the top
- * and the eye should meet the largest share there.
- */
 export function Breakdown() {
   const props = useProps()
   const rows = (useDataset(props.text('dataKey')) ?? []) as { name: string; value: number }[]
@@ -435,7 +385,6 @@ export function Divider() {
   return <hr className="my-1 border-t border-line" />
 }
 
-/** Label/value pairs: booking fields, BL data, whatever the agent extracted. */
 export function KeyValues() {
   const items = useProps().list('items', (item) => {
     const label = typeof item.label === 'string' ? item.label : ''
@@ -456,10 +405,6 @@ export function KeyValues() {
   )
 }
 
-/**
- * Rows to scan side by side. Takes them inline or from a named source, so the
- * agent can write four rows by hand or point at forty it never has to send.
- */
 export function DataTable() {
   const props = useProps()
   const columns = props.list('columns', (item) => {
@@ -503,10 +448,6 @@ export function DataTable() {
   )
 }
 
-/**
- * The sequence of what happened — the most logistics-shaped block there is:
- * booking confirmed, departed, transhipped, arrived.
- */
 export function Timeline() {
   const props = useProps()
   const inline = props.list('events', (item) => {
@@ -562,8 +503,6 @@ export function Progress() {
   const max = props.num('max', 100)
   const label = props.text('label')
 
-  // Clamped: a value past the target would paint a bar wider than its track,
-  // and a max of zero would divide by it.
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0
 
   return (
@@ -590,12 +529,6 @@ export function Progress() {
   )
 }
 
-/**
- * A trend with no axes, legend or grid — just the shape.
- *
- * Exists because a full chart needs about 2x2 to be readable and a tile has
- * room for a number and a line, nothing else.
- */
 export function Sparkline() {
   const props = useProps()
   const rows = useDataset(props.text('dataKey')) ?? []
@@ -634,7 +567,7 @@ export function Sparkline() {
   )
 }
 
-interface VesselPositionRow {
+export interface VesselPositionRow {
   bookingId: string
   vessel: string
   carrier: string
@@ -642,78 +575,16 @@ interface VesselPositionRow {
   lng: number
 }
 
-/** Leaflet measures its container once on mount; a grid resize needs a nudge. */
-function InvalidateOnResize() {
-  const map = useMap()
+const MapPart = lazy(() => import('./MapPart'))
 
-  useEffect(() => {
-    const container = map.getContainer()
-    const observer = new ResizeObserver(() => map.invalidateSize())
-    observer.observe(container)
-    return () => observer.disconnect()
-  }, [map])
-
-  return null
-}
-
-function averageCenter(rows: VesselPositionRow[]): LatLngExpression {
-  return [
-    rows.reduce((sum, row) => sum + row.lat, 0) / rows.length,
-    rows.reduce((sum, row) => sum + row.lng, 0) / rows.length,
-  ]
-}
-
-/** Live vessel positions. A booking with nothing reported yet has no marker to show. */
 export function Map() {
-  const props = useProps()
-  const rows = useDataset(props.text('dataKey')) as VesselPositionRow[] | undefined
-  const title = props.text('title')
-  const accent = CHART_COLOR[colorOf(props, 'brand')]
-
-  if (!rows || rows.length === 0) return null
-
   return (
-    <div className="flex min-h-40 flex-1 flex-col gap-1">
-      {title && (
-        <h4 className="truncate font-display text-sm font-semibold tracking-tight text-fg">
-          <InlineMarkdown text={title} />
-        </h4>
-      )}
-      <div className="min-h-0 flex-1 overflow-hidden rounded-md">
-        <MapContainer
-          center={averageCenter(rows)}
-          zoom={4}
-          scrollWheelZoom={false}
-          className="h-full w-full"
-        >
-          <InvalidateOnResize />
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          {rows.map((row) => (
-            <CircleMarker
-              key={row.bookingId}
-              center={[row.lat, row.lng]}
-              radius={7}
-              pathOptions={{ color: accent, fillColor: accent, fillOpacity: 0.85, weight: 2 }}
-            >
-              <LeafletTooltip>{`${row.vessel} — ${row.carrier}`}</LeafletTooltip>
-            </CircleMarker>
-          ))}
-        </MapContainer>
-      </div>
-    </div>
+    <Suspense fallback={<div className="min-h-40 flex-1 animate-pulse rounded-md bg-surface-sunken" />}>
+      <MapPart />
+    </Suspense>
   )
 }
 
-/* ══ Files ════════════════════════════════════════════════════════════════ */
-
-/**
- * The families a logistics inbox actually carries, each with an icon and a tone
- * from the palette. Anything unrecognised gets the plain sheet — a file the
- * agent could not classify still has to be visible and clickable.
- */
 const FILE_KINDS = {
   pdf: { icon: FileText, tone: 'text-danger', label: 'PDF' },
   word: { icon: FileType, tone: 'text-info', label: 'Word' },
@@ -728,7 +599,6 @@ const FILE_KINDS = {
 
 type FileKind = keyof typeof FILE_KINDS
 
-/** Extension → family. The agent can also name the family outright. */
 const BY_EXTENSION: Record<string, FileKind> = {
   pdf: 'pdf',
   doc: 'word',
@@ -758,13 +628,6 @@ function fileKindOf(explicit: string, name: string): FileKind {
   return BY_EXTENSION[extension] ?? 'file'
 }
 
-/**
- * One attachment: the icon carries the format, the name carries the meaning.
- *
- * The type is taken from an explicit prop when the agent knows it, and inferred
- * from the extension when it does not — an agent reading an email attachment
- * has the filename long before it has a MIME type.
- */
 export function FileCard() {
   const props = useProps()
   const name = props.str('name', 'Archivo')
@@ -787,8 +650,6 @@ export function FileCard() {
     'flex min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-2 py-1.5',
   )
 
-  // A link only when there is somewhere to go. An anchor with no href is a
-  // control that looks clickable and is not.
   return href ? (
     <a
       href={href}
@@ -807,7 +668,6 @@ export function FileCard() {
   )
 }
 
-/** What a `kind` with no part registered falls back to. */
 export function Unknown() {
   const node = useNode()
 
