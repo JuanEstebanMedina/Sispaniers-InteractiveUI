@@ -39,3 +39,10 @@ export class ComponentNotFoundError extends Error {
     this.name = "ComponentNotFoundError";
   }
 }
+
+export class InvalidAiComponentError extends Error {
+  constructor(reason: string) {
+    super(`Invalid AI component output: ${reason}`);
+    this.name = "InvalidAiComponentError";
+  }
+}
