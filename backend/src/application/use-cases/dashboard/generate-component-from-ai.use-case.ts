@@ -11,6 +11,7 @@ import {
 } from "../../../domain/model/errors.js";
 import type { AiCompletionPort } from "../../../domain/ports/ai-completion-port.js";
 import type { ChatHistoryPort } from "../../../domain/ports/chat-history.port.js";
+import type { CompanyRepository } from "../../../domain/ports/company.repository.js";
 import type { ComponentEventPublisher } from "../../../domain/ports/component-event-publisher.port.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
@@ -28,6 +29,7 @@ export interface GenerateComponentFromAiInput {
 export interface GenerateComponentFromAiDeps {
   operationRepository: OperationRepository;
   componentRepository: ComponentRepository;
+  companyRepository?: CompanyRepository;
   aiCompletionPort: AiCompletionPort;
   commandRegistry: CommandRegistry;
   promptTemplate: string;
@@ -84,6 +86,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
   const {
     operationRepository,
     componentRepository,
+    companyRepository,
     aiCompletionPort,
     commandRegistry,
     promptTemplate,
@@ -100,7 +103,11 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
   ): Promise<{ component: Component | null; reply: string }> {
     const tools = commandRegistry
       .list()
-      .filter((command) => trigger !== "chat" || command.name !== "update_component")
+      .filter(
+        (command) =>
+          (trigger !== "chat" || command.name !== "update_component") &&
+          (trigger !== "auto" || command.name !== "save_company_context"),
+      )
       .map((command) => ({
         name: command.name,
         description: command.description,
@@ -180,15 +187,19 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       }),
     );
 
-    const promptContext =
-      input.trigger === "chat" && chatHistoryPort !== undefined
-        ? {
-            companyKnowledge: [],
-            clientMemory: [],
-            runHistory: chatHistoryPort.get(input.operationId),
-            componentCatalog: [],
-          }
-        : undefined;
+    const company =
+      operation.companyId === undefined || companyRepository === undefined
+        ? null
+        : await companyRepository.findById(operation.companyId);
+    const promptContext = {
+      companyKnowledge: company?.generalContext ?? [],
+      clientMemory: [],
+      runHistory:
+        input.trigger === "chat" && chatHistoryPort !== undefined
+          ? chatHistoryPort.get(input.operationId)
+          : [],
+      componentCatalog: [],
+    };
     const prompt = buildSystemPrompt(
       promptTemplate,
       input.trigger,

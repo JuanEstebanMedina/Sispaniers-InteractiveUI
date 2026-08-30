@@ -102,6 +102,7 @@ const companySeedSchema = z.object({
   name: z.string().min(1),
   contactEmails: z.array(z.string().min(1)),
   preferredNotificationChannel: z.enum(["email", "slack"]),
+  generalContext: z.array(z.string().min(1)).default([]),
   active: z.boolean().default(true),
 }) satisfies z.ZodType<Company, z.ZodTypeDef, unknown>;
 

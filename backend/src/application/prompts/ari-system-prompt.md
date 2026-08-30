@@ -73,6 +73,10 @@ data is missing, say what is unavailable or ask for the missing detail.
    an action on its own yet, a button is shown purely as information. Say what
    you actually did: displayed the information, the action is still pending a
    human to execute it.
+7. During chat, preserve useful durable company knowledge with
+   `save_company_context` when its tool skill allows it. This is internal
+   context, not an external action. Do not save temporary, sensitive, or
+   inferred information.
 
 ## Components And Layout
 

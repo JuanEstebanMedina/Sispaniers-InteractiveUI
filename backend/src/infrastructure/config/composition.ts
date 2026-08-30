@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { createCreateComponentCommand } from "../../application/commands/create-component.command.js";
+import { createSaveCompanyContextCommand } from "../../application/commands/save-company-context.command.js";
 import { createUpdateComponentCommand } from "../../application/commands/update-component.command.js";
 import { createCreateUserUseCase } from "../../application/use-cases/auth/create-user.use-case.js";
 import { createGetMeUseCase } from "../../application/use-cases/auth/get-me.use-case.js";
@@ -22,6 +23,7 @@ import { createGetOperationUseCase } from "../../application/use-cases/dashboard
 import { createListCompaniesUseCase } from "../../application/use-cases/dashboard/list-companies.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
 import { createRunSimulationTickUseCase } from "../../application/use-cases/dashboard/run-simulation-tick.use-case.js";
+import { createSaveCompanyContextUseCase } from "../../application/use-cases/dashboard/save-company-context.use-case.js";
 import { createUpdateCompanyUseCase } from "../../application/use-cases/dashboard/update-company.use-case.js";
 import { createUpdateComponentContentUseCase } from "../../application/use-cases/dashboard/update-component-content.use-case.js";
 import { createUpdateComponentPlacementUseCase } from "../../application/use-cases/dashboard/update-component-placement.use-case.js";
@@ -79,6 +81,10 @@ const CREATE_COMPONENT_SKILL = readFileSync(
 );
 const UPDATE_COMPONENT_SKILL = readFileSync(
   join(process.cwd(), "src/application/skills/update-component.skill.md"),
+  "utf-8",
+);
+const SAVE_COMPANY_CONTEXT_SKILL = readFileSync(
+  join(process.cwd(), "src/application/skills/save-company-context.skill.md"),
   "utf-8",
 );
 
@@ -253,6 +259,10 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     operationRepository,
     componentRepository,
   });
+  const saveCompanyContext = createSaveCompanyContextUseCase({
+    operationRepository,
+    companyRepository,
+  });
   // ponytail: the OpenAI/Gemini SDKs throw at construction time on a falsy
   // apiKey, so an empty string would crash boot when the env var isn't set.
   // A placeholder keeps boot working; real calls fail with a normal auth
@@ -273,6 +283,12 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     createCreateComponentCommand({ createComponent, skill: CREATE_COMPONENT_SKILL }),
   );
   commandRegistry.register(
+    createSaveCompanyContextCommand({
+      saveCompanyContext,
+      skill: SAVE_COMPANY_CONTEXT_SKILL,
+    }),
+  );
+  commandRegistry.register(
     createUpdateComponentCommand({
       updateComponentContent,
       skill: UPDATE_COMPONENT_SKILL,
@@ -286,6 +302,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository,
     componentRepository,
+    companyRepository,
     aiCompletionPort,
     commandRegistry,
     promptTemplate: `${ARI_SYSTEM_PROMPT}\n\n---\n\n${skills}`,
