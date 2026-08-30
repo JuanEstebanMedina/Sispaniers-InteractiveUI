@@ -45,7 +45,6 @@ export default function OperationsPage() {
   const list = useQuery({
     queryKey: queryKeys.operations.list(body),
     queryFn: () => api$.post(endpoints.operations.search, operationListSchema, body),
-    refetchInterval: 15_000,
   })
 
   const operations = list.data?.operations ?? []

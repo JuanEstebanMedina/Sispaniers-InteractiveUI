@@ -5,6 +5,7 @@ import type { Operation } from "../../../domain/logistics/operation.js";
 import { CompanyReferenceRequiredError } from "../../../domain/model/errors.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
+import type { OperationEventPublisher } from "../../../domain/ports/operation-event-publisher.port.js";
 import type { ResolveCompany } from "../shared/resolve-company.use-case.js";
 
 export interface CreateOperationInput {
@@ -22,10 +23,11 @@ export interface CreateOperationDeps {
   operationRepository: OperationRepository;
   resolveCompany: ResolveCompany;
   idGenerator: IdGenerator;
+  operationEventPublisher: OperationEventPublisher;
 }
 
 export function createCreateOperationUseCase(deps: CreateOperationDeps) {
-  const { operationRepository, resolveCompany, idGenerator } = deps;
+  const { operationRepository, resolveCompany, idGenerator, operationEventPublisher } = deps;
 
   return async function createOperation(
     input: CreateOperationInput,
@@ -56,6 +58,7 @@ export function createCreateOperationUseCase(deps: CreateOperationDeps) {
     };
 
     await operationRepository.save(operation);
+    operationEventPublisher.publish(operation.id, "operation-created", operation);
 
     return { operation, status: deriveOperationStatus(operation) };
   };

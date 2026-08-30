@@ -174,19 +174,21 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const listCompanies = createListCompaniesUseCase({ companyRepository });
   const updateCompany = createUpdateCompanyUseCase({ companyRepository });
   const resolveCompany = createResolveCompanyUseCase({ companyRepository, createCompany });
+  const componentEventPublisher = new InMemoryComponentEventPublisher();
+  const operationEventPublisher =
+    overrides.operationEventPublisher ?? new InMemoryOperationEventPublisher();
   const upsertOperationFromEmail = createUpsertOperationFromEmailUseCase({
     operationRepository,
     resolveCompany,
     idGenerator,
+    operationEventPublisher,
   });
   const createOperation = createCreateOperationUseCase({
     operationRepository,
     resolveCompany,
     idGenerator,
+    operationEventPublisher,
   });
-  const componentEventPublisher = new InMemoryComponentEventPublisher();
-  const operationEventPublisher =
-    overrides.operationEventPublisher ?? new InMemoryOperationEventPublisher();
   const simulationRegistry = overrides.simulationRegistry ?? new InMemorySimulationRegistry();
   const createComponent = createCreateComponentUseCase({
     componentRepository,
