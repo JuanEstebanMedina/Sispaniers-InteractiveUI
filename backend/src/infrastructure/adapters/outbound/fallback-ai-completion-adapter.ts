@@ -1,9 +1,9 @@
+import { AiCompletionError } from "../../../domain/model/errors.js";
 import type {
   AiCompletionPort,
   AiCompletionRequest,
   AiCompletionResult,
 } from "../../../domain/ports/ai-completion-port.js";
-import { AiCompletionError } from "../../../domain/model/errors.js";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

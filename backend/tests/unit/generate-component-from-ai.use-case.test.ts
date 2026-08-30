@@ -140,7 +140,11 @@ test("chat includes prior conversation on later messages", async () => {
   });
 
   await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "Hola" });
-  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "¿Qué dije?" });
+  await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "¿Qué dije?",
+  });
 
   expect(prompts[1]).toContain("user: Hola");
 });

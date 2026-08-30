@@ -60,8 +60,12 @@ export function buildBasePrompt(
     "{{current_input}}": currentInput,
     "{{grid_columns}}": String(gridColumns),
   };
-  const placeholderPattern = /\{\{(company_knowledge|client_memory|run_history|component_catalog|trigger|current_input|grid_columns)\}\}/g;
-  return template.replace(placeholderPattern, (placeholder) => replacements[placeholder] ?? placeholder);
+  const placeholderPattern =
+    /\{\{(company_knowledge|client_memory|run_history|component_catalog|trigger|current_input|grid_columns)\}\}/g;
+  return template.replace(
+    placeholderPattern,
+    (placeholder) => replacements[placeholder] ?? placeholder,
+  );
 }
 
 export async function completeOrThrow(
