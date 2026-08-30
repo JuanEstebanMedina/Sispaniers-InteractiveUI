@@ -33,6 +33,7 @@ export function createCreateCompanyUseCase(deps: CreateCompanyDeps) {
       name: input.name,
       contactEmails: input.contactEmails ?? [],
       preferredNotificationChannel: input.preferredNotificationChannel ?? "email",
+      generalContext: [],
       active: true,
     };
 

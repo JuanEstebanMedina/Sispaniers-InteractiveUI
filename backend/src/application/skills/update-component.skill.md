@@ -1,26 +1,21 @@
-## Herramienta: `update_component`
+## Tool: `update_component`
 
-Úsala **únicamente** cuando el mensaje del usuario referencia de forma
-explícita e inequívoca que quiere modificar, actualizar, cambiar o
-reemplazar un componente que ya existe en esta operación (su `id` aparece en
-la lista de componentes existentes del contexto). El historial es
-append-only — nunca "editas" el componente anterior, esta herramienta
-registra el reemplazo.
+Use it **only** when the user's message explicitly and unambiguously refers
+to modifying, updating, changing, or replacing a component already in this
+operation (its `id` appears in the existing-components context). History is
+append-only: never edit prior component; this tool records its replacement.
 
-Señales explícitas de que corresponde `update_component` (en español, las
-frases del usuario contienen algo como): "actualiza", "actualízalo",
-"cambia", "cámbialo", "modifica", "modifícalo", "reemplaza" — combinado con
-una referencia clara a "el/la [componente que ya existe]" (ej. "actualiza el
-panel de envíos", "cambia el gráfico de costos", "modifica el que ya tengo de
-aduanas").
+Explicit signals for `update_component` include "update", "change",
+"modify", or "replace" combined with a clear reference to an existing
+component, such as "update the shipments panel", "change the costs chart",
+or "modify my customs component".
 
-Si el mensaje es genérico, nuevo o ambiguo (ej. "crea un componente",
-"muéstrame algo de envíos", "agrega un widget") — **NO uses esta
-herramienta**, aunque ya existan componentes similares en la operación. Usa
-siempre `create_component` en ese caso: es más seguro añadir un componente de
-más que actualizar uno equivocado.
+If the message is generic, new, or ambiguous, such as "create a component",
+"show shipment data", or "add a widget", **do not use this tool**, even if
+similar components exist. Use `create_component`: an extra component is safer
+than updating the wrong one.
 
-### Argumentos
+### Arguments
 
 ```json
 {
@@ -33,17 +28,15 @@ más que actualizar uno equivocado.
 }
 ```
 
-- IMPORTANTE: `kind` debe ser EXACTAMENTE uno de estos valores, nunca inventes
-  otros: `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`,
-  `label`, `button`, `layout`. Cualquier otro valor será rechazado.
-- `componentId` es **obligatorio** — el `id` que aparece en la lista de
-  componentes existentes del contexto.
-- `reply` es **obligatorio** — mensaje conversacional para el usuario final,
-  sin jerga interna, sin HTML ni markdown ni código, nunca vacío.
-- `layout` es **opcional**: omítelo si solo reemplazas el contenido y el
-  tamaño actual sigue siendo correcto; inclúyelo (mismo formato
-  `{ "cols": n, "rows": n }`) cuando el componente también necesita cambiar
-  de tamaño o reacomodarse en la grilla de `{{grid_columns}}` columnas. Si lo
-  omites, el tamaño actual del componente no cambia.
-- Cuando incluyas `layout`, respeta el rango permitido por el `kind` elegido
-  (`minCols/maxCols`, `minRows/maxRows`), igual que en `create_component`.
+- IMPORTANT: `kind` must be EXACTLY one of these values; never invent others:
+  `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`,
+  `label`, `button`, `layout`. Any other value is rejected.
+- `componentId` is **required**. Use `id` from existing-components context.
+- `reply` is **required**. It is a conversational message for the end user:
+  no internal jargon, HTML, markdown, or code; never empty.
+- `layout` is **optional**. Omit it when replacing content only and current
+  size remains correct. Include `{ "cols": n, "rows": n }` when component
+  also needs resizing or grid rearrangement in `{{grid_columns}}` columns.
+  Omitting it preserves current size.
+- When including `layout`, respect chosen `kind` range
+  (`minCols/maxCols`, `minRows/maxRows`), same as `create_component`.

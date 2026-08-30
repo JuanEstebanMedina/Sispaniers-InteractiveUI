@@ -8,6 +8,7 @@ export interface UpdateCompanyInput {
   name?: string;
   contactEmails?: string[];
   preferredNotificationChannel?: NotificationChannel;
+  generalContext?: string[];
   /** Disable/re-enable — see the note on `Company.active`. */
   active?: boolean;
 }
@@ -39,6 +40,7 @@ export function createUpdateCompanyUseCase(deps: UpdateCompanyDeps) {
       ...company,
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.contactEmails !== undefined ? { contactEmails: input.contactEmails } : {}),
+      ...(input.generalContext !== undefined ? { generalContext: input.generalContext } : {}),
       ...(input.preferredNotificationChannel !== undefined
         ? { preferredNotificationChannel: input.preferredNotificationChannel }
         : {}),
