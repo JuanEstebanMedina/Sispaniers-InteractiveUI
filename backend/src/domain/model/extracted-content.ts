@@ -6,4 +6,6 @@ export interface ExtractedContent {
   format: DocumentFormat;
   content?: string;
   error?: string;
+  storagePath?: string;
+  storageError?: string;
 }

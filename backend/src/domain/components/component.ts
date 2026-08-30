@@ -1,16 +1,15 @@
+import type { GridComponentKind } from "../enums/widget-kind.js";
+import type { ComponentNode } from "./component-node.js";
 import type { WidgetSizeName } from "./widget-size.js";
 
-interface ComponentBase {
+export interface Component {
   id: string;
   operationId: string;
   size: WidgetSizeName;
+  kind: GridComponentKind;
+  children: ComponentNode[];
   createdAt: Date;
 }
 
-export type Component =
-  | (ComponentBase & { kind: "map"; content: Record<string, unknown> })
-  | (ComponentBase & { kind: "metric"; content: Record<string, unknown> })
-  | (ComponentBase & { kind: "decision-panel"; content: Record<string, unknown> })
-  | (ComponentBase & { kind: "timeline"; content: Record<string, unknown> });
-
-export type { WidgetKind } from "../enums/widget-kind.js";
+export type { ComponentNode } from "./component-node.js";
+export type { GridComponentKind, AtomicNodeKind, ActionKind } from "../enums/widget-kind.js";

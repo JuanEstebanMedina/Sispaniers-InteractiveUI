@@ -2,13 +2,14 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 import { createApp } from "../../src/infrastructure/config/composition.js";
-import { FakeEmailSender } from "../support/fakes.js";
+import { FakeAttachmentStorage, FakeEmailSender } from "../support/fakes.js";
 
 let app: FastifyInstance;
 
 beforeEach(async () => {
   app = await createApp({
     emailSender: new FakeEmailSender(),
+    attachmentStorage: new FakeAttachmentStorage(),
     operationRepository: new InMemoryOperationRepository(),
   });
 });

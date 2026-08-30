@@ -29,4 +29,8 @@ export class MongoComponentRepository implements ComponentRepository {
 
     await this.components.replaceOne({ _id: document._id }, document, { upsert: true });
   }
+
+  async setField(id: string, path: string, value: unknown): Promise<void> {
+    await this.components.updateOne({ _id: id }, { $set: { [path]: value } });
+  }
 }

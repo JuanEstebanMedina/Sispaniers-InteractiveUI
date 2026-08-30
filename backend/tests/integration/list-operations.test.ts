@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { InMemoryCompanyRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-company-repository.js";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 import { createApp } from "../../src/infrastructure/config/composition.js";
+import { FakeAttachmentStorage } from "../support/fakes.js";
 import { anOperation } from "../support/operation-fixtures.js";
 
 let app: FastifyInstance;
@@ -12,7 +13,11 @@ let companyRepository: InMemoryCompanyRepository;
 beforeEach(async () => {
   operationRepository = new InMemoryOperationRepository();
   companyRepository = new InMemoryCompanyRepository();
-  app = await createApp({ operationRepository, companyRepository });
+  app = await createApp({
+    operationRepository,
+    companyRepository,
+    attachmentStorage: new FakeAttachmentStorage(),
+  });
 });
 
 afterEach(async () => {
