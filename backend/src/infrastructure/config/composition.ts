@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { createCreateComponentCommand } from "../../application/commands/create-component.command.js";
+import { createIngestCompanyConceptsCommand } from "../../application/commands/ingest-company-concepts.command.js";
 import { createQueryCompanyConceptsCommand } from "../../application/commands/query-company-concepts.command.js";
 import { createSaveCompanyContextCommand } from "../../application/commands/save-company-context.command.js";
 import { createUpdateComponentCommand } from "../../application/commands/update-component.command.js";
@@ -21,6 +22,7 @@ import { createGenerateComponentFromAiUseCase } from "../../application/use-case
 import { createGetDocumentPreviewUrlUseCase } from "../../application/use-cases/dashboard/get-document-preview-url.use-case.js";
 import { createGetOperationComponentsUseCase } from "../../application/use-cases/dashboard/get-operation-components.use-case.js";
 import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
+import { createIngestCompanyConceptsUseCase } from "../../application/use-cases/dashboard/ingest-company-concepts.use-case.js";
 import { createListCompaniesUseCase } from "../../application/use-cases/dashboard/list-companies.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
 import { createQueryCompanyConceptsUseCase } from "../../application/use-cases/dashboard/query-company-concepts.use-case.js";
@@ -91,6 +93,10 @@ const QUERY_COMPANY_CONCEPTS_SKILL = readFileSync(
   join(process.cwd(), "src/application/skills/query-company-concepts.skill.md"),
   "utf-8",
 );
+const INGEST_COMPANY_CONCEPTS_SKILL = readFileSync(
+  join(process.cwd(), "src/application/skills/ingest-company-concepts.skill.md"),
+  "utf-8",
+);
 const SAVE_COMPANY_CONTEXT_SKILL = readFileSync(
   join(process.cwd(), "src/application/skills/save-company-context.skill.md"),
   "utf-8",
@@ -114,6 +120,7 @@ export interface CreateAppOverrides {
   operationEventPublisher?: OperationEventPublisher;
   passwordHasher?: PasswordHasher;
   authTokenPort?: AuthTokenPort;
+  aiCompletionPort?: AiCompletionPort;
 }
 
 function buildEmailSender(override: EmailSender | undefined): EmailSender {
@@ -280,6 +287,10 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     operationRepository,
     companyConceptRepository,
   });
+  const ingestCompanyConcepts = createIngestCompanyConceptsUseCase({
+    operationRepository,
+    companyConceptRepository,
+  });
   const updateComponentPlacement = createUpdateComponentPlacementUseCase({
     operationRepository,
     componentRepository,
@@ -307,14 +318,18 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const geminiAdapter = new GeminiCompletionAdapter(
     process.env.GEMINI_API_KEY ?? "missing-gemini-api-key",
   );
-  const aiCompletionPort: AiCompletionPort = new FallbackAiCompletionAdapter(
-    openAiAdapter,
-    geminiAdapter,
-  );
+  const aiCompletionPort: AiCompletionPort =
+    overrides.aiCompletionPort ?? new FallbackAiCompletionAdapter(openAiAdapter, geminiAdapter);
   const commandRegistry = new CommandRegistry();
   const chatHistoryPort = new InMemoryChatHistoryStore();
   commandRegistry.register(
     createCreateComponentCommand({ createComponent, skill: CREATE_COMPONENT_SKILL }),
+  );
+  commandRegistry.register(
+    createIngestCompanyConceptsCommand({
+      ingestCompanyConcepts,
+      skill: INGEST_COMPANY_CONCEPTS_SKILL,
+    }),
   );
   commandRegistry.register(
     createQueryCompanyConceptsCommand({
