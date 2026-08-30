@@ -42,6 +42,7 @@ export interface GenerateComponentFromAiDeps {
 const ESTIMATED_PENDING_SIZE: WidgetSizeName = "small";
 const GRID_COLUMNS = 4;
 const MAX_QUERY_TOOL_CALLS = 3;
+const CONTINUATION_COMMANDS = new Set(["ingest_company_concepts", "query_company_concepts"]);
 
 function buildExistingComponentsHint(
   trigger: AiTrigger,
@@ -96,7 +97,8 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       .list()
       .filter(
         (command) =>
-          (trigger !== "chat" || command.name !== "update_component") &&
+          (trigger !== "chat" ||
+            (command.name !== "update_component" && command.name !== "ingest_company_concepts")) &&
           (trigger !== "auto" || command.name !== "save_company_context"),
       )
       .map((command) => ({
@@ -127,14 +129,14 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         const dispatched = await commandRegistry.dispatch(result.toolName, result.input, {
           operationId,
         });
-        if (result.toolName !== "query_company_concepts") {
+        if (!CONTINUATION_COMMANDS.has(result.toolName)) {
           return dispatched as { component: Component; reply: string };
         }
         if (queryCount >= MAX_QUERY_TOOL_CALLS) {
           throw new InvalidAiComponentError("too many company concept queries");
         }
         queryCount += 1;
-        nextInput = `${nextInput}\n\n---\nCompany concept query result:\n${JSON.stringify(
+        nextInput = `${nextInput}\n\n---\n${result.toolName} result:\n${JSON.stringify(
           dispatched as QueryCompanyConceptsCommandResult,
         )}\nUse this result now. Call another tool only when needed.`;
       } catch (error) {
