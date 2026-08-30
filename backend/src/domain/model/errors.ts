@@ -74,3 +74,17 @@ export class InvalidComponentPathError extends Error {
     this.name = "InvalidComponentPathError";
   }
 }
+
+export class BookingNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Booking not found: ${id}`);
+    this.name = "BookingNotFoundError";
+  }
+}
+
+export class ContainerNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Container not found: ${id}`);
+    this.name = "ContainerNotFoundError";
+  }
+}

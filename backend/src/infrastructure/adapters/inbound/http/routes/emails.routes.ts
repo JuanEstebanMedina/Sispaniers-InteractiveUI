@@ -1,4 +1,5 @@
 import type { FastifyPluginAsyncZod, ZodTypeProvider } from "fastify-type-provider-zod";
+import type { EnrollOperationInSimulationInput } from "../../../../../application/use-cases/dashboard/enroll-operation-in-simulation.use-case.js";
 import type { ReceiveEmailResult } from "../../../../../application/use-cases/email/receive-email.use-case.js";
 import type {
   SendEmailInput,
@@ -24,6 +25,7 @@ export interface EmailsRouteDeps {
   upsertOperationFromEmail: (
     input: UpsertOperationFromEmailInput,
   ) => Promise<UpsertOperationFromEmailResult | undefined>;
+  enrollOperationInSimulation: (input: EnrollOperationInSimulationInput) => Promise<void>;
 }
 
 const ATTACHMENT_PREVIEW_LENGTH = 300;
@@ -63,6 +65,10 @@ export const emailsRoutes: FastifyPluginAsyncZod<EmailsRouteDeps> = async (fasti
       const email = toNormalizedEmail(request.body);
       const { runId, attachments } = await deps.receiveEmail(email);
       const operationResult = await deps.upsertOperationFromEmail({ email, attachments });
+
+      if (operationResult?.created === true) {
+        await deps.enrollOperationInSimulation({ operationId: operationResult.operationId });
+      }
 
       request.log.warn(
         {
