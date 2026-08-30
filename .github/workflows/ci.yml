@@ -13,6 +13,9 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    env:
+      MONGODB_URI: mongodb://localhost:27017/sispaniers
+      JWT_SECRET: ci-test-secret
     defaults:
       run:
         working-directory: backend
@@ -68,4 +71,4 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Validate compose
-        run: MONGO_PASSWORD=ci docker compose config --quiet
+        run: MONGO_PASSWORD=ci JWT_SECRET=ci-test-secret docker compose config --quiet
