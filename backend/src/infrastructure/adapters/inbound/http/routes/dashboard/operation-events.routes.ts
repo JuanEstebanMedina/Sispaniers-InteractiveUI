@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
+import type { Component } from "../../../../../../domain/components/component.js";
 import { deriveOperationStatus } from "../../../../../../domain/logistics/operation-status.js";
 import type { ComponentEventPublisher } from "../../../../../../domain/ports/component-event-publisher.port.js";
 import type { OperationEventPublisher } from "../../../../../../domain/ports/operation-event-publisher.port.js";
@@ -29,14 +30,13 @@ export const operationEventsRoutes: FastifyPluginAsyncZod<OperationEventsRouteDe
         Connection: "keep-alive",
       });
 
-      const unsubscribeComponents = deps.componentEventPublisher.subscribe(
-        id,
-        (event, component) => {
-          reply.raw.write(
-            `event: ${event}\ndata: ${JSON.stringify(toComponentWireShape(component))}\n\n`,
-          );
-        },
-      );
+      const unsubscribeComponents = deps.componentEventPublisher.subscribe(id, (event, payload) => {
+        // "component-pending" carries its own wire shape already — it has
+        // no Component to map, just the estimated size and a temp id.
+        const data =
+          event === "component-pending" ? payload : toComponentWireShape(payload as Component);
+        reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      });
 
       const unsubscribeOperations = deps.operationEventPublisher.subscribe(
         id,

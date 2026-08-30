@@ -107,6 +107,13 @@ docker compose --env-file backend/.env --env-file frontend/.env up -d --build   
 curl http://127.0.0.1:8000/health
 ```
 
+Mongo's own log noise is silenced (`logging: driver: "none"` in `docker-compose.yml`);
+to follow the backend's application/AI-flow logs:
+
+```bash
+docker compose logs -f backend
+```
+
 Or, for the fast development loop, run only the database in Docker and the API on the
 host with autoreload:
 

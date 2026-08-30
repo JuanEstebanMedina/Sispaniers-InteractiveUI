@@ -62,7 +62,8 @@
       "moveWidget": "Move {{title}}",
       "renameWidget": "Rename widget",
       "widgetName": "Widget name",
-      "untitledWidget": "AI component"
+      "untitledWidget": "AI component",
+      "pendingTitle": "Generating…"
     },
     "chat": {
       "title": "Talk to the agent",

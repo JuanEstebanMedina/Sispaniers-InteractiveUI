@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useOperationEvents } from '@/hooks'
+import type { OperationEventName } from '@/hooks/useOperationEvents'
 import { cn } from '@/lib/cn'
 import { toast } from '@/lib/toast'
 import type { Operation } from '@/schemas'
@@ -58,7 +59,10 @@ export function OperationsRail({
   const toggleSection = useRailStore((state) => state.toggleSection)
 
   const onOperationEvent = useCallback(
-    (eventName: 'component-created' | 'component-updated') => {
+    (eventName: OperationEventName) => {
+      // Pending placeholders are the grid's concern — the rail only reacts
+      // once a component actually exists to invalidate the cache for.
+      if (eventName === 'component-pending') return
       toast.info(
         eventName === 'component-created'
           ? t('operation.events.componentCreated')

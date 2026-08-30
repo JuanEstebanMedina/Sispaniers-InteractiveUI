@@ -10,7 +10,9 @@ import {
   UnknownCommandError,
 } from "../../../domain/model/errors.js";
 import type { AiCompletionPort } from "../../../domain/ports/ai-completion-port.js";
+import type { ComponentEventPublisher } from "../../../domain/ports/component-event-publisher.port.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
+import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 import { buildBasePrompt } from "./ai-response.helpers.js";
 
@@ -28,7 +30,20 @@ export interface GenerateComponentFromAiDeps {
   aiCompletionPort: AiCompletionPort;
   commandRegistry: CommandRegistry;
   promptTemplate: string;
+  // Optional so existing callers (and the unit test that builds this use
+  // case without an event publisher) keep compiling. Production wiring in
+  // composition.ts always supplies both.
+  eventPublisher?: ComponentEventPublisher;
+  idGenerator?: IdGenerator;
 }
+
+// ponytail: at the point the AI request starts we know nothing about what it
+// will build — the actual size only exists inside `result.input` after the
+// round trip completes, which is also the point most of the latency this
+// placeholder exists to cover has already elapsed. A generic mid-size
+// estimate fired before the AI call is the honest trade-off: it covers the
+// full wait instead of a fraction of it.
+const ESTIMATED_PENDING_SIZE: WidgetSizeName = "small";
 
 const GRID_COLUMNS = 4;
 
@@ -58,6 +73,8 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     aiCompletionPort,
     commandRegistry,
     promptTemplate,
+    eventPublisher,
+    idGenerator,
   } = deps;
 
   async function completeAndDispatch(
@@ -131,6 +148,14 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     );
 
     const prompt = buildPrompt(promptTemplate, input.trigger, input.input, existingComponents);
+
+    if (eventPublisher && idGenerator) {
+      eventPublisher.publish(input.operationId, "component-pending", {
+        operationId: input.operationId,
+        tempId: idGenerator.newId(),
+        estimatedSize: ESTIMATED_PENDING_SIZE,
+      });
+    }
 
     try {
       return await completeAndDispatch(prompt, input.operationId, input.trigger);

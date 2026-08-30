@@ -245,6 +245,8 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     aiCompletionPort,
     commandRegistry,
     promptTemplate: `${ARI_SYSTEM_PROMPT}\n\n---\n\n${skills}`,
+    eventPublisher: componentEventPublisher,
+    idGenerator,
   });
   const app = buildApp({
     receiveEmail,

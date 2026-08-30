@@ -1,17 +1,22 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { api, api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
 import { SectionBoundary } from '@/components/feedback/ErrorBoundary'
 import { ErrorState } from '@/components/feedback/ErrorState'
+import type { Widget } from '@/components/generated/WidgetGrid'
 import { WidgetGrid } from '@/components/generated/WidgetGrid'
 import { demoWidgets } from '@/components/generated/demoWidgets'
 import { toWidgets } from '@/components/generated/toWidgets'
 import { GeneratedSurface } from '@/components/operations/GeneratedSurface'
 import { OperationDetailHeader } from '@/components/operations/OperationDetailHeader'
-import { Skeleton } from '@/components/ui/Skeleton'
+import { Skeleton, SkeletonText } from '@/components/ui/Skeleton'
+import { useOperationEvents } from '@/hooks'
+import type { ComponentPendingEvent, OperationEventName } from '@/hooks/useOperationEvents'
+import { WIDGET_SIZES } from '@/lib/grid'
 import {
   componentsResponseSchema,
   operationListSchema,
@@ -34,6 +39,7 @@ import { useRailStore } from '@/stores/railStore'
 const DEFAULT_COLS = 4
 
 export default function OperationDetailPage() {
+  const { t } = useTranslation('domain')
   const { trackId } = useParams({ from: '/app/operations/$trackId' })
 
   const detail = useQuery({
@@ -93,18 +99,77 @@ export default function OperationDetailPage() {
   const operation = detail.data
   const generated = components.data
 
+  // Un componente en camino tarda un round-trip completo a la IA en aparecer.
+  // Mientras tanto se pinta un placeholder del tamaño estimado que llegó en
+  // "component-pending"; se retira en cuanto llega el componente real, o solo
+  // por seguridad si nunca llega.
+  const [pending, setPending] = useState<ComponentPendingEvent[]>([])
+
+  // ponytail: si la petición del chat falla, el backend nunca emite
+  // component-created para reemplazar este placeholder. No hay un evento de
+  // fallo dedicado ni una forma simple de enterarse desde este árbol de
+  // componentes (el chat vive en el riel), así que el techo es un timeout: si
+  // nadie lo reclamó en este plazo, se asume que la petición murió. Subir a un
+  // evento "component-pending-failed" si este plazo resulta corto o largo en
+  // la práctica.
+  const PENDING_TIMEOUT_MS = 45_000
+
+  const onOperationEvent = useCallback(
+    (event: OperationEventName, payload: unknown) => {
+      if (event === 'component-pending') {
+        const pendingEvent = payload as ComponentPendingEvent | null
+        if (!pendingEvent) return
+        setPending((current) => [...current, pendingEvent])
+        return
+      }
+      // El chat de la operación es de un solo mensaje en vuelo a la vez, así
+      // que el placeholder más viejo es siempre el que este componente real
+      // reemplaza.
+      setPending((current) => current.slice(1))
+    },
+    [],
+  )
+  useOperationEvents(trackId, onOperationEvent)
+
+  useEffect(() => {
+    if (pending.length === 0) return
+    const timers = pending.map(({ tempId }) =>
+      setTimeout(() => {
+        setPending((current) => current.filter((item) => item.tempId !== tempId))
+      }, PENDING_TIMEOUT_MS),
+    )
+    return () => timers.forEach(clearTimeout)
+  }, [pending])
+
+  const pendingWidgets = useMemo<Widget[]>(
+    () =>
+      pending.map(({ tempId, estimatedSize }) => ({
+        id: `pending-${tempId}`,
+        ...WIDGET_SIZES[estimatedSize],
+        col: 0,
+        row: 0,
+        title: t('operation.generated.pendingTitle'),
+        fromAgent: true,
+        body: <SkeletonText lines={2} />,
+      })),
+    [pending, t],
+  )
+
   // Los bloques de demostración son para una operación que el agente todavía no
   // ha tocado, NO para una que no se pudo leer: son datos fabricados y en una
   // pantalla logística se leen igual que los de verdad. Por eso hacen falta los
   // `generated`: sin respuesta buena no se pinta nada y la página muestra el
   // error o el esqueleto.
   const widgets = useMemo(() => {
-    if (!generated) return []
-    if (generated.components.length > 0) {
-      return toWidgets(generated.components, generated.layout)
-    }
-    return operation ? demoWidgets(operation) : []
-  }, [generated, operation])
+    const base = !generated
+      ? []
+      : generated.components.length > 0
+        ? toWidgets(generated.components, generated.layout)
+        : operation
+          ? demoWidgets(operation)
+          : []
+    return [...base, ...pendingWidgets]
+  }, [generated, operation, pendingWidgets])
 
   const persist = savePlacement.mutate
   const persistable = (generated?.components.length ?? 0) > 0
