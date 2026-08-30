@@ -24,15 +24,15 @@ interface SidebarNavProps {
 
 export function SidebarNav({ labelVisibility, collapsed, onNavigate, badges }: SidebarNavProps) {
   const { t } = useTranslation()
-  const canAny = useAuthStore((state) => state.canAny)
+  const isAtLeast = useAuthStore((state) => state.isAtLeast)
 
   const sections = navigation
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
         if (item.devOnly && !isDev) return false
-        if (!item.anyOf) return true
-        return canAny(item.anyOf)
+        if (!item.minRole) return true
+        return isAtLeast(item.minRole)
       }),
     }))
     // Una sección sin ítems visibles no puede dejar su encabezado huérfano.

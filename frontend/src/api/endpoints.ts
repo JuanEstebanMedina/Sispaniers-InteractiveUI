@@ -17,6 +17,12 @@ export const endpoints = {
     update: (id: string) => `/companies/${id}`,
   },
 
+  users: {
+    list: '/users',
+    create: '/users',
+    update: (id: string) => `/users/${id}`,
+  },
+
   operations: {
     /**
      * El ÚNICO listado. Es POST porque texto libre + estado + salud + rango de
@@ -65,6 +71,10 @@ export const queryKeys = {
   companies: {
     all: ['companies'] as const,
     list: () => ['companies', 'list'] as const,
+  },
+  users: {
+    all: ['users'] as const,
+    list: () => ['users', 'list'] as const,
   },
   operations: {
     all: ['operations'] as const,

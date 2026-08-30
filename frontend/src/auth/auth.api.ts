@@ -29,7 +29,7 @@ export const authApi = {
     const parsed = await api$.post(
       endpoints.auth.refresh,
       tokenPairSchema,
-      { refreshToken },
+      { refresh_token: refreshToken },
       { skipAuth: true, skipRetry: true },
     )
 

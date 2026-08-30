@@ -201,5 +201,62 @@
       "contactEmails": ["compras@florestropicales.co"],
       "preferredNotificationChannel": "slack"
     }
+  ],
+  "users": [
+    {
+      "id": "user-superadmin",
+      "email": "admin@sispaniers.com",
+      "password": "sispaniers-dev",
+      "name": "Sispaniers Superadmin",
+      "role": "superadmin"
+    },
+    {
+      "id": "user-andes-textiles-admin",
+      "companyId": "company-andes-textiles",
+      "email": "admin@andestextiles.co",
+      "password": "andes-dev",
+      "name": "Andes Textiles Admin",
+      "role": "admin"
+    },
+    {
+      "id": "user-andes-textiles-user",
+      "companyId": "company-andes-textiles",
+      "email": "user@andestextiles.co",
+      "password": "andes-dev",
+      "name": "Andes Textiles User",
+      "role": "user"
+    },
+    {
+      "id": "user-cafe-del-valle-admin",
+      "companyId": "company-cafe-del-valle",
+      "email": "admin@cafedelvalle.co",
+      "password": "cafe-dev",
+      "name": "Café del Valle Admin",
+      "role": "admin"
+    },
+    {
+      "id": "user-cafe-del-valle-user",
+      "companyId": "company-cafe-del-valle",
+      "email": "user@cafedelvalle.co",
+      "password": "cafe-dev",
+      "name": "Café del Valle User",
+      "role": "user"
+    },
+    {
+      "id": "user-flores-tropicales-admin",
+      "companyId": "company-flores-tropicales",
+      "email": "admin@florestropicales.co",
+      "password": "flores-dev",
+      "name": "Flores Tropicales Admin",
+      "role": "admin"
+    },
+    {
+      "id": "user-flores-tropicales-user",
+      "companyId": "company-flores-tropicales",
+      "email": "user@florestropicales.co",
+      "password": "flores-dev",
+      "name": "Flores Tropicales User",
+      "role": "user"
+    }
   ]
 }

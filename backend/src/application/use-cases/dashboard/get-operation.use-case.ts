@@ -6,6 +6,8 @@ import type { OperationRepository } from "../../../domain/ports/operation.reposi
 
 export interface GetOperationInput {
   id: string;
+  /** When set, the operation is hidden (404) unless this company is a party to it. */
+  requesterCompanyId?: string;
 }
 
 export interface GetOperationResult {
@@ -17,13 +19,24 @@ export interface GetOperationDeps {
   operationRepository: OperationRepository;
 }
 
+function isAccessibleTo(operation: Operation, requesterCompanyId: string): boolean {
+  return (
+    operation.companyId === requesterCompanyId ||
+    operation.bookings.some((booking) => booking.companyIds.includes(requesterCompanyId))
+  );
+}
+
 export function createGetOperationUseCase(deps: GetOperationDeps) {
   const { operationRepository } = deps;
 
   return async function getOperation(input: GetOperationInput): Promise<GetOperationResult> {
     const operation = await operationRepository.findById(input.id);
 
-    if (operation === null) {
+    if (
+      operation === null ||
+      (input.requesterCompanyId !== undefined &&
+        !isAccessibleTo(operation, input.requesterCompanyId))
+    ) {
       throw new OperationNotFoundError(input.id);
     }
 

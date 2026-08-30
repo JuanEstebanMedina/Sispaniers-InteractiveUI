@@ -7,29 +7,19 @@ import { t } from '@/i18n'
 import { toast } from '@/lib/toast'
 import type { AuthStatus, LoginInput, User } from '@/schemas'
 import { authApi } from './auth.api'
-import {
-  hasAnyPermission,
-  hasAtLeast,
-  hasPermission,
-  permissionsFor,
-  type Permission,
-  type Role,
-} from './roles'
+import { hasAtLeast, type Role } from './roles'
 import { tokenStore } from './tokenStore'
 
 interface AuthStore {
   status: AuthStatus
   user: User | null
   role: Role | null
-  permissions: ReadonlySet<Permission>
 
   bootstrap: () => Promise<void>
   login: (input: LoginInput) => Promise<User>
   logout: () => Promise<void>
   forceLogout: (reason?: string) => void
 
-  can: (permission: Permission | readonly Permission[]) => boolean
-  canAny: (permissions: readonly Permission[]) => boolean
   isAtLeast: (role: Role) => boolean
 }
 
@@ -37,7 +27,6 @@ function identityOf(user: User | null) {
   return {
     user,
     role: user?.role ?? null,
-    permissions: permissionsFor(user?.role, (user?.permissions ?? []) as Permission[]),
   }
 }
 
@@ -93,8 +82,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     toast.warning(reason ?? t('auth:session.expired'))
   },
 
-  can: (permission) => hasPermission(get().permissions, permission),
-  canAny: (permissions) => hasAnyPermission(get().permissions, permissions),
   isAtLeast: (role) => hasAtLeast(get().role, role),
 }))
 
@@ -117,8 +104,6 @@ export function authSnapshot() {
     status: state.status,
     user: state.user,
     role: state.role,
-    can: state.can,
-    canAny: state.canAny,
     isAtLeast: state.isAtLeast,
   }
 }
