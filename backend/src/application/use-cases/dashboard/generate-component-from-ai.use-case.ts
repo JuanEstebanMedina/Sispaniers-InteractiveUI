@@ -1,7 +1,8 @@
 import type { CommandRegistry } from "../../../domain/commands/command-registry.js";
 import { componentLabel } from "../../../domain/components/component-label.js";
-import type { Component } from "../../../domain/components/component.js";
-import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
+import { type Component, bySequence } from "../../../domain/components/component.js";
+import { packDefaultLayout } from "../../../domain/components/layout-packer.js";
+import { WIDGET_SIZES, type WidgetSizeName } from "../../../domain/components/widget-size.js";
 import {
   InvalidAiComponentError,
   InvalidCommandInputError,
@@ -55,24 +56,33 @@ function explicitlyRequestsComponent(input: string): boolean {
   );
 }
 
-interface ExistingComponent {
-  id: string;
-  label: string | null;
-  size: WidgetSizeName;
-  childCount: number;
-}
-
-function buildExistingComponentsHint(existing: ExistingComponent[]): string {
-  if (existing.length === 0) {
+function buildExistingComponentsHint(components: Component[]): string {
+  if (components.length === 0) {
     return `---
 This operation has no components yet, so every request that needs one uses create_component.`;
   }
+
+  const ordered = [...components].sort(bySequence);
+  const layoutById = new Map(
+    packDefaultLayout(
+      ordered.map((component) => ({ id: component.id, ...WIDGET_SIZES[component.size] })),
+      GRID_COLUMNS,
+    ).map((entry) => [entry.id, entry]),
+  );
+  const existing = ordered.map((component, position) => ({
+    id: component.id,
+    label: componentLabel(component),
+    size: component.size,
+    position,
+    ...layoutById.get(component.id),
+    childCount: component.children.length,
+  }));
 
   return `---
 Existing components of this operation. "label" is the name the user sees on the widget, and it is what they will describe a component by:
 ${JSON.stringify(existing)}
 
-Use update_component when the message points at exactly one of them — because it was referenced, or because it names that widget's current content or purpose closely enough to leave no doubt — passing its "id" as "componentId". When the request is new or generic, when it matches more than one, or when nothing here matches, use create_component: adding one component too many is safer than overwriting the wrong one.`;
+Use update_component when the message points at exactly one of them — because it was referenced, or because it names that widget's current content or purpose closely enough to leave no doubt — passing its "id" as "componentId". For a resize or move, only call it when both target and requested layout are explicit. "position" is this zero-based sequence; backend repacks col/row and shifts other components automatically. Never infer a layout change. When the request is new or generic, when it matches more than one, or when nothing here matches, use create_component: adding one component too many is safer than overwriting the wrong one.`;
 }
 
 function buildReferencedComponentsHint(referenced: Component[]): string {
@@ -120,7 +130,7 @@ Read operation context first, then current user message, then select only tools 
 function buildSystemPrompt(
   template: string,
   trigger: AiTrigger,
-  existingComponents: ExistingComponent[],
+  existingComponents: Component[],
   referenced: Component[],
   tools: AiToolDefinition[],
   context?: PromptContext,
@@ -217,13 +227,6 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     if (operation === null) throw new OperationNotFoundError(input.operationId);
 
     const components = await componentRepository.findByOperationId(input.operationId);
-    const existingComponents: ExistingComponent[] = components.map((component) => ({
-      id: component.id,
-      label: componentLabel(component),
-      size: component.size,
-      childCount: component.children.length,
-    }));
-
     const referencedIds = new Set(input.referencedComponentIds ?? []);
     const referencedComponents = components.filter((component) => referencedIds.has(component.id));
 
@@ -249,7 +252,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     const systemPrompt = buildSystemPrompt(
       promptTemplate,
       input.trigger,
-      existingComponents,
+      components,
       referencedComponents,
       tools,
       promptContext,

@@ -171,6 +171,22 @@ test("chat carries the existing components under a name the user could type", as
   expect(capture.systemPrompt).toContain("cmp-chart");
 });
 
+test("chat carries each component's size and packed position", async () => {
+  const capture = { systemPrompt: "" };
+  const first = componentStub({ id: "cmp-first", order: 0, size: "small" });
+  const second = componentStub({ id: "cmp-second", order: 1, size: "wide" });
+  const generateComponentFromAi = buildReferencingUseCase([first, second], capture);
+
+  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "ordénalos" });
+
+  expect(capture.systemPrompt).toContain(
+    '"id":"cmp-first","label":null,"size":"small","position":0,"col":0,"row":0,"w":2,"h":2',
+  );
+  expect(capture.systemPrompt).toContain(
+    '"id":"cmp-second","label":null,"size":"wide","position":1,"col":0,"row":2,"w":4,"h":2',
+  );
+});
+
 test("chat includes prior conversation on later messages", async () => {
   const messages: Array<{ role: "user" | "assistant"; content: string; recordedAt: Date }> = [];
   const prompts: string[] = [];

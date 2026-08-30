@@ -2,17 +2,23 @@ import type { Command, CommandContext } from "../../domain/commands/command.js";
 import type { JsonSchema } from "../../domain/commands/json-schema.js";
 import { validateComponentTree } from "../../domain/components/component-node.js";
 import type { Component, ComponentNode } from "../../domain/components/component.js";
+import type { WidgetSizeName } from "../../domain/components/widget-size.js";
 import type { UpdateComponentContentInput } from "../use-cases/dashboard/update-component-content.use-case.js";
-import { componentNodeSchema, replySchema } from "./component-node-schema.js";
+import type { UpdateComponentPlacementInput } from "../use-cases/dashboard/update-component-placement.use-case.js";
+import { componentNodeSchema, layoutSchema, replySchema } from "./component-node-schema.js";
+import { nearestSize } from "./create-component.command.js";
 
 export interface UpdateComponentCommandDeps {
   updateComponentContent: (input: UpdateComponentContentInput) => Promise<Component>;
+  updateComponentPlacement: (input: UpdateComponentPlacementInput) => Promise<Component>;
   skill?: string;
 }
 
 export interface UpdateComponentCommandInput {
-  children: ComponentNode[];
+  children?: ComponentNode[];
   componentId: string;
+  layout?: { cols: number; rows: number };
+  position?: number;
   reply: string;
 }
 
@@ -21,21 +27,21 @@ const inputSchema: JsonSchema = {
   properties: {
     children: { type: "array", items: componentNodeSchema },
     componentId: { type: "string" },
+    layout: layoutSchema,
+    position: { type: "number" },
     reply: replySchema,
   },
-  required: ["children", "componentId", "reply"],
+  required: ["componentId", "reply"],
 };
 
 export function createUpdateComponentCommand(deps: UpdateComponentCommandDeps): Command {
-  const { updateComponentContent, skill } = deps;
+  const { updateComponentContent, updateComponentPlacement, skill } = deps;
 
   return {
     name: "update_component",
     description:
-      "Replace the content of an existing dashboard component identified by componentId. " +
-      "The component keeps its size and its place on the grid, and no other component is " +
-      "touched. children replaces the whole tree, so it must carry every node the " +
-      "component should still have afterwards.",
+      "Update exactly one dashboard component: its content, size, or grid order. " +
+      "Moving adjusts sibling positions automatically.",
     inputSchema,
     ...(skill === undefined ? {} : { skill }),
 
@@ -44,16 +50,34 @@ export function createUpdateComponentCommand(deps: UpdateComponentCommandDeps): 
       context: CommandContext,
     ): Promise<{ component: Component; reply: string }> {
       const input = rawInput as UpdateComponentCommandInput;
-      validateComponentTree(input.children);
+      if (
+        input.children === undefined &&
+        input.layout === undefined &&
+        input.position === undefined
+      ) {
+        throw new Error("update_component needs children, layout, or position");
+      }
+      if (input.children !== undefined) validateComponentTree(input.children);
 
-      // No size is passed on purpose: editing a widget's content is not a
-      // request to resize it, and a reflow of the board is not what the user
-      // asked for when they corrected one number.
-      const component = await updateComponentContent({
-        operationId: context.operationId,
-        componentId: input.componentId,
-        children: input.children,
-      });
+      const size: WidgetSizeName | undefined =
+        input.layout === undefined ? undefined : nearestSize(input.layout.cols, input.layout.rows);
+      let component!: Component;
+      if (input.children !== undefined) {
+        component = await updateComponentContent({
+          operationId: context.operationId,
+          componentId: input.componentId,
+          children: input.children,
+          ...(size === undefined ? {} : { size }),
+        });
+      }
+      if (input.position !== undefined || (input.children === undefined && size !== undefined)) {
+        component = await updateComponentPlacement({
+          operationId: context.operationId,
+          componentId: input.componentId,
+          ...(input.children === undefined && size !== undefined ? { size } : {}),
+          ...(input.position === undefined ? {} : { position: input.position }),
+        });
+      }
       return { component, reply: input.reply };
     },
   };
