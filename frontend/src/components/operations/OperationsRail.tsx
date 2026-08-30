@@ -1,8 +1,12 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { queryKeys } from '@/api/endpoints'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { useOperationEvents } from '@/hooks'
 import { cn } from '@/lib/cn'
+import { toast } from '@/lib/toast'
 import type { Operation } from '@/schemas'
 import {
   DEFAULT_SECTIONS,
@@ -47,11 +51,27 @@ export function OperationsRail({
   open,
 }: OperationsRailProps) {
   const { t } = useTranslation('domain')
+  const queryClient = useQueryClient()
   const width = useRailStore((state) => state.width)
   const setWidth = useRailStore((state) => state.setWidth)
   const [resizing, setResizing] = useState(false)
   const sections = useRailStore((state) => state.sections)
   const toggleSection = useRailStore((state) => state.toggleSection)
+
+  const onOperationEvent = useCallback(
+    (eventName: 'component-created' | 'component-updated') => {
+      toast.info(
+        eventName === 'component-created'
+          ? t('operation.events.componentCreated')
+          : t('operation.events.componentUpdated'),
+      )
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.operations.components(activeTrackId ?? '', 4),
+      })
+    },
+    [t, queryClient, activeTrackId],
+  )
+  useOperationEvents(activeTrackId ?? '', onOperationEvent)
 
   const sorted = useMemo(() => {
     const waiting = (operation: Operation) => (operation.health === 'critical' ? 0 : 1)
@@ -96,7 +116,7 @@ export function OperationsRail({
         onToggle={() => toggleSection('chat')}
         weight={2}
       >
-        <AgentChat className="min-h-0 flex-1" />
+        <AgentChat operationId={activeTrackId ?? ''} className="min-h-0 flex-1" />
       </RailSection>
 
       <RailSection

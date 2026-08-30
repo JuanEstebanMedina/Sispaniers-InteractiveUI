@@ -2,8 +2,11 @@ import { Paperclip, SendHorizonal, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { http } from '@/api/client'
+import { endpoints } from '@/api/endpoints'
 import { cn } from '@/lib/cn'
 import { formatBytes } from '@/lib/format'
+import { toast } from '@/lib/toast'
 
 interface ChatMessage {
   id: string
@@ -13,6 +16,7 @@ interface ChatMessage {
 }
 
 interface AgentChatProps {
+  operationId: string
   className?: string
 }
 
@@ -20,11 +24,11 @@ interface AgentChatProps {
  * Talking to the agent directly, for the manual asks the generated UI has no
  * widget for — "send the client an email", "hold this until I check".
  *
- * Messages live in component state only: there is no endpoint behind this yet.
- * It deliberately does NOT fake an agent reply — an invented answer in a
- * supervision console is worse than an obvious silence.
+ * The agent never replies with free text — it responds by generating or
+ * updating a UI component (see `POST /operations/:id/chat`). So a successful
+ * send appends a generic acknowledgment, not an invented answer.
  */
-export function AgentChat({ className }: AgentChatProps) {
+export function AgentChat({ operationId, className }: AgentChatProps) {
   const { t } = useTranslation('domain')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
@@ -49,7 +53,14 @@ export function AgentChat({ className }: AgentChatProps) {
 
   // An attachment on its own is a valid message: dropping in a Bill of Lading
   // with no covering note is the common case.
-  function send() {
+  function appendAgentMessage(body: string) {
+    setMessages((current) => [
+      ...current,
+      { id: `msg-${current.length}`, author: 'agent', body, files: [] },
+    ])
+  }
+
+  async function send() {
     const body = draft.trim()
     if (!body && attached.length === 0) return
     setMessages((current) => [
@@ -63,6 +74,13 @@ export function AgentChat({ className }: AgentChatProps) {
     ])
     setDraft('')
     setAttached([])
+
+    try {
+      await http.post(endpoints.ai.chat(operationId), { message: body })
+      appendAgentMessage(t('operation.chat.componentGenerated'))
+    } catch {
+      toast.error(t('operation.chat.sendError'))
+    }
   }
 
   function attach(picked: FileList | null) {

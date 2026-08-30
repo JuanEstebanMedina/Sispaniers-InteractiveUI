@@ -6,13 +6,14 @@ import { api, api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
 import { SectionBoundary } from '@/components/feedback/ErrorBoundary'
 import { ErrorState } from '@/components/feedback/ErrorState'
+import { toAiWidgets } from '@/components/generated/ComponentNodeRenderer'
 import { WidgetGrid } from '@/components/generated/WidgetGrid'
 import { demoWidgets } from '@/components/generated/demoWidgets'
 import { GeneratedSurface } from '@/components/operations/GeneratedSurface'
 import { OperationDetailHeader } from '@/components/operations/OperationDetailHeader'
 import { Skeleton } from '@/components/ui/Skeleton'
 import type { GridItem } from '@/lib/grid'
-import { operationListSchema, operationResponseSchema } from '@/schemas'
+import { componentsResponseSchema, operationListSchema, operationResponseSchema } from '@/schemas'
 import { useRailStore } from '@/stores/railStore'
 
 /**
@@ -58,8 +59,18 @@ export default function OperationDetailPage() {
   const railWidth = useRailStore((state) => state.width)
 
   const operation = detail.data
-  
-  const widgets = useMemo(() => (operation ? demoWidgets(operation) : []), [operation])
+
+  // ponytail: hardcoded to 4 cols — thread the grid's own computed column
+  // count down here once there's a clean way to do it, not a blocker now.
+  const aiComponents = useQuery({
+    queryKey: queryKeys.operations.components(trackId, 4),
+    queryFn: () => api$.get(endpoints.ai.components(trackId, 4), componentsResponseSchema),
+  })
+
+  const widgets = useMemo(
+    () => (operation ? [...demoWidgets(operation), ...toAiWidgets(aiComponents.data?.components ?? [])] : []),
+    [operation, aiComponents.data],
+  )
   const save = saveLayout.mutate
   const handleLayoutChange = useCallback((layout: GridItem[]) => save(layout), [save])
 

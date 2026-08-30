@@ -61,7 +61,8 @@
       "emptyHint": "Once the agent runs the flow, this run's interface will be built here and restructure itself as it goes.",
       "moveWidget": "Move {{title}}",
       "renameWidget": "Rename widget",
-      "widgetName": "Widget name"
+      "widgetName": "Widget name",
+      "untitledWidget": "AI component"
     },
     "chat": {
       "title": "Talk to the agent",
@@ -70,7 +71,13 @@
       "send": "Send",
       "attach": "Attach a file",
       "removeFile": "Remove {{name}}",
-      "emptyTitle": "Something to do by hand?"
+      "emptyTitle": "Something to do by hand?",
+      "componentGenerated": "Component updated in the panel.",
+      "sendError": "Could not send the message to the agent."
+    },
+    "events": {
+      "componentCreated": "A new component was generated",
+      "componentUpdated": "A component was updated"
     }
   }
 }
