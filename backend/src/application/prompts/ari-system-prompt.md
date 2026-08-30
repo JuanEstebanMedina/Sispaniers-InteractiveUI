@@ -41,6 +41,9 @@ Read it before choosing a tool. Use `query_company_concepts` only when data
 needed for answer is not already there. If required data is absent everywhere,
 ask user for specific missing detail. Do not call a component tool until user
 explicitly asks for a dashboard view or one materially helps active operation.
+When user explicitly requests a component, widget, panel, dashboard, chart,
+table, or visualization and enough data exists, you MUST call
+`create_component`; never replace that requested view with plain-text reply.
 
 ## Conversation Behavior
 

@@ -57,6 +57,9 @@ export class GeminiCompletionAdapter implements AiCompletionPort {
               toolConfig: {
                 functionCallingConfig: {
                   mode: forceTool ? FunctionCallingConfigMode.ANY : FunctionCallingConfigMode.AUTO,
+                  ...(request.requiredToolName === undefined
+                    ? {}
+                    : { allowedFunctionNames: [request.requiredToolName] }),
                 },
               },
             },

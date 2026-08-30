@@ -45,7 +45,12 @@ const ESTIMATED_PENDING_SIZE: WidgetSizeName = "small";
 const GRID_COLUMNS = 4;
 const MAX_QUERY_TOOL_CALLS = 3;
 const CONTINUATION_COMMANDS = new Set(["ingest_company_concepts", "query_company_concepts"]);
-const BUILDING_COMMANDS = new Set(["create_component", "update_component"]);
+
+function explicitlyRequestsComponent(input: string): boolean {
+  return /\b(componente|widget|panel|dashboard|tarjeta|grafica|gráfica|tabla|visualizaci[oó]n)\b/i.test(
+    input,
+  );
+}
 
 interface ExistingComponent {
   id: string;
@@ -123,6 +128,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     operationId: string,
     trigger: AiTrigger,
   ): Promise<{ component: Component | null; reply: string }> {
+    const requiresComponentTool = trigger === "chat" && explicitlyRequestsComponent(input);
     // save_company_context is a chat-only tool: a webhook has no user to
     // confirm what is worth remembering about the company.
     const tools = commandRegistry
@@ -145,7 +151,8 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         prompt: nextInput,
         systemPrompt,
         tools,
-        forceTool: trigger !== "chat",
+        forceTool: trigger !== "chat" || requiresComponentTool,
+        ...(requiresComponentTool ? { requiredToolName: "create_component" } : {}),
       });
 
       if (result.kind === "text") {
@@ -157,13 +164,6 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       }
 
       try {
-        if (BUILDING_COMMANDS.has(result.toolName) && eventPublisher && idGenerator) {
-          eventPublisher.publish(operationId, "component-pending", {
-            operationId,
-            tempId: idGenerator.newId(),
-            estimatedSize: ESTIMATED_PENDING_SIZE,
-          });
-        }
         const dispatched = await commandRegistry.dispatch(result.toolName, result.input, {
           operationId,
         });
@@ -237,26 +237,57 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       promptContext,
     );
 
+    const componentExpected = input.trigger === "auto" || explicitlyRequestsComponent(input.input);
+    if (componentExpected && eventPublisher && idGenerator) {
+      eventPublisher.publish(input.operationId, "component-pending", {
+        operationId: input.operationId,
+        tempId: idGenerator.newId(),
+        estimatedSize: ESTIMATED_PENDING_SIZE,
+      });
+    }
+
     let result: { component: Component | null; reply: string };
     try {
-      result = await completeAndDispatch(
-        systemPrompt,
-        input.input,
-        input.operationId,
-        input.trigger,
-      );
+      try {
+        result = await completeAndDispatch(
+          systemPrompt,
+          input.input,
+          input.operationId,
+          input.trigger,
+        );
+      } catch (error) {
+        if (!(error instanceof InvalidAiComponentError)) throw error;
+        result = await completeAndDispatch(
+          systemPrompt,
+          input.input,
+          input.operationId,
+          input.trigger,
+        );
+      }
     } catch (error) {
-      if (!(error instanceof InvalidAiComponentError)) throw error;
+      if (!(error instanceof InvalidAiComponentError)) {
+        if (componentExpected) {
+          eventPublisher?.publish(input.operationId, "component-pending-cleared", null);
+        }
+        throw error;
+      }
       // Resending the untouched message makes the model repeat the rejected
       // call and the user gets a bare 502. Some rejections are refusals the
       // model has to relay in words — the company's data is frozen — and it
       // can only do that if it is told what came back.
-      result = await completeAndDispatch(
-        systemPrompt,
-        `${input.input}\n\n---\nYour previous tool call was rejected: ${error.message}\nDo not repeat it. Correct it if you can, or answer in plain text explaining what cannot be done.`,
-        input.operationId,
-        input.trigger,
-      );
+      try {
+        result = await completeAndDispatch(
+          systemPrompt,
+          `${input.input}\n\n---\nYour previous tool call was rejected: ${error.message}\nDo not repeat it. Correct it if you can, or answer in plain text explaining what cannot be done.`,
+          input.operationId,
+          input.trigger,
+        );
+      } catch (retryError) {
+        if (componentExpected) {
+          eventPublisher?.publish(input.operationId, "component-pending-cleared", null);
+        }
+        throw retryError;
+      }
     }
 
     if (input.trigger === "chat" && chatHistoryPort !== undefined) {

@@ -21,6 +21,7 @@ import { ChartTooltip } from '@/components/charts/ChartTooltip'
 import { axisProps, cursorProps, gridProps } from '@/components/charts/chartTheme'
 import { cn } from '@/lib/cn'
 import { formatNumber } from '@/lib/format'
+import { InlineMarkdown, Markdown } from '@/lib/markdown'
 import { toast } from '@/lib/toast'
 import {
   CHART_COLOR,
@@ -130,7 +131,7 @@ export function Title() {
         TEXT_COLOR[colorOf(props, 'default')],
       )}
     >
-      {props.str('text')}
+      <InlineMarkdown text={props.str('text')} />
     </h4>
   )
 }
@@ -138,9 +139,9 @@ export function Title() {
 export function Label() {
   const props = useProps()
   return (
-    <p className={cn('text-pretty text-xs', TEXT_COLOR[colorOf(props, 'muted')])}>
-      {props.str('text')}
-    </p>
+    <div className={cn('text-pretty text-xs', TEXT_COLOR[colorOf(props, 'muted')])}>
+      <Markdown body={props.str('text')} />
+    </div>
   )
 }
 
@@ -158,7 +159,7 @@ export function Stat() {
       >
         {props.str('value', '—')}
       </p>
-      {label && <p className="mt-0.5 truncate text-2xs text-fg-subtle">{label}</p>}
+      {label && <p className="mt-0.5 truncate text-2xs text-fg-subtle"><InlineMarkdown text={label} /></p>}
     </div>
   )
 }
@@ -380,7 +381,7 @@ export function StatusBadge() {
         SOFT_COLOR[colorOf(props, 'muted')],
       )}
     >
-      {props.str('text', '—')}
+      <InlineMarkdown text={props.str('text', '—')} />
     </span>
   )
 }
@@ -402,8 +403,8 @@ export function KeyValues() {
     <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
       {items.map((item) => (
         <Fragment key={item.label}>
-          <dt className="truncate text-fg-subtle">{item.label}</dt>
-          <dd className="truncate text-right font-mono tabular text-fg">{item.value}</dd>
+          <dt className="truncate text-fg-subtle"><InlineMarkdown text={item.label} /></dt>
+          <dd className="truncate text-right font-mono tabular text-fg"><InlineMarkdown text={item.value} /></dd>
         </Fragment>
       ))}
     </dl>
@@ -436,7 +437,7 @@ export function DataTable() {
                 key={column.key}
                 className="whitespace-nowrap px-2 py-1 font-medium text-fg-subtle"
               >
-                {column.label}
+                <InlineMarkdown text={column.label} />
               </th>
             ))}
           </tr>
@@ -446,7 +447,7 @@ export function DataTable() {
             <tr key={index} className="border-b border-line/40 last:border-0">
               {columns.map((column) => (
                 <td key={column.key} className="whitespace-nowrap px-2 py-1 text-fg">
-                  {String(row[column.key] ?? '—')}
+                  <InlineMarkdown text={String(row[column.key] ?? '—')} />
                 </td>
               ))}
             </tr>
@@ -501,7 +502,7 @@ export function Timeline() {
             {index < events.length - 1 && <span className="mt-0.5 w-px flex-1 bg-line" />}
           </span>
           <span className="min-w-0 pb-1">
-            <span className="block truncate text-xs text-fg">{event.text}</span>
+            <span className="block truncate text-xs text-fg"><InlineMarkdown text={event.text} /></span>
             {event.at && <span className="block text-2xs text-fg-subtle">{event.at}</span>}
           </span>
         </li>
@@ -524,7 +525,7 @@ export function Progress() {
     <div className="min-w-0">
       {label && (
         <div className="mb-1 flex items-baseline justify-between gap-2 text-2xs">
-          <span className="truncate text-fg-subtle">{label}</span>
+          <span className="truncate text-fg-subtle"><InlineMarkdown text={label} /></span>
           <span className="shrink-0 font-mono tabular text-fg">{Math.round(pct)}%</span>
         </div>
       )}
@@ -630,7 +631,7 @@ export function Map() {
     <div className="flex min-h-40 flex-1 flex-col gap-1">
       {title && (
         <h4 className="truncate font-display text-sm font-semibold tracking-tight text-fg">
-          {title}
+          <InlineMarkdown text={title} />
         </h4>
       )}
       <div className="min-h-0 flex-1 overflow-hidden rounded-md">
