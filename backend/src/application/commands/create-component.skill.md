@@ -14,12 +14,15 @@ componente de más que actualizar uno equivocado.
   "children": [
     { "kind": "<uno de component_catalog>", "order": <n>, "props": { ... } }
   ],
-  "layout": { "cols": <n>, "rows": <n> }
+  "layout": { "cols": <n>, "rows": <n> },
+  "reply": "<mensaje breve en lenguaje natural, dirigido directamente al usuario final y mostrado tal cual en una burbuja de chat>"
 }
 ```
 
 - `layout` es **obligatorio** — declara cuántas celdas ocupa el componente en
   la grilla de `{{grid_columns}}` columnas.
+- `reply` es **obligatorio** — mensaje conversacional para el usuario final,
+  sin jerga interna, sin HTML ni markdown ni código, nunca vacío.
 - Respeta siempre el rango permitido por el `kind` elegido
   (`minCols/maxCols`, `minRows/maxRows`) — si no lo respetas, el backend
   rechaza la salida y el step se reintenta.

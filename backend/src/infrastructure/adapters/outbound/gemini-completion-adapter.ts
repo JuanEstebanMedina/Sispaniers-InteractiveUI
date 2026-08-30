@@ -33,10 +33,22 @@ export class GeminiCompletionAdapter implements AiCompletionPort {
   }
 
   async complete(request: AiCompletionRequest): Promise<AiCompletionResult> {
+    const hasTools = request.tools !== undefined && request.tools.length > 0;
+
     const response = await this.getClient().models.generateContent({
       model: this.model,
       contents: request.prompt,
-      config: { tools: [{ functionDeclarations: toFunctionDeclarations(request.tools) }] },
+      ...(hasTools
+        ? {
+            config: {
+              tools: [
+                {
+                  functionDeclarations: toFunctionDeclarations(request.tools as AiToolDefinition[]),
+                },
+              ],
+            },
+          }
+        : {}),
     });
 
     const functionCall = response.functionCalls?.[0];

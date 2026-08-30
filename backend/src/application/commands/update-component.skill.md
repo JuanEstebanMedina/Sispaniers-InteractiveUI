@@ -17,12 +17,15 @@ componente de más que actualizar uno equivocado.
     { "kind": "<uno de component_catalog>", "order": <n>, "props": { ... } }
   ],
   "componentId": "<id del componente que reemplaza>",
-  "layout": { "cols": 4, "rows": 2 }
+  "layout": { "cols": 4, "rows": 2 },
+  "reply": "<mensaje breve en lenguaje natural, dirigido directamente al usuario final y mostrado tal cual en una burbuja de chat>"
 }
 ```
 
 - `componentId` es **obligatorio** — el `id` que aparece en la lista de
   componentes existentes del contexto.
+- `reply` es **obligatorio** — mensaje conversacional para el usuario final,
+  sin jerga interna, sin HTML ni markdown ni código, nunca vacío.
 - `layout` es **opcional**: omítelo si solo reemplazas el contenido y el
   tamaño actual sigue siendo correcto; inclúyelo (mismo formato
   `{ "cols": n, "rows": n }`) cuando el componente también necesita cambiar

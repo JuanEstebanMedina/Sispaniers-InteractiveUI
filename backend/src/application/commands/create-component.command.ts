@@ -4,7 +4,7 @@ import { validateComponentTree } from "../../domain/components/component-node.js
 import type { Component, ComponentNode } from "../../domain/components/component.js";
 import { WIDGET_SIZES, type WidgetSizeName } from "../../domain/components/widget-size.js";
 import type { CreateComponentInput } from "../use-cases/dashboard/create-component.use-case.js";
-import { componentNodeSchema, layoutSchema } from "./component-node-schema.js";
+import { componentNodeSchema, layoutSchema, replySchema } from "./component-node-schema.js";
 
 export interface CreateComponentCommandDeps {
   createComponent: (input: CreateComponentInput) => Promise<Component>;
@@ -14,6 +14,7 @@ export interface CreateComponentCommandDeps {
 export interface CreateComponentCommandInput {
   children: ComponentNode[];
   layout: { cols: number; rows: number };
+  reply: string;
 }
 
 const inputSchema: JsonSchema = {
@@ -21,8 +22,9 @@ const inputSchema: JsonSchema = {
   properties: {
     children: { type: "array", items: componentNodeSchema },
     layout: layoutSchema,
+    reply: replySchema,
   },
-  required: ["children", "layout"],
+  required: ["children", "layout", "reply"],
 };
 
 export function nearestSize(cols: number, rows: number): WidgetSizeName {
@@ -51,16 +53,20 @@ export function createCreateComponentCommand(deps: CreateComponentCommandDeps): 
     inputSchema,
     ...(skill === undefined ? {} : { skill }),
 
-    async execute(rawInput: unknown, context: CommandContext): Promise<Component> {
+    async execute(
+      rawInput: unknown,
+      context: CommandContext,
+    ): Promise<{ component: Component; reply: string }> {
       const input = rawInput as CreateComponentCommandInput;
       validateComponentTree(input.children);
 
-      return createComponent({
+      const component = await createComponent({
         operationId: context.operationId,
         kind: "container",
         children: input.children,
         size: nearestSize(input.layout.cols, input.layout.rows),
       });
+      return { component, reply: input.reply };
     },
   };
 }

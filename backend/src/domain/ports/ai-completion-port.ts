@@ -8,7 +8,7 @@ export interface AiToolDefinition {
 
 export interface AiCompletionRequest {
   prompt: string;
-  tools: AiToolDefinition[];
+  tools?: AiToolDefinition[];
 }
 
 export type AiCompletionResult =

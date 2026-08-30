@@ -10,6 +10,7 @@ import {
 import type { AiCompletionPort } from "../../../domain/ports/ai-completion-port.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
+import { buildBasePrompt } from "./ai-response.helpers.js";
 
 export type AiTrigger = "chat" | "auto";
 
@@ -28,7 +29,6 @@ export interface GenerateComponentFromAiDeps {
 }
 
 const GRID_COLUMNS = 4;
-const NOT_AVAILABLE = "N/A (no disponible en esta versión)";
 
 function buildExistingComponentsHint(
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
@@ -44,12 +44,7 @@ function buildPrompt(
   currentInput: string,
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
 ): string {
-  const base = template
-    .replaceAll("{{company_knowledge}}", NOT_AVAILABLE)
-    .replaceAll("{{client_memory}}", NOT_AVAILABLE)
-    .replaceAll("{{trigger}}", trigger)
-    .replaceAll("{{current_input}}", currentInput)
-    .replaceAll("{{grid_columns}}", String(GRID_COLUMNS));
+  const base = buildBasePrompt(template, trigger, currentInput, GRID_COLUMNS);
 
   return `${base}\n\n${buildExistingComponentsHint(existingComponents)}`;
 }
@@ -63,7 +58,10 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     promptTemplate,
   } = deps;
 
-  async function completeAndDispatch(prompt: string, operationId: string): Promise<Component> {
+  async function completeAndDispatch(
+    prompt: string,
+    operationId: string,
+  ): Promise<{ component: Component; reply: string }> {
     const tools = commandRegistry.list().map((command) => ({
       name: command.name,
       description: command.description,
@@ -79,7 +77,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     try {
       return (await commandRegistry.dispatch(result.toolName, result.input, {
         operationId,
-      })) as Component;
+      })) as { component: Component; reply: string };
     } catch (error) {
       if (error instanceof UnknownCommandError || error instanceof InvalidCommandInputError) {
         throw new InvalidAiComponentError(error.message);
@@ -90,7 +88,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
 
   return async function generateComponentFromAi(
     input: GenerateComponentFromAiInput,
-  ): Promise<Component> {
+  ): Promise<{ component: Component; reply: string }> {
     const operation = await operationRepository.findById(input.operationId);
     if (operation === null) {
       throw new OperationNotFoundError(input.operationId);

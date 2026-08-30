@@ -44,10 +44,12 @@ export class OpenAiCompletionAdapter implements AiCompletionPort {
   }
 
   async complete(request: AiCompletionRequest): Promise<AiCompletionResult> {
+    const hasTools = request.tools !== undefined && request.tools.length > 0;
+
     const response = await this.getClient().chat.completions.create({
       model: this.model,
       messages: [{ role: "user", content: request.prompt }],
-      tools: toOpenAiTools(request.tools),
+      ...(hasTools ? { tools: toOpenAiTools(request.tools as AiToolDefinition[]) } : {}),
     });
 
     const message = response.choices[0]?.message;

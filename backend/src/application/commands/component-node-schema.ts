@@ -15,3 +15,5 @@ export const layoutSchema: JsonSchema = {
   properties: { cols: { type: "number" }, rows: { type: "number" } },
   required: ["cols", "rows"],
 };
+
+export const replySchema: JsonSchema = { type: "string" };

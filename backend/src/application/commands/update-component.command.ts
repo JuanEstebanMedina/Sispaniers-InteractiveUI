@@ -3,7 +3,7 @@ import type { JsonSchema } from "../../domain/commands/json-schema.js";
 import { validateComponentTree } from "../../domain/components/component-node.js";
 import type { Component, ComponentNode } from "../../domain/components/component.js";
 import type { UpdateComponentContentInput } from "../use-cases/dashboard/update-component-content.use-case.js";
-import { componentNodeSchema, layoutSchema } from "./component-node-schema.js";
+import { componentNodeSchema, layoutSchema, replySchema } from "./component-node-schema.js";
 import { nearestSize } from "./create-component.command.js";
 
 export interface UpdateComponentCommandDeps {
@@ -15,6 +15,7 @@ export interface UpdateComponentCommandInput {
   children: ComponentNode[];
   componentId: string;
   layout?: { cols: number; rows: number };
+  reply: string;
 }
 
 const inputSchema: JsonSchema = {
@@ -23,8 +24,9 @@ const inputSchema: JsonSchema = {
     children: { type: "array", items: componentNodeSchema },
     componentId: { type: "string" },
     layout: layoutSchema,
+    reply: replySchema,
   },
-  required: ["children", "componentId"],
+  required: ["children", "componentId", "reply"],
 };
 
 export function createUpdateComponentCommand(deps: UpdateComponentCommandDeps): Command {
@@ -39,7 +41,10 @@ export function createUpdateComponentCommand(deps: UpdateComponentCommandDeps): 
     inputSchema,
     ...(skill === undefined ? {} : { skill }),
 
-    async execute(rawInput: unknown, context: CommandContext): Promise<Component> {
+    async execute(
+      rawInput: unknown,
+      context: CommandContext,
+    ): Promise<{ component: Component; reply: string }> {
       const input = rawInput as UpdateComponentCommandInput;
       validateComponentTree(input.children);
 
@@ -48,12 +53,13 @@ export function createUpdateComponentCommand(deps: UpdateComponentCommandDeps): 
           ? {}
           : { size: nearestSize(input.layout.cols, input.layout.rows) };
 
-      return updateComponentContent({
+      const component = await updateComponentContent({
         operationId: context.operationId,
         componentId: input.componentId,
         children: input.children,
         ...sizeField,
       });
+      return { component, reply: input.reply };
     },
   };
 }
