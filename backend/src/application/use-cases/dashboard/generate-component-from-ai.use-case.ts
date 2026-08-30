@@ -234,9 +234,13 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       );
     } catch (error) {
       if (!(error instanceof InvalidAiComponentError)) throw error;
+      // Resending the untouched message makes the model repeat the rejected
+      // call and the user gets a bare 502. Some rejections are refusals the
+      // model has to relay in words — the company's data is frozen — and it
+      // can only do that if it is told what came back.
       result = await completeAndDispatch(
         systemPrompt,
-        input.input,
+        `${input.input}\n\n---\nYour previous tool call was rejected: ${error.message}\nDo not repeat it. Correct it if you can, or answer in plain text explaining what cannot be done.`,
         input.operationId,
         input.trigger,
       );

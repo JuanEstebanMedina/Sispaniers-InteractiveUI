@@ -66,6 +66,35 @@ test("an invalid component tree from a tool call is treated as an invalid AI res
 });
 
 /**
+ * The retry used to resend the original message untouched, so a model that had
+ * just been told the company's figures are frozen would try the same edit
+ * again and the user got a bare 502. Telling it what the domain rejected lets
+ * it answer in words instead.
+ */
+test("the retry tells the model why the first attempt was rejected", async () => {
+  const prompts: string[] = [];
+  let calls = 0;
+  const generateComponentFromAi = buildUseCase({
+    complete: async ({ prompt }) => {
+      prompts.push(prompt);
+      calls += 1;
+      return calls === 1
+        ? { kind: "tool_call", toolName: "create_component", input: {} }
+        : { kind: "text", text: "Esa cifra viene de los registros de la empresa." };
+    },
+  });
+
+  const result = await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "cambia el 42 por 50",
+  });
+
+  expect(prompts[1]).toContain("unknown node kind: NotificationSent");
+  expect(result.reply).toBe("Esa cifra viene de los registros de la empresa.");
+});
+
+/**
  * The chat used to be create-only, which made "change the ETA on that panel"
  * answerable only by building a second panel next to the first.
  */
