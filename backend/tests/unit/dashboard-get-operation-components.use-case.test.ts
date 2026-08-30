@@ -76,7 +76,7 @@ test("the same order packs differently for a narrower grid", async () => {
   ]);
 });
 
-test("a component wider than the grid is left out of the layout", async () => {
+test("a component wider than the grid is narrowed instead of disappearing", async () => {
   const { operation, componentRepository, getOperationComponents } = await buildUseCase();
   await componentRepository.save(
     aComponent({ id: "wide", operationId: operation.id, size: "wide", order: 0 }),
@@ -85,5 +85,5 @@ test("a component wider than the grid is left out of the layout", async () => {
   const result = await getOperationComponents({ operationId: operation.id, cols: 2 });
 
   expect(result.components).toHaveLength(1);
-  expect(result.layout).toEqual([]);
+  expect(result.layout).toEqual([{ id: "wide", col: 0, row: 0, w: 2, h: 2 }]);
 });

@@ -55,7 +55,7 @@ function lastActivityOf(operation: Operation): number {
 }
 
 function firstCompanyOf(operation: Operation): string | undefined {
-  return operation.bookings.flatMap((booking) => booking.companyIds)[0];
+  return operation.companyId ?? operation.bookings.flatMap((booking) => booking.companyIds)[0];
 }
 
 function compareBy(field: OperationSortField, a: Operation, b: Operation): number {

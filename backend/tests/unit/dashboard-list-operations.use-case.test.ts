@@ -263,3 +263,14 @@ test("without an explicit sort the newest activity comes first", async () => {
 
   expect(found.map(({ operation }) => operation.id)).toEqual(["op-newer", "op-older"]);
 });
+
+test("sorting by company uses the owning company, not only the booking parties", async () => {
+  const owned = anOperation({ id: "op-owned", companyId: "company-andes", bookings: [] });
+  const other = anOperation({ id: "op-other", companyId: "company-zeta", bookings: [] });
+
+  const listOperations = await listOver([other, owned]);
+
+  const sorted = await listOperations({ sortBy: "company", sortDir: "asc" });
+
+  expect(sorted.map(({ operation }) => operation.id)).toEqual(["op-owned", "op-other"]);
+});
