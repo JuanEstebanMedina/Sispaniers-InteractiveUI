@@ -10,7 +10,10 @@ import {
   OperationNotFoundError,
   UnknownCommandError,
 } from "../../../domain/model/errors.js";
-import type { AiCompletionPort, AiToolDefinition } from "../../../domain/ports/ai-completion-port.js";
+import type {
+  AiCompletionPort,
+  AiToolDefinition,
+} from "../../../domain/ports/ai-completion-port.js";
 import type { ChatHistoryPort } from "../../../domain/ports/chat-history.port.js";
 import type { CompanyRepository } from "../../../domain/ports/company.repository.js";
 import type { ComponentEventPublisher } from "../../../domain/ports/component-event-publisher.port.js";
