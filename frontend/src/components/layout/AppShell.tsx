@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Outlet, useRouterState } from '@tanstack/react-router'
 import { Menu } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +7,7 @@ import { api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
 import { ErrorBoundary } from '@/components/feedback/ErrorBoundary'
 import { Button } from '@/components/ui/Button'
-import { useDisclosure, useLocalStorage } from '@/hooks'
+import { useDisclosure, useLocalStorage, useSse } from '@/hooks'
 import { operationListSchema } from '@/schemas'
 import { Sidebar } from './Sidebar'
 
@@ -15,21 +15,17 @@ export function AppShell() {
   const { t } = useTranslation()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const mobileMenu = useDisclosure(false)
+  const queryClient = useQueryClient()
+
+  useSse(endpoints.ai.operationEvents, () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.operations.all })
+  })
 
   const { data: pendingDecisions } = useQuery({
     queryKey: queryKeys.operations.list(),
     queryFn: () =>
       api$.post(endpoints.operations.search, operationListSchema, {}),
     select: (list) => list.operations.filter((o) => o.health === 'critical').length,
-    // 60s y no 30: esto alimenta UN PUNTO en el menú, y el punto no necesita
-    // precisión de medio minuto. En las pantallas de operaciones la lista se
-    // refresca cada 15s por su cuenta —misma clave de caché, así que este
-    // observador se entera gratis—; el intervalo propio existe sólo para las
-    // otras pantallas, donde nadie más la está pidiendo.
-    //
-    // El intervalo es POR OBSERVADOR, no por clave: dos componentes mirando la
-    // misma lista con intervalos distintos disparan dos series de peticiones.
-    refetchInterval: 60_000,
   })
 
   const [collapsed, setCollapsed] = useLocalStorage('yn.sidebar.collapsed', false)

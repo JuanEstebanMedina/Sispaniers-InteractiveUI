@@ -26,7 +26,8 @@ export function buildApp(deps: RouteDependencies): FastifyInstance {
     reply.send(error);
   });
 
-  void app.register(cors, { origin: true });
+  // Set CORS_ORIGIN=* for open demo access. Unset means same-origin only.
+  void app.register(cors, { origin: process.env.CORS_ORIGIN || false });
 
   app.get("/health", healthHandler);
 

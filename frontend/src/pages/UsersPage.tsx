@@ -33,7 +33,6 @@ export default function UsersPage() {
   const list = useQuery({
     queryKey: queryKeys.users.list(),
     queryFn: () => api$.get(endpoints.users.list, userListSchema),
-    refetchInterval: 15_000,
     refetchOnWindowFocus: true,
   })
 

@@ -1,12 +1,8 @@
-import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { queryKeys } from '@/api/endpoints'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { useOperationEvents } from '@/hooks'
 import { cn } from '@/lib/cn'
-import { toast } from '@/lib/toast'
 import type { Operation } from '@/schemas'
 import {
   DEFAULT_SECTIONS,
@@ -52,27 +48,11 @@ export function OperationsRail({
   open,
 }: OperationsRailProps) {
   const { t } = useTranslation('domain')
-  const queryClient = useQueryClient()
   const width = useRailStore((state) => state.width)
   const setWidth = useRailStore((state) => state.setWidth)
   const [resizing, setResizing] = useState(false)
   const sections = useRailStore((state) => state.sections)
   const toggleSection = useRailStore((state) => state.toggleSection)
-
-  const onOperationEvent = useCallback(
-    (eventName: 'component-created' | 'component-updated') => {
-      toast.info(
-        eventName === 'component-created'
-          ? t('operation.events.componentCreated')
-          : t('operation.events.componentUpdated'),
-      )
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.operations.components(activeTrackId ?? '', 4),
-      })
-    },
-    [t, queryClient, activeTrackId],
-  )
-  useOperationEvents(activeTrackId ?? '', onOperationEvent)
 
   // La operación abierta ya está en la lista que el riel recibe, así que esto
   // es una lectura de lo que tiene en la mano — no una consulta más.

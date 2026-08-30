@@ -3,6 +3,7 @@ import { createCreateCompanyUseCase } from "../../src/application/use-cases/dash
 import { createCreateOperationUseCase } from "../../src/application/use-cases/dashboard/create-operation.use-case.js";
 import { createResolveCompanyUseCase } from "../../src/application/use-cases/shared/resolve-company.use-case.js";
 import { CompanyNotFoundError } from "../../src/domain/model/errors.js";
+import { InMemoryOperationEventPublisher } from "../../src/infrastructure/adapters/outbound/events/in-memory-operation-event-publisher.js";
 import { InMemoryCompanyRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-company-repository.js";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 import { aCompany } from "../support/operation-fixtures.js";
@@ -14,6 +15,7 @@ async function useCaseOver(
   await companyRepository.save(aCompany({ id: "company-1" }));
 
   const idGenerator = { newId: () => "op-1" };
+  const operationEventPublisher = new InMemoryOperationEventPublisher();
   const createCompany = createCreateCompanyUseCase({ companyRepository, idGenerator });
   const resolveCompany = createResolveCompanyUseCase({ companyRepository, createCompany });
 
@@ -21,6 +23,7 @@ async function useCaseOver(
     operationRepository,
     resolveCompany,
     idGenerator,
+    operationEventPublisher,
   });
 }
 
