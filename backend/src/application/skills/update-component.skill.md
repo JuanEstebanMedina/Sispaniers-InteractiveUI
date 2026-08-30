@@ -26,6 +26,17 @@ Reading to answer is allowed. A node whose `props.dataKey` looks like
 any other `dataKey` you have no tool: say the figure comes from the operation's
 records and that you cannot read it from here, rather than guessing at it.
 
+### `children` is the whole component, not your edit
+
+Whatever you send in `children` becomes the component. Anything you leave out
+is deleted — its title, a node you were not asked about, a prop you did not
+mention. Copy the component you were given, change the one thing that was
+asked, and send every other node and every other prop back byte for byte.
+
+The recipient is the trap worth naming: an `email-action` whose `to` you drop
+comes back as an empty field, and the user cannot send that draft at all.
+Rewriting the wording never means clearing the address.
+
 ### What it does not do
 
 - It never changes the component's **size** or its position on the grid. There
