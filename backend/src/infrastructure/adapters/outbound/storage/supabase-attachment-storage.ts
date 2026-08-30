@@ -7,15 +7,26 @@ import type {
 const BUCKET = "email-attachments";
 
 export class SupabaseAttachmentStorage implements AttachmentStorage {
-  private readonly client: SupabaseClient;
+  private client: SupabaseClient | undefined;
 
-  constructor(url: string, serviceRoleKey: string) {
-    this.client = createClient(url, serviceRoleKey);
+  constructor(
+    private readonly url: string,
+    private readonly serviceRoleKey: string,
+  ) {}
+
+  // Construido al primer uso, no en el constructor: así booteaar la app (y
+  // `make smoke`) no exige tener SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY —
+  // solo falla si de verdad se intenta subir/firmar un archivo sin ellas.
+  private getClient(): SupabaseClient {
+    if (this.client === undefined) {
+      this.client = createClient(this.url, this.serviceRoleKey);
+    }
+    return this.client;
   }
 
   async upload(input: UploadAttachmentInput): Promise<void> {
-    const { error } = await this.client.storage
-      .from(BUCKET)
+    const { error } = await this.getClient()
+      .storage.from(BUCKET)
       .upload(input.path, input.data, { contentType: input.mimetype, upsert: true });
 
     if (error !== null) {
@@ -24,8 +35,8 @@ export class SupabaseAttachmentStorage implements AttachmentStorage {
   }
 
   async createSignedUrl(path: string, expiresInSeconds: number): Promise<string> {
-    const { data, error } = await this.client.storage
-      .from(BUCKET)
+    const { data, error } = await this.getClient()
+      .storage.from(BUCKET)
       .createSignedUrl(path, expiresInSeconds);
 
     if (error !== null || data === null) {
