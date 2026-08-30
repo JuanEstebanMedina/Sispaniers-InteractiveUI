@@ -35,6 +35,7 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     updateComponentPlacement,
     updateComponentContent,
     generateComponentFromAi,
+    respondToChat,
     createComponent,
     deleteComponent,
     componentEventPublisher,
@@ -71,7 +72,7 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
     createComponent,
     deleteComponent,
   });
-  await fastify.register(aiRoutes, { generateComponentFromAi });
+  await fastify.register(aiRoutes, { generateComponentFromAi, respondToChat });
   await fastify.register(operationEventsRoutes, {
     componentEventPublisher,
     operationEventPublisher,
