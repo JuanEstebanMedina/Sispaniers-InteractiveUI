@@ -2,7 +2,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { queryKeys } from '@/api/endpoints'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useOperationEvents } from '@/hooks'
 import { cn } from '@/lib/cn'
@@ -65,8 +64,15 @@ export function OperationsRail({
           ? t('operation.events.componentCreated')
           : t('operation.events.componentUpdated'),
       )
+      // `cols` is measured by the grid itself and can be 2, 4 or 8 depending on
+      // the viewport — matching it exactly here would silently miss whichever
+      // width the grid actually settled on. A predicate on the operation id
+      // catches the active query regardless of its column count.
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.operations.components(activeTrackId ?? '', 4),
+        predicate: (query) =>
+          query.queryKey[0] === 'operations' &&
+          query.queryKey[1] === 'components' &&
+          query.queryKey[2] === (activeTrackId ?? ''),
       })
     },
     [t, queryClient, activeTrackId],

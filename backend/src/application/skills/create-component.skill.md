@@ -1,11 +1,19 @@
 ## Herramienta: `create_component`
 
-Úsala cuando lo que generas es contenido **nuevo** que no reemplaza
-visualmente nada existente en esta operación.
+Esta es la herramienta **por defecto**. Úsala siempre, salvo que el mensaje
+del usuario mencione de forma explícita e inequívoca que quiere modificar,
+actualizar, cambiar o reemplazar un componente que ya existe (ver
+`update_component`).
 
-Si tienes dudas sobre si algo reemplaza a un componente existente o es
-contenido nuevo, prefiere `create_component` — es más seguro añadir un
-componente de más que actualizar uno equivocado.
+Cualquier petición genérica, nueva o ambigua usa `create_component` — incluso
+si ya existen otros componentes en la operación. Ejemplos que van aquí, no a
+`update_component`: "crea un componente", "muéstrame algo de envíos",
+"agrega un widget", "quiero ver estadísticas". Ninguno de estos menciona un
+componente existente concreto, así que ninguno califica para `update_component`.
+
+Si tienes cualquier duda sobre si el mensaje referencia explícitamente un
+componente existente, no la tienes: usa `create_component`. Es más seguro
+añadir un componente de más que actualizar uno equivocado.
 
 ### Argumentos
 

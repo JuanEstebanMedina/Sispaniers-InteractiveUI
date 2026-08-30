@@ -1,13 +1,24 @@
 ## Herramienta: `update_component`
 
-Úsala cuando lo que generas **reemplaza** el contenido de un componente que
-ya existe en esta operación (su `id` aparece en la lista de componentes
-existentes del contexto). El historial es append-only — nunca "editas" el
-componente anterior, esta herramienta registra el reemplazo.
+Úsala **únicamente** cuando el mensaje del usuario referencia de forma
+explícita e inequívoca que quiere modificar, actualizar, cambiar o
+reemplazar un componente que ya existe en esta operación (su `id` aparece en
+la lista de componentes existentes del contexto). El historial es
+append-only — nunca "editas" el componente anterior, esta herramienta
+registra el reemplazo.
 
-Si tienes dudas sobre si algo reemplaza a un componente existente o es
-contenido nuevo, prefiere `create_component` — es más seguro añadir un
-componente de más que actualizar uno equivocado.
+Señales explícitas de que corresponde `update_component` (en español, las
+frases del usuario contienen algo como): "actualiza", "actualízalo",
+"cambia", "cámbialo", "modifica", "modifícalo", "reemplaza" — combinado con
+una referencia clara a "el/la [componente que ya existe]" (ej. "actualiza el
+panel de envíos", "cambia el gráfico de costos", "modifica el que ya tengo de
+aduanas").
+
+Si el mensaje es genérico, nuevo o ambiguo (ej. "crea un componente",
+"muéstrame algo de envíos", "agrega un widget") — **NO uses esta
+herramienta**, aunque ya existan componentes similares en la operación. Usa
+siempre `create_component` en ese caso: es más seguro añadir un componente de
+más que actualizar uno equivocado.
 
 ### Argumentos
 

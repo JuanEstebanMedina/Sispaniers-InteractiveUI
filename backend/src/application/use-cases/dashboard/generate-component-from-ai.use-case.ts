@@ -36,7 +36,7 @@ function buildExistingComponentsHint(
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
 ): string {
   return `---
-Componentes existentes de esta operación (usa su "id" como "componentId" al llamar a update_component si tu salida reemplaza a uno; si no reemplazas nada, llama a create_component):
+Componentes existentes de esta operación (usa update_component SOLO si el mensaje del usuario menciona explicitamente que quiere modificar/actualizar/reemplazar un componente EXISTENTE, ej. menciona su contenido o proposito actual, usando su "id" como "componentId"; para cualquier peticion nueva o generica, usa siempre create_component, incluso si ya existen otros componentes):
 ${JSON.stringify(existingComponents)}`;
 }
 

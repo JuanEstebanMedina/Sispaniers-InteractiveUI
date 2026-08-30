@@ -200,9 +200,12 @@ específicos de esa herramienta; ese contenido se te entrega a continuación de
 este documento, una sección por herramienta registrada. Consulta la skill de
 cada herramienta antes de invocarla.
 
-Si tienes dudas sobre cuál herramienta corresponde a tu intención, prefiere
-la que agrega contenido nuevo en vez de la que reemplaza uno existente — es
-más seguro añadir un componente de más que actualizar uno equivocado.
+`create_component` es la herramienta por defecto: úsala para cualquier
+petición nueva o ambigua. Solo usa la que reemplaza un componente existente
+cuando el mensaje del usuario lo referencia de forma explícita e inequívoca
+— la skill de cada herramienta detalla exactamente qué cuenta como esa
+referencia. Ante cualquier duda, prefiere agregar contenido nuevo: es más
+seguro añadir un componente de más que actualizar uno equivocado.
 
 ---
 
