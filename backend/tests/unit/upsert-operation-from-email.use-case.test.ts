@@ -7,6 +7,7 @@ import {
 } from "../../src/application/use-cases/email/upsert-operation-from-email.use-case.js";
 import { createResolveCompanyUseCase } from "../../src/application/use-cases/shared/resolve-company.use-case.js";
 import type { NormalizedEmail } from "../../src/domain/model/email.js";
+import { InMemoryOperationEventPublisher } from "../../src/infrastructure/adapters/outbound/events/in-memory-operation-event-publisher.js";
 import { InMemoryCompanyRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-company-repository.js";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 
@@ -15,6 +16,7 @@ function useCaseOver() {
   const companyRepository = new InMemoryCompanyRepository();
   let counter = 0;
   const idGenerator = { newId: () => `id-${++counter}` };
+  const operationEventPublisher = new InMemoryOperationEventPublisher();
   const createCompany = createCreateCompanyUseCase({ companyRepository, idGenerator });
   const resolveCompany = createResolveCompanyUseCase({ companyRepository, createCompany });
 
@@ -25,6 +27,7 @@ function useCaseOver() {
       operationRepository,
       resolveCompany,
       idGenerator,
+      operationEventPublisher,
     }),
   };
 }
