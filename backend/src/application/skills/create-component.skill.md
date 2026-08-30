@@ -1,18 +1,17 @@
 ## Tool: `create_component`
 
-This is the **default** tool. Use it always, unless the user's message
-explicitly and unambiguously says they want to modify, update, change or
-replace a component that already exists (see `update_component`).
+Use this tool only when user explicitly asks for dashboard view/component, or
+when a component materially improves tracking active operation. Do not call it
+for greetings, questions answerable from context, unclear requests, or missing
+data. Ask focused follow-up question when needed.
 
-Any generic, new or ambiguous request uses `create_component` — even if
-other components already exist on the operation. Examples that belong here,
-not in `update_component`: "create a component", "show me something about
-shipments", "add a widget", "I want to see stats". None of these name a
-specific existing component, so none qualify for `update_component`.
+When a component is warranted, use `create_component` unless user explicitly
+and unambiguously says they want to modify, update, change or replace an
+existing component (see `update_component`). Generic requests for a new view
+use `create_component`, even if other components already exist.
 
-If you have any doubt about whether the message explicitly references an
-existing component, you don't have one: use `create_component`. Adding one
-extra component is safer than updating the wrong one.
+If user references a component ambiguously, ask which component they mean;
+never create one solely to avoid clarification.
 
 ### Arguments
 

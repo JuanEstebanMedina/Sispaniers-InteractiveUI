@@ -43,6 +43,7 @@ const ESTIMATED_PENDING_SIZE: WidgetSizeName = "small";
 const GRID_COLUMNS = 4;
 const MAX_QUERY_TOOL_CALLS = 3;
 const CONTINUATION_COMMANDS = new Set(["ingest_company_concepts", "query_company_concepts"]);
+const BUILDING_COMMANDS = new Set(["create_component", "update_component"]);
 
 function buildExistingComponentsHint(
   trigger: AiTrigger,
@@ -50,11 +51,11 @@ function buildExistingComponentsHint(
 ): string {
   if (trigger === "chat") {
     return `---
-update_component is not available for chat messages. Use create_component: always add a new component, never modify an existing one.`;
+update_component is not available for chat messages. If a component is warranted, use create_component to add a new one; otherwise answer or ask for clarification without a tool.`;
   }
 
   return `---
-Existing components on this operation (use update_component ONLY if the user's message explicitly mentions wanting to modify/update/replace an EXISTING component, e.g. it names its current content or purpose, using its "id" as "componentId"; for any new or generic request, always use create_component, even if other components already exist):
+Existing components on this operation (use update_component ONLY when a component is warranted and user's message explicitly mentions modifying/updating/replacing an EXISTING component, e.g. it names its current content or purpose, using its "id" as "componentId"; for a requested new view, use create_component):
 ${JSON.stringify(existingComponents)}`;
 }
 
@@ -126,9 +127,19 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       }
 
       try {
+        if (BUILDING_COMMANDS.has(result.toolName) && eventPublisher && idGenerator) {
+          eventPublisher.publish(operationId, "component-pending", {
+            operationId,
+            tempId: idGenerator.newId(),
+            estimatedSize: ESTIMATED_PENDING_SIZE,
+          });
+        }
         const dispatched = await commandRegistry.dispatch(result.toolName, result.input, {
           operationId,
         });
+        if (result.toolName === "save_company_context") {
+          return { component: null, reply: (dispatched as { reply: string }).reply };
+        }
         if (!CONTINUATION_COMMANDS.has(result.toolName)) {
           return dispatched as { component: Component; reply: string };
         }
@@ -178,6 +189,7 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
           ? chatHistoryPort.get(input.operationId)
           : [],
       componentCatalog: [],
+      operationContext: operation,
     };
     const systemPrompt = buildSystemPrompt(
       promptTemplate,
@@ -185,14 +197,6 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       existingComponents,
       promptContext,
     );
-
-    if (eventPublisher && idGenerator) {
-      eventPublisher.publish(input.operationId, "component-pending", {
-        operationId: input.operationId,
-        tempId: idGenerator.newId(),
-        estimatedSize: ESTIMATED_PENDING_SIZE,
-      });
-    }
 
     let result: { component: Component | null; reply: string };
     try {

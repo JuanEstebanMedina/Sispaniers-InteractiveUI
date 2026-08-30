@@ -8,8 +8,8 @@ export type ComponentEventName =
   | "component-pending-cleared";
 
 /**
- * Fired before the AI's response is known, so the frontend can show a
- * loading placeholder sized like the real widget will be instead of a blank
+ * Fired only after AI selects a component-building tool, so the frontend can
+ * show a loading placeholder sized like the real widget instead of a blank
  * grid. `tempId` lets the frontend drop this placeholder once the matching
  * "component-created" event lands.
  */
@@ -20,10 +20,9 @@ export interface ComponentPendingPayload {
 }
 
 /**
- * Fired when a chat turn resolves without a component (the AI answered in
- * plain text — e.g. it couldn't build anything from the request). Without
- * this, the placeholder from "component-pending" has nothing to clear it and
- * sits on screen, looking like a stuck blank widget, until its timeout fires.
+ * Fired when a chat turn resolves without a component after a pending event.
+ * Without this, the placeholder has nothing to clear it and sits on screen
+ * until its timeout fires.
  */
 export type ComponentEventPayload = Component | ComponentPendingPayload | null;
 

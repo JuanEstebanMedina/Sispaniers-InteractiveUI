@@ -194,6 +194,115 @@ test("chat includes durable company knowledge", async () => {
   expect(systemPrompt).toContain("Salida semanal desde Cartagena.");
 });
 
+test("chat includes operation emails and extracted document data", async () => {
+  let systemPrompt = "";
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () =>
+        ({
+          id: OPERATION_ID,
+          bookings: [],
+          context: {
+            emails: [{ from: "carrier@example.com", subject: "ETA updated" }],
+            documents: [{ id: "doc-1", extractedData: { container: "ABC123" } }],
+          },
+          createdAt: new Date("2026-08-30T00:00:00.000Z"),
+        }) as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async ({ systemPrompt: prompt }) => {
+        systemPrompt = prompt ?? "";
+        return { kind: "text", text: "ETA actualizado." };
+      },
+    },
+    commandRegistry: new CommandRegistry(),
+    promptTemplate: "{{operation_context}}",
+  });
+
+  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "¿Hay ETA?" });
+
+  expect(systemPrompt).toContain("ETA updated");
+  expect(systemPrompt).toContain("ABC123");
+});
+
+test("chat text reply does not publish a component placeholder", async () => {
+  const events: string[] = [];
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: { complete: async () => ({ kind: "text", text: "¿Qué dato necesitas?" }) },
+    commandRegistry: new CommandRegistry(),
+    promptTemplate: "{{trigger}}",
+    eventPublisher: {
+      publish: (_operationId, event) => events.push(event),
+      subscribe: () => () => {},
+    },
+    idGenerator: { newId: () => "pending-1" },
+  });
+
+  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "Hola" });
+
+  expect(events).toEqual(["component-pending-cleared"]);
+});
+
+test("chat publishes a placeholder only after AI calls a component-building tool", async () => {
+  const events: string[] = [];
+  const commandRegistry = new CommandRegistry();
+  commandRegistry.register({
+    name: "create_component",
+    description: "stub",
+    inputSchema: { type: "object", properties: {} },
+    execute: async () => ({ component: { id: "component-1" }, reply: "Creado." }),
+  });
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async () => ({ kind: "tool_call", toolName: "create_component", input: {} }),
+    },
+    commandRegistry,
+    promptTemplate: "{{trigger}}",
+    eventPublisher: {
+      publish: (_operationId, event) => events.push(event),
+      subscribe: () => () => {},
+    },
+    idGenerator: { newId: () => "pending-1" },
+  });
+
+  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "Crea un panel" });
+
+  expect(events).toEqual(["component-pending"]);
+});
+
 test("auto flow can ingest, query, then create a component", async () => {
   const commandRegistry = new CommandRegistry();
   commandRegistry.register({
