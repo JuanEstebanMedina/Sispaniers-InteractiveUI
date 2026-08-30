@@ -1,19 +1,27 @@
 import { expect, test } from "vitest";
 import { createCreateComponentUseCase } from "../../src/application/use-cases/dashboard/create-component.use-case.js";
 import type { Component, ComponentNode } from "../../src/domain/components/component.js";
-import { InvalidComponentTreeError } from "../../src/domain/model/errors.js";
+import {
+  InvalidComponentTreeError,
+  OperationNotFoundError,
+} from "../../src/domain/model/errors.js";
 import { InMemoryComponentEventPublisher } from "../../src/infrastructure/adapters/outbound/events/in-memory-component-event-publisher.js";
+import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
 import { InMemoryComponentRepository, aComponent } from "../support/component-fixtures.js";
+import { anOperation } from "../support/operation-fixtures.js";
 
 const OPERATION_ID = "op-1";
 
 function buildUseCase() {
   const componentRepository = new InMemoryComponentRepository();
+  const operationRepository = new InMemoryOperationRepository();
+  void operationRepository.save(anOperation({ id: OPERATION_ID }));
   let next = 0;
 
   return {
     componentRepository,
     createComponent: createCreateComponentUseCase({
+      operationRepository,
       componentRepository,
       idGenerator: {
         newId: () => {
@@ -73,4 +81,19 @@ test("an invalid tree is rejected before anything is stored", async () => {
     InvalidComponentTreeError,
   );
   expect(await componentRepository.findByOperationId(OPERATION_ID)).toHaveLength(0);
+});
+
+/**
+ * A component saved against an operation that does not exist is unreachable:
+ * every read and the delete filter by a real operation, so nothing can ever
+ * remove it again. It has to be refused at the door.
+ */
+test("an unknown operation is a not-found error", async () => {
+  const { componentRepository, createComponent } = buildUseCase();
+
+  await expect(createComponent({ ...aRequest(), operationId: "missing" })).rejects.toThrow(
+    OperationNotFoundError,
+  );
+
+  expect(await componentRepository.findByOperationId("missing")).toHaveLength(0);
 });

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { api, api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
+import { normalizeError } from '@/api/errors'
 import { SectionBoundary } from '@/components/feedback/ErrorBoundary'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { ComponentDataProvider } from '@/components/generated/ComponentData'
@@ -13,11 +14,14 @@ import { WidgetGrid } from '@/components/generated/WidgetGrid'
 import { toWidgets } from '@/components/generated/toWidgets'
 import { GeneratedSurface } from '@/components/operations/GeneratedSurface'
 import { OperationDetailHeader } from '@/components/operations/OperationDetailHeader'
+import { ConfirmModal } from '@/components/ui/Modal'
 import { Skeleton, SkeletonText } from '@/components/ui/Skeleton'
 import { useOperationEvents } from '@/hooks'
 import type { ComponentPendingEvent, OperationEventName } from '@/hooks/useOperationEvents'
 import { WIDGET_SIZES } from '@/lib/grid'
+import { toast } from '@/lib/toast'
 import {
+  type ComponentsResponse,
   componentsResponseSchema,
   operationListSchema,
   operationResponseSchema,
@@ -39,9 +43,19 @@ import { useRailStore } from '@/stores/railStore'
 /** Lo que usa `WidgetGrid` mientras todavía no se ha medido. */
 const DEFAULT_COLS = 4
 
+// ponytail: si la petición del chat falla, el backend nunca emite
+// component-created para reemplazar este placeholder. No hay un evento de
+// fallo dedicado ni una forma simple de enterarse desde este árbol de
+// componentes (el chat vive en el riel), así que el techo es un timeout: si
+// nadie lo reclamó en este plazo, se asume que la petición murió. Subir a un
+// evento "component-pending-failed" si este plazo resulta corto o largo en
+// la práctica.
+const PENDING_TIMEOUT_MS = 45_000
+
 export default function OperationDetailPage() {
   const { t } = useTranslation('domain')
   const { trackId } = useParams({ from: '/app/operations/$trackId' })
+  const queryClient = useQueryClient()
 
   const detail = useQuery({
     queryKey: queryKeys.operations.detail(trackId),
@@ -81,6 +95,47 @@ export default function OperationDetailPage() {
     },
   })
 
+  /** Widget the user asked to remove, waiting on the confirmation modal. */
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
+
+  // Chained behind the same queue as the moves: deleting renumbers the whole
+  // sequence, so a placement PATCH that lands after it would renumber from
+  // positions that no longer exist. Unlike a move, a failed delete DOES speak
+  // up — the widget is still on screen and the user has to know why.
+  const removeComponent = useMutation({
+    mutationFn: (id: string) => {
+      const sent = inFlight.current.then(() =>
+        api.delete(endpoints.operations.componentRemove(trackId, id)),
+      )
+      inFlight.current = sent.catch(() => undefined)
+      return sent
+    },
+    onSuccess: (_result, id) => {
+      setPendingDelete(null)
+      // There is one cache entry per width the user has already been at, and
+      // only the one on screen refreshes itself. Dropping the component from
+      // that entry alone leaves it alive in the siblings, and it comes back the
+      // moment the window resizes — opening devtools is enough.
+      queryClient.setQueriesData<ComponentsResponse>(
+        { queryKey: queryKeys.operations.componentsAll(trackId) },
+        (cached) =>
+          cached && {
+            components: cached.components.filter((component) => component.id !== id),
+            layout: cached.layout.filter((entry) => entry.id !== id),
+          },
+      )
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.operations.componentsAll(trackId),
+      })
+    },
+    onError: (error) => {
+      setPendingDelete(null)
+      toast.error(t('operation.generated.deleteError'), {
+        description: normalizeError(error).message,
+      })
+    },
+  })
+
   // Same key the layout and the grid use, so this is a cache read, not a fetch.
   const others = useQuery({
     queryKey: queryKeys.operations.list(),
@@ -96,7 +151,6 @@ export default function OperationDetailPage() {
   const railOpen = useRailStore((state) => state.open)
   const railWidth = useRailStore((state) => state.width)
 
-  const queryClient = useQueryClient()
   const operation = detail.data
   const generated = components.data
 
@@ -105,15 +159,6 @@ export default function OperationDetailPage() {
   // "component-pending"; se retira en cuanto llega el componente real, o solo
   // por seguridad si nunca llega.
   const [pending, setPending] = useState<ComponentPendingEvent[]>([])
-
-  // ponytail: si la petición del chat falla, el backend nunca emite
-  // component-created para reemplazar este placeholder. No hay un evento de
-  // fallo dedicado ni una forma simple de enterarse desde este árbol de
-  // componentes (el chat vive en el riel), así que el techo es un timeout: si
-  // nadie lo reclamó en este plazo, se asume que la petición murió. Subir a un
-  // evento "component-pending-failed" si este plazo resulta corto o largo en
-  // la práctica.
-  const PENDING_TIMEOUT_MS = 45_000
 
   const onOperationEvent = useCallback(
     (event: OperationEventName, payload: unknown) => {
@@ -196,9 +241,20 @@ export default function OperationDetailPage() {
     [persist, persistable],
   )
 
+  // A widget the backend has not stored yet — a pending placeholder — has
+  // nothing to delete, so the grid does not even offer the button.
+  const handleDeleteRequest = useMemo(
+    () => (persistable ? setPendingDelete : undefined),
+    [persistable],
+  )
+
+  const pendingTitle = widgets.find((widget) => widget.id === pendingDelete)?.title ?? ''
+
   return (
     <div className="flex h-dvh flex-col gap-3 px-2 py-4 sm:px-4">
-      {detail.isSuccess && <OperationDetailHeader operation={detail.data} waiting={waiting} stream={stream} />}
+      {detail.isSuccess && (
+        <OperationDetailHeader operation={detail.data} waiting={waiting} stream={stream} />
+      )}
 
       {detail.isPending && (
         <div className="grid grid-cols-4 gap-3">
@@ -223,12 +279,25 @@ export default function OperationDetailPage() {
                 onMove={handleMove}
                 onTitleChange={handleTitleChange}
                 onColsChange={setCols}
+                onDeleteRequest={handleDeleteRequest}
                 reserve={railOpen ? railWidth : 0}
               />
             </ComponentDataProvider>
           </SectionBoundary>
         </GeneratedSurface>
       )}
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) removeComponent.mutate(pendingDelete)
+        }}
+        title={t('operation.generated.deleteTitle')}
+        message={t('operation.generated.deleteMessage', { title: pendingTitle })}
+        confirmLabel={t('operation.generated.deleteConfirm')}
+        loading={removeComponent.isPending}
+      />
     </div>
   )
 }
