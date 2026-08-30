@@ -18,6 +18,11 @@ export interface AiCompletionRequest {
    * an empty or near-empty component just to satisfy the tool call.
    */
   forceTool?: boolean;
+  /**
+   * Require one named tool. Use only when application behavior needs an
+   * executable outcome, not merely a tool-shaped model response.
+   */
+  requiredToolName?: string;
 }
 
 export type AiCompletionResult =
