@@ -14,7 +14,7 @@ It runs against the Sispaniers backend API.
 ## Quick start
 
 ```bash
-# 1. Install dependencies (pnpm 8+, Node 20+)
+# 1. Install dependencies (Node 22, pnpm 8.15 — `corepack enable`)
 pnpm install
 
 # 2. Create your local env file
@@ -26,7 +26,8 @@ pnpm dev
 
 Open **http://localhost:5173**.
 
-Sign in with a user created by the backend.
+Sign in with a seeded backend user — `admin@sispaniers.com` / `sispaniers-dev` is the
+superadmin that sees every company. The rest are in `backend/scripts/seed-data.json`.
 
 ---
 
@@ -72,8 +73,25 @@ solid violet = your turn) × 2 themes × 3 locales, switchable at runtime.
 Everything in `rem`, nothing hardcoded. See `src/styles/brands.css` for the
 semantic rule behind the colours — it matters more than the hex values.
 
-**Auth + RBAC** — 5 roles, granular permissions, route guards that run *before*
-the component mounts, session refresh without a stampede, cross-tab sign-out.
+**Auth + RBAC** — three ordered roles (`user` < `admin` < `superadmin`), granular
+permissions, route guards that run *before* the component mounts, session refresh
+without a stampede, cross-tab sign-out. The roles mirror the backend's exactly; the
+client-side matrix is UX, the real enforcement is server-side.
+
+**The agent chat** — every operation has a conversation with Ari
+(`components/operations/AgentChat.tsx`). A message can point at up to three widgets on
+the board (the `@` button on a widget header), so the user can ask about one or ask for
+it to be changed without describing it. A turn either builds a widget or just answers —
+the response says which, so a pending skeleton is never left waiting on a widget that
+isn't coming.
+
+**Runtime-generated widgets** — `components/generated/` renders the agent's component
+trees into the dashboard grid: `nodeFactory` maps each node kind to a real component,
+`WidgetGrid` places them, and a kind the frontend doesn't know renders as a visible
+`Unknown` block showing the raw node — the backend adding a node kind is then obvious on
+screen instead of a silently empty card. Widgets arrive live over SSE (`hooks/useSse.ts`, `hooks/useOperationEvents.ts`) —
+`fetch` with an `AbortController`, not `EventSource`, because the stream needs an
+`Authorization` header.
 
 **HTTP layer** — one axios instance with retries and exponential backoff,
 normalized errors, correlation ids, and **zod validation on every response**.
@@ -100,12 +118,16 @@ src/
 ├─ router/           TanStack Router route tree + guards
 ├─ components/
 │  ├─ ui/            design system primitives
-│  ├─ operations/    the domain: card, rail, filters, generated surface
+│  ├─ operations/    the domain: card, rail, filters, agent chat, generated surface
+│  ├─ generated/     ⭐ the agent's component trees → real React (nodeFactory, WidgetGrid)
 │  ├─ charts/        chart wrappers with a validated palette
+│  ├─ companies/     company directory and forms
+│  ├─ users/         user administration, scoped by role
 │  ├─ layout/        shell, sidebar, topbar, page header
 │  └─ feedback/      error boundary, error / empty / loading states
 ├─ pages/            screens
-├─ hooks/            useMediaQuery, useDebounce, useDisclosure, useHotkey…
+├─ hooks/            useSse, useOperationEvents, useMediaQuery, useDebounce…
+├─ lib/              framework-free helpers
 ├─ stores/           theme store (theme, density)
 ├─ styles/           design tokens and the Manifiesto palette
 └─ config/           validated env, navigation
@@ -123,6 +145,8 @@ Four files are worth reading first, because they explain most of the rest:
   route, which is what keeps the other operations visible without flicker
 - **`src/auth/roles.ts`** — the permission matrix, and why client-side
   permissions are UX and not security
+- **`src/components/generated/nodeFactory.tsx`** — the seam where the agent's JSON
+  becomes React, and what happens to a node kind this build has never seen
 
 ---
 
@@ -155,8 +179,11 @@ matter:
 | ------------------- | --------------- | ----------------------------------------------------- |
 | `VITE_API_URL`      | `/api`          | Backend base URL                                      |
 | `VITE_API_PROXY`    | —               | Dev proxy target; kills CORS in development           |
-| `VITE_THEME`        | `dark`          | `light` \| `dark` \| `system`                         |
-| `VITE_DEVTOOLS`     | `true`          | Query and Router devtools panels                      |
+| `VITE_API_TIMEOUT`  | `15000`         | Per-request timeout in ms                             |
+| `VITE_THEME`        | `light`         | `light` \| `dark` \| `system`                         |
+| `VITE_LOCALE`       | —               | `es` \| `en` \| `pt-BR`; empty means detect           |
+| `VITE_AUTH_STORAGE` | `localStorage`  | `localStorage` \| `sessionStorage` \| `memory`        |
+| `VITE_DEVTOOLS`     | `false`         | Query and Router devtools panels                      |
 
 Only `VITE_`-prefixed variables reach the browser, which means **they are all
 public**. Never put a secret here.
