@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
+import { createCreateOrUpdateComponentCommand } from "../../application/commands/create-or-update-component.command.js";
 import { createCreateComponentUseCase } from "../../application/use-cases/dashboard/create-component.use-case.js";
 import { createCreateOperationUseCase } from "../../application/use-cases/dashboard/create-operation.use-case.js";
 import { createGenerateComponentFromAiUseCase } from "../../application/use-cases/dashboard/generate-component-from-ai.use-case.js";
@@ -14,6 +15,7 @@ import { createUploadOperationDocumentUseCase } from "../../application/use-case
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import { createUpsertOperationFromEmailUseCase } from "../../application/use-cases/email/upsert-operation-from-email.use-case.js";
+import { CommandRegistry } from "../../domain/commands/command-registry.js";
 import type { AiCompletionPort } from "../../domain/ports/ai-completion-port.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
 import type { AttachmentStorage } from "../../domain/ports/attachment-storage.port.js";
@@ -192,12 +194,19 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     openAiAdapter,
     geminiAdapter,
   );
+  const commandRegistry = new CommandRegistry();
+  commandRegistry.register(
+    createCreateOrUpdateComponentCommand({
+      componentRepository,
+      createComponent,
+      updateComponentContent,
+    }),
+  );
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository,
     componentRepository,
     aiCompletionPort,
-    createComponent,
-    updateComponentContent,
+    commandRegistry,
     promptTemplate: ARI_SYSTEM_PROMPT,
   });
 
