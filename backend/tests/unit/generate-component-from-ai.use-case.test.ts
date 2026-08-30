@@ -108,3 +108,43 @@ test("chat does not offer update_component to the AI", async () => {
 
   expect(offeredTools).toEqual(["create_component"]);
 });
+
+test("chat includes prior conversation on later messages", async () => {
+  const messages: Array<{ role: "user" | "assistant"; content: string; recordedAt: Date }> = [];
+  const prompts: string[] = [];
+  const generateComponentFromAi = createGenerateComponentFromAiUseCase({
+    operationRepository: {
+      findById: async () => ({ id: OPERATION_ID }) as unknown as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async ({ systemPrompt }) => {
+        prompts.push(systemPrompt ?? "");
+        return { kind: "text", text: "Hola, ¿qué quieres revisar?" };
+      },
+    },
+    commandRegistry: new CommandRegistry(),
+    promptTemplate: "{{run_history}}\n{{current_input}}",
+    chatHistoryPort: {
+      append: (_operationId, message) => messages.push(message),
+      get: () => messages,
+    },
+  });
+
+  await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "Hola" });
+  await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "¿Qué dije?",
+  });
+
+  expect(prompts[1]).toContain("user: Hola");
+});

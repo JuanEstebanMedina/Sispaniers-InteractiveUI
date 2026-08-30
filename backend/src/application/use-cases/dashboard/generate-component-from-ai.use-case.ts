@@ -10,11 +10,12 @@ import {
   UnknownCommandError,
 } from "../../../domain/model/errors.js";
 import type { AiCompletionPort } from "../../../domain/ports/ai-completion-port.js";
+import type { ChatHistoryPort } from "../../../domain/ports/chat-history.port.js";
 import type { ComponentEventPublisher } from "../../../domain/ports/component-event-publisher.port.js";
 import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
-import { buildBasePrompt } from "./ai-response.helpers.js";
+import { type PromptContext, buildBasePrompt } from "./ai-response.helpers.js";
 
 export type AiTrigger = "chat" | "auto";
 
@@ -30,6 +31,7 @@ export interface GenerateComponentFromAiDeps {
   aiCompletionPort: AiCompletionPort;
   commandRegistry: CommandRegistry;
   promptTemplate: string;
+  chatHistoryPort?: ChatHistoryPort;
   // Optional so existing callers (and the unit test that builds this use
   // case without an event publisher) keep compiling. Production wiring in
   // composition.ts always supplies both.
@@ -61,13 +63,19 @@ Componentes existentes de esta operación (usa update_component SOLO si el mensa
 ${JSON.stringify(existingComponents)}`;
 }
 
-function buildPrompt(
+function buildSystemPrompt(
   template: string,
   trigger: AiTrigger,
-  currentInput: string,
   existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
+  context?: PromptContext,
 ): string {
-  const base = buildBasePrompt(template, trigger, currentInput, GRID_COLUMNS);
+  const base = buildBasePrompt(
+    template,
+    trigger,
+    "The user's current message is supplied separately.",
+    GRID_COLUMNS,
+    context,
+  );
 
   return `${base}\n\n${buildExistingComponentsHint(trigger, existingComponents)}`;
 }
@@ -79,12 +87,14 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     aiCompletionPort,
     commandRegistry,
     promptTemplate,
+    chatHistoryPort,
     eventPublisher,
     idGenerator,
   } = deps;
 
   async function completeAndDispatch(
-    prompt: string,
+    systemPrompt: string,
+    input: string,
     operationId: string,
     trigger: AiTrigger,
   ): Promise<{ component: Component | null; reply: string }> {
@@ -97,7 +107,11 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         inputSchema: command.inputSchema,
       }));
 
-    const result = await aiCompletionPort.complete({ prompt, tools });
+    const result = await aiCompletionPort.complete({
+      prompt: input,
+      systemPrompt,
+      tools,
+    });
 
     if (result.kind === "text") {
       if (trigger === "chat") {
@@ -156,7 +170,21 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       }),
     );
 
-    const prompt = buildPrompt(promptTemplate, input.trigger, input.input, existingComponents);
+    const promptContext =
+      input.trigger === "chat" && chatHistoryPort !== undefined
+        ? {
+            companyKnowledge: [],
+            clientMemory: [],
+            runHistory: chatHistoryPort.get(input.operationId),
+            componentCatalog: [],
+          }
+        : undefined;
+    const prompt = buildSystemPrompt(
+      promptTemplate,
+      input.trigger,
+      existingComponents,
+      promptContext,
+    );
 
     if (eventPublisher && idGenerator) {
       eventPublisher.publish(input.operationId, "component-pending", {
@@ -166,8 +194,9 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       });
     }
 
+    let result: { component: Component | null; reply: string };
     try {
-      return await completeAndDispatch(prompt, input.operationId, input.trigger);
+      result = await completeAndDispatch(prompt, input.input, input.operationId, input.trigger);
     } catch (error) {
       if (!(error instanceof InvalidAiComponentError)) {
         throw error;
@@ -175,7 +204,23 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
       console.warn(
         `generateComponentFromAi: retrying after invalid AI response for operation ${input.operationId}: ${error.message}`,
       );
-      return completeAndDispatch(prompt, input.operationId, input.trigger);
+      result = await completeAndDispatch(prompt, input.input, input.operationId, input.trigger);
     }
+
+    if (input.trigger === "chat" && chatHistoryPort !== undefined) {
+      const recordedAt = new Date();
+      chatHistoryPort.append(input.operationId, {
+        role: "user",
+        content: input.input,
+        recordedAt,
+      });
+      chatHistoryPort.append(input.operationId, {
+        role: "assistant",
+        content: result.reply,
+        recordedAt,
+      });
+    }
+
+    return result;
   };
 }
