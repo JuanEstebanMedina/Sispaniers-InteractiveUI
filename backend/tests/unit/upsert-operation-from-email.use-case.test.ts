@@ -10,9 +10,11 @@ import type { NormalizedEmail } from "../../src/domain/model/email.js";
 import { InMemoryOperationEventPublisher } from "../../src/infrastructure/adapters/outbound/events/in-memory-operation-event-publisher.js";
 import { InMemoryCompanyRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-company-repository.js";
 import { InMemoryOperationRepository } from "../../src/infrastructure/adapters/outbound/logistics/in-memory-operation-repository.js";
+import { InMemoryComponentRepository } from "../support/component-fixtures.js";
 
 function useCaseOver() {
   const operationRepository = new InMemoryOperationRepository();
+  const componentRepository = new InMemoryComponentRepository();
   const companyRepository = new InMemoryCompanyRepository();
   let counter = 0;
   const idGenerator = { newId: () => `id-${++counter}` };
@@ -22,9 +24,11 @@ function useCaseOver() {
 
   return {
     operationRepository,
+    componentRepository,
     companyRepository,
     upsertOperationFromEmail: createUpsertOperationFromEmailUseCase({
       operationRepository,
+      componentRepository,
       resolveCompany,
       idGenerator,
       operationEventPublisher,

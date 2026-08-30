@@ -37,7 +37,7 @@ extra component is safer than updating the wrong one.
 
 ## Component index
 
-`kind` must be EXACTLY one of these 16 values, never invent others — any
+`kind` must be EXACTLY one of these 18 values, never invent others — any
 other value is rejected.
 
 | `kind` | Is | Use it when |
@@ -48,7 +48,8 @@ other value is rejected.
 | `trend-chart` | time series with axes | something evolves over time |
 | `category-chart` | bars with axes | comparing categories against each other |
 | `breakdown-chart` | donut with a total at the center | share of parts within a total |
-| `sparkline` | axis-less mini trend | a trend inside a 1×1 slot |
+| `sparkline` | quiet mini trend with a light grid and a value axis, no legend | a trend that doesn't need a full chart's legend |
+| `map` | live map with a marker per vessel | position of a shipment matters |
 | `table` | rows in columns | listing rows to scan side by side |
 | `key-values` | label/value pairs | loose fields extracted from a document |
 | `timeline` | sequence of events with status | history of what happened, in order |
@@ -57,6 +58,7 @@ other value is rejected.
 | `file` | attachment card | showing a clickable document |
 | `divider` | separator line | visually separating inside a `layout` |
 | `button` | button — **inert, not wired up** | rarely; see warning below |
+| `email-action` | proposed outbound email, user reviews & sends | the user needs to notify someone by email |
 | `layout` | container that groups children | grouping 2+ nodes in a row or column |
 
 Top-level nodes (the command's `children` array) already stack in a column
@@ -113,7 +115,7 @@ Same props shape for both; the difference is line (`trend-chart`) vs bars
 - **Decide**: which `dataKey` supplies the rows (see the data-source table
   below), which field of each row goes on the X axis (`xKey`), and which
   field(s) get plotted as series.
-- **Props**: `dataKey` (one of the 5 valid values), `title?` (string, shown
+- **Props**: `dataKey` (one of the 6 valid values), `title?` (string, shown
   as the chart's own heading — no need for a separate `title` node above
   it), `xKey?` (string, default `"x"`), `series` (array of
   `{ "key": string, "label"?: string, "colorIndex"?: 0-7 }` — `key` is the
@@ -130,10 +132,20 @@ Same props shape for both; the difference is line (`trend-chart`) vs bars
 
 ### `sparkline` — mini trend
 
-- **Decide**: use this instead of `trend-chart` when the slot is 1×1
-  (`tile`) — it has no axes or legend, just the shape.
+- **Decide**: use this instead of `trend-chart` when you want a quieter
+  version of the same idea — it still shows a value axis and a light grid,
+  just no legend and no X-axis labels.
 - **Props**: `dataKey`, `valueKey?` (string, default `"value"` — the field
   of each row to plot).
+
+### `map` — live vessel positions
+
+Needs at least `small` (2×2) to be legible — **never** ends up in `tile` or
+`banner`, those are rejected.
+
+- **Decide**: this only makes sense when a booking actually has a reported
+  position — best (and usually only) source is `vessel-positions`.
+- **Props**: `dataKey` (one of the 6 valid values), `title?` (string).
 
 ### `table` — rows in columns
 
@@ -142,7 +154,7 @@ Same props shape for both; the difference is line (`trend-chart`) vs bars
   `rows` with data, that wins over `dataKey`.
 - **Props**: `columns` (array of `{ "key": string, "label"?: string }` — the
   `key` must exist as a field on the rows it will display), `rows?` (array
-  of objects, inline), `dataKey?` (one of the 5 valid values).
+  of objects, inline), `dataKey?` (one of the 6 valid values).
 - Without `columns` nothing renders.
 
 ### `key-values` — loose pairs
@@ -160,7 +172,7 @@ Same props shape for both; the difference is line (`trend-chart`) vs bars
   status — use `events` inline if you need to color different statuses).
 - **Props**: `events?` (array of `{ "text": string, "at"?: string, "status"?:
   one of the 7 statuses below }`, default `neutral`), `dataKey?` (one of the
-  5 valid values — best source: `schedule-changes`).
+  6 valid values — best source: `schedule-changes`).
 - With no events (neither inline nor via `dataKey`) nothing renders.
 
 ### `progress` — advancement
@@ -204,11 +216,35 @@ anything yet. Use it sparingly and never say in the `reply` that the button
 - **Separate field** (not inside `props`): `action`, one of `navigate`,
   `confirm`, `reject`, `export`, `refresh` — required on this `kind`.
 
+### `email-action` — proposed email, human sends it
+
+The **one** interactive kind in this system — everything else is inert. It
+does NOT send anything by itself: it shows an editable draft, and a human
+has to review it (and may change any field) before clicking send. Because of
+that, it's fine to use even though rule 2 (in the system prompt) forbids
+claiming an action was taken — nothing has been sent yet when you return
+this.
+
+- **Decide**: fill in whatever you actually know. Leave `to` empty when you
+  don't have a real recipient — never invent an email address. `subject`
+  and `body` can be a reasonable draft even if incomplete; the human edits
+  it before sending.
+- **Props**: `to?` (string, proposed recipient), `subject?` (string,
+  proposed subject), `body?` (string, proposed message).
+- **Your `reply` must say, explicitly**: that you cannot send the email
+  yourself, and that you've generated this component so the user can edit
+  the recipient and/or message and send it themselves. Never say or imply
+  the email was sent, is being sent, or that sending it is automatic.
+- Ask for `tall` (2×4) — it holds three fields plus a multi-line message
+  with room to actually read and edit it. `small` fits the fields but
+  crams the body into a couple of lines; only reach for `large` if you're
+  also pairing it with other nodes in the same component.
+
 ---
 
 ## Data sources (`dataKey`)
 
-Only these 5 values are valid in any `dataKey` — any other is rejected. Each
+Only these 6 values are valid in any `dataKey` — any other is rejected. Each
 row carries exactly these fields:
 
 | `dataKey` | one row is | fields available |
@@ -217,7 +253,11 @@ row carries exactly these fields:
 | `bookings` | a booking | `id`, `carrier`, `vessel`, `origin`, `destination`, `containers` (count) |
 | `documents` | a received document | `id`, `name`, `type`, `received`, `value` |
 | `containers-by-state` | a container state, aggregated | `name`, `x`, `value`, `count` |
-| `schedule-changes` | an ETA change | `x`, `at`, `text`, `value`, `booking` |
+| `schedule-changes` | an ETA change | `x`, `at`, `text`, `value` (days late vs. the original ETA as of this change), `booking` |
+| `vessel-positions` | a booking with a reported position | `bookingId`, `vessel`, `carrier`, `lat`, `lng`, `updatedAt` |
+
+A booking with no reported position yet is absent from `vessel-positions`
+entirely — it doesn't show up as a row with empty coordinates.
 
 A `dataKey` not on this list is rejected and the step is retried. An `xKey`,
 `series[].key`, or `columns[].key` that doesn't match any of these fields
@@ -238,9 +278,21 @@ grid size on this list:
 | `wide` | 4×2 |
 | `large` | 4×4 |
 
-Ask for whichever is closest to what you need. A `trend-chart`,
-`category-chart` or `breakdown-chart` can never end up in `tile` (1×1) or
-`banner` (4×1) — it's rejected; if you need a trend in that space, use
-`sparkline`.
+**`tile` (1×1) is off limits for every kind, no exceptions.** One cell is
+about 132px — a `stat`, a `badge`, a `sparkline`, anything at all in that
+little space renders but nobody can read it. `small` (2×2) is the smallest
+size any component may ever request.
 
-Always use the smallest size that communicates the full information.
+Charts and the map need more than area — they need height for an axis, a
+legend or a marker to read, so `banner` (4×1) is off limits for them too.
+
+| `kind` | never fits |
+|---|---|
+| `trend-chart`, `category-chart`, `breakdown-chart`, `map` | `tile`, `banner` |
+| every other kind | `tile` |
+
+A component whose children include a node that doesn't fit the requested
+size is rejected outright, not shrunk or silently accepted — pick a size
+that fits every node in `children`, worst case first.
+
+Always use the smallest allowed size that communicates the full information.

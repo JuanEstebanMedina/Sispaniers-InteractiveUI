@@ -1,3 +1,4 @@
+import type { LatLngExpression } from 'leaflet'
 import {
   File,
   FileArchive,
@@ -8,11 +9,19 @@ import {
   FileType,
   Presentation,
 } from 'lucide-react'
-import { Fragment, type ReactNode } from 'react'
-import { Area, AreaChart, ResponsiveContainer } from 'recharts'
+import { Fragment, type ReactNode, useEffect, useState } from 'react'
+import { CircleMarker, MapContainer, TileLayer, Tooltip as LeafletTooltip, useMap } from 'react-leaflet'
+import { useTranslation } from 'react-i18next'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
 
+import { http } from '@/api/client'
+import { endpoints } from '@/api/endpoints'
 import { BreakdownChart, CategoryChart, TrendChart, type Series } from '@/components/charts/Charts'
+import { ChartTooltip } from '@/components/charts/ChartTooltip'
+import { axisProps, cursorProps, gridProps } from '@/components/charts/chartTheme'
 import { cn } from '@/lib/cn'
+import { formatNumber } from '@/lib/format'
+import { toast } from '@/lib/toast'
 import {
   CHART_COLOR,
   SOFT_COLOR,
@@ -21,7 +30,7 @@ import {
   isColorName,
   type ColorName,
 } from './colors'
-import { useDataset } from './ComponentData'
+import { useDataset, useOperation } from './ComponentData'
 import { useNode, useProps, type PropReader } from './NodeContext'
 
 /**
@@ -177,6 +186,102 @@ export function Button() {
     >
       {props.str('label', 'Acción')}
     </button>
+  )
+}
+
+/**
+ * The one interactive part in this system. Everything else only shows what
+ * the agent already knows; this proposes a draft and a human has to review,
+ * possibly edit, and explicitly send it — the agent never gets to.
+ */
+export function EmailAction() {
+  const props = useProps()
+  const { t } = useTranslation('domain')
+  const operation = useOperation()
+
+  const [to, setTo] = useState(props.str('to'))
+  const [subject, setSubject] = useState(props.str('subject'))
+  const [body, setBody] = useState(props.str('body'))
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
+
+  const canSend = status === 'idle' && to.trim() !== '' && subject.trim() !== '' && body.trim() !== ''
+
+  async function send() {
+    if (!canSend) {
+      toast.warning(t('operation.emailAction.missingFields'))
+      return
+    }
+
+    setStatus('sending')
+    try {
+      await http.post(endpoints.emails.send, {
+        run_id: operation?.trackId ?? 'unknown',
+        to: to.trim(),
+        subject: subject.trim(),
+        body_text: body.trim(),
+      })
+      setStatus('sent')
+      toast.success(t('operation.emailAction.sent'))
+    } catch (error) {
+      setStatus('idle')
+      toast.apiError(error)
+    }
+  }
+
+  const fieldClass = cn(
+    'rounded-xs border border-line bg-surface px-2 py-1 text-xs text-fg',
+    'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
+    'disabled:opacity-60',
+  )
+
+  return (
+    <div className="flex min-h-40 min-w-0 flex-1 flex-col gap-1.5">
+      <label className="flex flex-col gap-0.5 text-2xs text-fg-subtle">
+        {t('operation.emailAction.to')}
+        <input
+          type="email"
+          value={to}
+          disabled={status === 'sent'}
+          onChange={(event) => setTo(event.target.value)}
+          className={fieldClass}
+        />
+      </label>
+      <label className="flex flex-col gap-0.5 text-2xs text-fg-subtle">
+        {t('operation.emailAction.subject')}
+        <input
+          value={subject}
+          disabled={status === 'sent'}
+          onChange={(event) => setSubject(event.target.value)}
+          className={fieldClass}
+        />
+      </label>
+      <label className="flex min-h-0 flex-1 flex-col gap-0.5 text-2xs text-fg-subtle">
+        {t('operation.emailAction.body')}
+        <textarea
+          value={body}
+          disabled={status === 'sent'}
+          onChange={(event) => setBody(event.target.value)}
+          className={cn(fieldClass, 'min-h-16 flex-1 resize-none')}
+        />
+      </label>
+      <button
+        type="button"
+        onClick={send}
+        disabled={!canSend}
+        className={cn(
+          'inline-flex h-control-sm shrink-0 items-center justify-center rounded-md border px-3',
+          'text-xs font-medium',
+          status === 'sent' ? SOFT_COLOR.success : SOFT_COLOR.brand,
+          !canSend && 'cursor-not-allowed opacity-60',
+        )}
+      >
+        {status === 'sending'
+          ? t('operation.emailAction.sending')
+          : status === 'sent'
+            ? t('operation.emailAction.sent')
+            : t('operation.emailAction.send')}
+      </button>
+    </div>
   )
 }
 
@@ -454,9 +559,20 @@ export function Sparkline() {
   if (rows.length === 0) return null
 
   return (
-    <div className="h-8 w-full">
+    <div className="h-20 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={rows} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+        <AreaChart data={rows} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+          <CartesianGrid {...gridProps} />
+          <YAxis
+            {...axisProps}
+            width={40}
+            tickCount={3}
+            tickFormatter={(value) => formatNumber(Number(value))}
+          />
+          <Tooltip
+            content={<ChartTooltip />}
+            cursor={{ stroke: cursorProps.stroke, strokeWidth: 1 }}
+          />
           <Area
             type="monotone"
             dataKey={valueKey}
@@ -468,6 +584,79 @@ export function Sparkline() {
           />
         </AreaChart>
       </ResponsiveContainer>
+    </div>
+  )
+}
+
+interface VesselPositionRow {
+  bookingId: string
+  vessel: string
+  carrier: string
+  lat: number
+  lng: number
+}
+
+/** Leaflet measures its container once on mount; a grid resize needs a nudge. */
+function InvalidateOnResize() {
+  const map = useMap()
+
+  useEffect(() => {
+    const container = map.getContainer()
+    const observer = new ResizeObserver(() => map.invalidateSize())
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [map])
+
+  return null
+}
+
+function averageCenter(rows: VesselPositionRow[]): LatLngExpression {
+  return [
+    rows.reduce((sum, row) => sum + row.lat, 0) / rows.length,
+    rows.reduce((sum, row) => sum + row.lng, 0) / rows.length,
+  ]
+}
+
+/** Live vessel positions. A booking with nothing reported yet has no marker to show. */
+export function Map() {
+  const props = useProps()
+  const rows = useDataset(props.text('dataKey')) as VesselPositionRow[] | undefined
+  const title = props.text('title')
+  const accent = CHART_COLOR[colorOf(props, 'brand')]
+
+  if (!rows || rows.length === 0) return null
+
+  return (
+    <div className="flex min-h-40 flex-1 flex-col gap-1">
+      {title && (
+        <h4 className="truncate font-display text-sm font-semibold tracking-tight text-fg">
+          {title}
+        </h4>
+      )}
+      <div className="min-h-0 flex-1 overflow-hidden rounded-md">
+        <MapContainer
+          center={averageCenter(rows)}
+          zoom={4}
+          scrollWheelZoom={false}
+          className="h-full w-full"
+        >
+          <InvalidateOnResize />
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {rows.map((row) => (
+            <CircleMarker
+              key={row.bookingId}
+              center={[row.lat, row.lng]}
+              radius={7}
+              pathOptions={{ color: accent, fillColor: accent, fillOpacity: 0.85, weight: 2 }}
+            >
+              <LeafletTooltip>{`${row.vessel} — ${row.carrier}`}</LeafletTooltip>
+            </CircleMarker>
+          ))}
+        </MapContainer>
+      </div>
     </div>
   )
 }

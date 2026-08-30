@@ -139,6 +139,16 @@
       "deleteError": "The component could not be deleted.",
       "pendingTitle": "Generating…"
     },
+    "emailAction": {
+      "to": "To",
+      "subject": "Subject",
+      "body": "Message",
+      "send": "Send",
+      "sending": "Sending…",
+      "sent": "Sent",
+      "sendError": "Could not send the email.",
+      "missingFields": "Fill in the recipient, subject and message before sending."
+    },
     "chat": {
       "title": "Talk to the agent",
       "empty": "Write to it like you would a colleague: “tell the client about the delay”, “hold the dispatch until I check the BL”, “ask the supplier for the certificate of origin”.",

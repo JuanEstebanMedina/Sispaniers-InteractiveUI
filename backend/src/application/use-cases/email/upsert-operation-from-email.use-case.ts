@@ -1,8 +1,10 @@
+import { buildWelcomeComponent } from "../../../domain/components/welcome-component.js";
 import type { Document } from "../../../domain/logistics/document.js";
 import type { ContextEmail } from "../../../domain/logistics/operation-context.js";
 import type { Operation } from "../../../domain/logistics/operation.js";
 import type { NormalizedEmail } from "../../../domain/model/email.js";
 import type { ExtractedContent } from "../../../domain/model/extracted-content.js";
+import type { ComponentRepository } from "../../../domain/ports/component.repository.js";
 import type { IdGenerator } from "../../../domain/ports/id-generator.port.js";
 import type { OperationEventPublisher } from "../../../domain/ports/operation-event-publisher.port.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
@@ -58,6 +60,7 @@ export interface UpsertOperationFromEmailResult {
 
 export interface UpsertOperationFromEmailDeps {
   operationRepository: OperationRepository;
+  componentRepository: ComponentRepository;
   resolveCompany: ResolveCompany;
   idGenerator: IdGenerator;
   operationEventPublisher: OperationEventPublisher;
@@ -103,7 +106,13 @@ function toDocument(
 // purely textual (the id comes from the subject "Orden de compra #<id>");
 // later a real agent will decide which operation each email belongs to.
 export function createUpsertOperationFromEmailUseCase(deps: UpsertOperationFromEmailDeps) {
-  const { operationRepository, resolveCompany, idGenerator, operationEventPublisher } = deps;
+  const {
+    operationRepository,
+    componentRepository,
+    resolveCompany,
+    idGenerator,
+    operationEventPublisher,
+  } = deps;
 
   return async function upsertOperationFromEmail(
     input: UpsertOperationFromEmailInput,
@@ -170,6 +179,9 @@ export function createUpsertOperationFromEmailUseCase(deps: UpsertOperationFromE
     };
 
     await operationRepository.save(updated);
+    if (created) {
+      await componentRepository.save(buildWelcomeComponent(updated.id, updated.createdAt));
+    }
     operationEventPublisher.publish(
       updated.id,
       created ? "operation-created" : "operation-updated",

@@ -5,6 +5,7 @@ import {
   validateComponentTree,
 } from "../src/domain/components/component-node.js";
 import type { Component, ComponentNode } from "../src/domain/components/component.js";
+import { buildWelcomeComponent } from "../src/domain/components/welcome-component.js";
 import type { WidgetSizeName } from "../src/domain/components/widget-size.js";
 import { CONTAINER_STATES } from "../src/domain/enums/container-state.js";
 import { DOCUMENT_FORMATS } from "../src/domain/enums/document-format.js";
@@ -35,6 +36,12 @@ const delayEventSeedSchema = z.object({
   occurredAt: daySchema,
 });
 
+const vesselPositionSeedSchema = z.object({
+  lat: z.number(),
+  lng: z.number(),
+  updatedAt: daySchema,
+});
+
 const bookingSeedSchema = z.object({
   id: z.string().min(1),
   companyIds: z.array(z.string().min(1)),
@@ -46,6 +53,7 @@ const bookingSeedSchema = z.object({
   eta: daySchema,
   delays: z.array(delayEventSeedSchema).default([]),
   containers: z.array(z.tuple([z.string().min(1), z.enum(CONTAINER_STATES)])),
+  vesselPosition: vesselPositionSeedSchema.optional(),
 });
 
 /** The narrated history of an operation — "el guion". Feeds a seeded timeline. */
@@ -188,6 +196,7 @@ function buildBooking(seed: BookingSeed): Booking {
       containerNumber,
       state,
     })),
+    ...(seed.vesselPosition !== undefined ? { vesselPosition: seed.vesselPosition } : {}),
   };
 }
 
@@ -268,9 +277,9 @@ function narrativeTimeline(order: number, narrative: NarrativeEventSeed[]): Comp
 }
 
 /**
- * `op-andes-textiles-001` — the one operation left in a complete state, one
- * widget per available `kind` (all 16), so the dashboard alone demonstrates
- * everything the agent can build.
+ * `op-andes-textiles-001` — the one operation left in a complete state,
+ * covering all 18 kinds across its 16 widgets, so the dashboard alone
+ * demonstrates everything the agent can build.
  */
 function buildShowcaseComponents(
   operation: Operation,
@@ -288,58 +297,58 @@ function buildShowcaseComponents(
         kind: "label",
         order: 1,
         props: {
-          text: `${operation.bookings.length} bookings, ${containers} contenedores y ${documents.length} documentos en curso.`,
+          text: `${operation.bookings.length} bookings, ${containers} containers and ${documents.length} documents in progress.`,
         },
       },
     ]),
 
-    container(operation, "containers-stat", 1, "tile", [
-      { kind: "title", order: 0, props: { text: "Contenedores" } },
-      { kind: "stat", order: 1, props: { value: String(containers), label: "en la operación" } },
+    container(operation, "containers-stat", 1, "small", [
+      { kind: "title", order: 0, props: { text: "Containers" } },
+      { kind: "stat", order: 1, props: { value: String(containers), label: "in the operation" } },
     ]),
 
-    container(operation, "status-badge", 2, "tile", [
-      { kind: "title", order: 0, props: { text: "Estado" } },
-      { kind: "badge", order: 1, props: { text: "En tránsito con retraso", status: "warning" } },
+    container(operation, "status-badge", 2, "small", [
+      { kind: "title", order: 0, props: { text: "Status" } },
+      { kind: "badge", order: 1, props: { text: "In transit with delay", status: "warning" } },
     ]),
 
     container(operation, "customs-progress", 3, "small", [
-      { kind: "title", order: 0, props: { text: "Despacho aduanero" } },
+      { kind: "title", order: 0, props: { text: "Customs clearance" } },
       {
         kind: "progress",
         order: 1,
-        props: { value: 2, max: 5, label: "contenedores liberados", status: "brand" },
+        props: { value: 2, max: 5, label: "containers released", status: "brand" },
       },
     ]),
 
     container(operation, "eta-trend", 4, "wide", [
-      { kind: "title", order: 0, props: { text: "Evolución del ETA" } },
+      { kind: "title", order: 0, props: { text: "ETA over time" } },
       {
         kind: "trend-chart",
         order: 1,
         props: {
           dataKey: "schedule-changes",
           xKey: "x",
-          series: [{ key: "value", label: "Cambios de ETA", colorIndex: 3 }],
+          series: [{ key: "value", label: "Days late", colorIndex: 3 }],
         },
       },
     ]),
 
     container(operation, "containers-by-state", 5, "wide", [
-      { kind: "title", order: 0, props: { text: "Contenedores por estado" } },
+      { kind: "title", order: 0, props: { text: "Containers by state" } },
       {
         kind: "category-chart",
         order: 1,
         props: {
           dataKey: "containers-by-state",
           xKey: "name",
-          series: [{ key: "value", label: "Contenedores", colorIndex: 0 }],
+          series: [{ key: "value", label: "Containers", colorIndex: 0 }],
         },
       },
     ]),
 
     container(operation, "containers-breakdown", 6, "small", [
-      { kind: "title", order: 0, props: { text: "Reparto de contenedores" } },
+      { kind: "title", order: 0, props: { text: "Container breakdown" } },
       {
         kind: "breakdown-chart",
         order: 1,
@@ -348,52 +357,52 @@ function buildShowcaseComponents(
     ]),
 
     container(operation, "story", 7, "tall", [
-      { kind: "title", order: 0, props: { text: "Qué pasó con esta orden" } },
+      { kind: "title", order: 0, props: { text: "What happened with this order" } },
       narrativeTimeline(1, narrative),
     ]),
 
     container(operation, "bookings-table", 8, "wide", [
-      { kind: "title", order: 0, props: { text: "Bookings de la operación" } },
+      { kind: "title", order: 0, props: { text: "Operation bookings" } },
       {
         kind: "table",
         order: 1,
         props: {
           dataKey: "bookings",
           columns: [
-            { key: "carrier", label: "Naviera" },
-            { key: "vessel", label: "Buque" },
-            { key: "origin", label: "Origen" },
-            { key: "destination", label: "Destino" },
-            { key: "containers", label: "Contenedores" },
+            { key: "carrier", label: "Carrier" },
+            { key: "vessel", label: "Vessel" },
+            { key: "origin", label: "Origin" },
+            { key: "destination", label: "Destination" },
+            { key: "containers", label: "Containers" },
           ],
         },
       },
     ]),
 
     container(operation, "booking-fields", 9, "small", [
-      { kind: "title", order: 0, props: { text: "Primer booking" } },
+      { kind: "title", order: 0, props: { text: "First booking" } },
       {
         kind: "key-values",
         order: 1,
         props: {
           items: firstBooking
             ? [
-                { label: "Naviera", value: firstBooking.carrier },
-                { label: "Buque", value: firstBooking.vessel },
-                { label: "ETA vigente", value: iso(firstBooking.schedule.etaCurrent) },
+                { label: "Carrier", value: firstBooking.carrier },
+                { label: "Vessel", value: firstBooking.vessel },
+                { label: "Current ETA", value: iso(firstBooking.schedule.etaCurrent) },
               ]
             : [],
         },
       },
     ]),
 
-    container(operation, "containers-sparkline", 10, "tile", [
-      { kind: "title", order: 0, props: { text: "Contenedores" } },
+    container(operation, "containers-sparkline", 10, "small", [
+      { kind: "title", order: 0, props: { text: "Containers" } },
       { kind: "sparkline", order: 1, props: { dataKey: "containers-by-state", valueKey: "value" } },
     ]),
 
     container(operation, "documents-files", 11, "small", [
-      { kind: "title", order: 0, props: { text: "Documentos recientes" } },
+      { kind: "title", order: 0, props: { text: "Recent documents" } },
       {
         kind: "layout",
         order: 1,
@@ -409,21 +418,42 @@ function buildShowcaseComponents(
       },
     ]),
 
-    container(operation, "notify-action", 12, "tile", [
-      { kind: "title", order: 0, props: { text: "Acción" } },
-      { kind: "button", order: 1, props: { label: "Notificar al cliente" }, action: "navigate" },
+    container(operation, "notify-action", 12, "small", [
+      { kind: "title", order: 0, props: { text: "Action" } },
+      { kind: "button", order: 1, props: { label: "Notify client" }, action: "navigate" },
     ]),
 
     container(operation, "documents-summary", 13, "banner", [
-      { kind: "title", order: 0, props: { text: "Último documento recibido" } },
+      { kind: "title", order: 0, props: { text: "Latest document received" } },
       { kind: "divider", order: 1, props: {} },
       {
         kind: "label",
         order: 2,
         props: {
           text: firstDoc
-            ? `${firstDoc.type} recibido el ${iso(firstDoc.receivedAt)}`
-            : "Sin documentos todavía",
+            ? `${firstDoc.type} received on ${iso(firstDoc.receivedAt)}`
+            : "No documents yet",
+        },
+      },
+    ]),
+
+    container(operation, "vessel-map", 14, "wide", [
+      { kind: "title", order: 0, props: { text: "Vessel positions" } },
+      { kind: "map", order: 1, props: { dataKey: "vessel-positions" } },
+    ]),
+
+    container(operation, "notify-delay-email", 15, "tall", [
+      { kind: "title", order: 0, props: { text: "Notify client of the delay" } },
+      {
+        kind: "email-action",
+        order: 1,
+        props: {
+          to: "ops@andestextiles.co",
+          subject: "ETA update — booking bkg-andes-001",
+          body:
+            "Hi,\n\nWe're writing to let you know your shipment's ETA moved because of an " +
+            "unplanned transshipment in Busan. We're standing by for any questions.\n\nBest " +
+            "regards.",
         },
       },
     ]),
@@ -439,30 +469,44 @@ function buildAndesClosedComponents(
 
   return [
     container(operation, "summary", 0, "wide", [
-      { kind: "title", order: 0, props: { text: "Resumen de operación" } },
+      { kind: "title", order: 0, props: { text: "Operation summary" } },
       {
         kind: "label",
         order: 1,
         props: {
-          text: `${operation.bookings.length} booking y ${operation.context.documents.length} documentos — entregado.`,
+          text: `${operation.bookings.length} booking and ${operation.context.documents.length} documents — delivered.`,
         },
       },
     ]),
-    container(operation, "containers", 1, "tile", [
-      { kind: "title", order: 0, props: { text: "Contenedores" } },
-      { kind: "stat", order: 1, props: { value: String(containers), label: "entregados" } },
+    container(operation, "containers", 1, "small", [
+      { kind: "title", order: 0, props: { text: "Containers" } },
+      { kind: "stat", order: 1, props: { value: String(containers), label: "delivered" } },
     ]),
-    container(operation, "status", 2, "tile", [
-      { kind: "title", order: 0, props: { text: "Estado" } },
-      { kind: "badge", order: 1, props: { text: "Entregado", status: "success" } },
+    container(operation, "status", 2, "small", [
+      { kind: "title", order: 0, props: { text: "Status" } },
+      { kind: "badge", order: 1, props: { text: "Delivered", status: "success" } },
     ]),
     container(operation, "story", 3, "tall", [
-      { kind: "title", order: 0, props: { text: "Qué pasó con esta orden" } },
+      { kind: "title", order: 0, props: { text: "What happened with this order" } },
       narrativeTimeline(1, narrative),
     ]),
-    container(operation, "eta-sparkline", 4, "tile", [
-      { kind: "title", order: 0, props: { text: "Cambios de ETA" } },
+    container(operation, "eta-sparkline", 4, "small", [
+      { kind: "title", order: 0, props: { text: "ETA changes" } },
       { kind: "sparkline", order: 1, props: { dataKey: "schedule-changes" } },
+    ]),
+    container(operation, "delivery-email", 5, "tall", [
+      { kind: "title", order: 0, props: { text: "Notify client of the delivery" } },
+      {
+        kind: "email-action",
+        order: 1,
+        props: {
+          to: "ops@andestextiles.co",
+          subject: "Delivery completed — booking bkg-andes-002",
+          body:
+            "Hi,\n\nWe're confirming that containers HLXU8811223 and HLXU8811224 were " +
+            "delivered at destination. Let us know if anything comes up.\n\nBest regards.",
+        },
+      },
     ]),
   ];
 }
@@ -471,30 +515,30 @@ function buildAndesClosedComponents(
 function buildCafeComponents(operation: Operation, narrative: NarrativeEventSeed[]): Component[] {
   return [
     container(operation, "summary", 0, "wide", [
-      { kind: "title", order: 0, props: { text: "Resumen de operación" } },
+      { kind: "title", order: 0, props: { text: "Operation summary" } },
       {
         kind: "label",
         order: 1,
         props: {
-          text: `${operation.bookings.length} bookings y ${operation.context.documents.length} documentos en curso.`,
+          text: `${operation.bookings.length} bookings and ${operation.context.documents.length} documents in progress.`,
         },
       },
       { kind: "divider", order: 2, props: {} },
       {
         kind: "label",
         order: 3,
-        props: { text: "Café del Valle + Flores Tropicales comparten un booking.", tone: "muted" },
+        props: { text: "Café del Valle + Flores Tropicales share a booking.", tone: "muted" },
       },
     ]),
     container(operation, "containers-by-state", 1, "wide", [
-      { kind: "title", order: 0, props: { text: "Contenedores por estado" } },
+      { kind: "title", order: 0, props: { text: "Containers by state" } },
       {
         kind: "category-chart",
         order: 1,
         props: {
           dataKey: "containers-by-state",
           xKey: "name",
-          series: [{ key: "value", label: "Contenedores", colorIndex: 2 }],
+          series: [{ key: "value", label: "Containers", colorIndex: 2 }],
         },
       },
     ]),
@@ -506,25 +550,40 @@ function buildCafeComponents(operation: Operation, narrative: NarrativeEventSeed
         props: {
           dataKey: "bookings",
           columns: [
-            { key: "carrier", label: "Naviera" },
-            { key: "origin", label: "Origen" },
-            { key: "destination", label: "Destino" },
-            { key: "containers", label: "Contenedores" },
+            { key: "carrier", label: "Carrier" },
+            { key: "origin", label: "Origin" },
+            { key: "destination", label: "Destination" },
+            { key: "containers", label: "Containers" },
           ],
         },
       },
     ]),
     container(operation, "customs-progress", 3, "small", [
-      { kind: "title", order: 0, props: { text: "Despacho aduanero" } },
+      { kind: "title", order: 0, props: { text: "Customs clearance" } },
       {
         kind: "progress",
         order: 1,
-        props: { value: 1, max: 3, label: "contenedores liberados", status: "warning" },
+        props: { value: 1, max: 3, label: "containers released", status: "warning" },
       },
     ]),
     container(operation, "story", 4, "tall", [
-      { kind: "title", order: 0, props: { text: "Qué pasó con esta orden" } },
+      { kind: "title", order: 0, props: { text: "What happened with this order" } },
       narrativeTimeline(1, narrative),
+    ]),
+    container(operation, "reroute-email", 5, "tall", [
+      { kind: "title", order: 0, props: { text: "Notify of the route change" } },
+      {
+        kind: "email-action",
+        order: 1,
+        props: {
+          to: "exports@cafedelvalle.co",
+          subject: "Route change — booking bkg-cafe-001",
+          body:
+            "Hi,\n\nThe vessel had to reroute because of weather in the Caribbean, so the " +
+            "ETA moved a couple of days. We'll let you know as soon as we have a firmer " +
+            "date.\n\nBest regards.",
+        },
+      },
     ]),
   ];
 }
@@ -535,34 +594,49 @@ function buildFloresComponents(operation: Operation, narrative: NarrativeEventSe
   const extracted = (po?.extractedData ?? {}) as Record<string, unknown>;
 
   return [
-    container(operation, "summary", 0, "wide", [
-      { kind: "title", order: 0, props: { text: "Resumen de operación" } },
+    buildWelcomeComponent(operation.id, operation.createdAt),
+    container(operation, "summary", 1, "wide", [
+      { kind: "title", order: 0, props: { text: "Operation summary" } },
       {
         kind: "label",
         order: 1,
-        props: { text: "Todavía sin booking — esperando confirmación del naviero." },
+        props: { text: "Still no booking — waiting on carrier confirmation." },
       },
     ]),
-    container(operation, "status", 1, "tile", [
-      { kind: "title", order: 0, props: { text: "Estado" } },
-      { kind: "badge", order: 1, props: { text: "Sin booking", status: "neutral" } },
+    container(operation, "status", 2, "small", [
+      { kind: "title", order: 0, props: { text: "Status" } },
+      { kind: "badge", order: 1, props: { text: "No booking yet", status: "neutral" } },
     ]),
-    container(operation, "po-fields", 2, "small", [
-      { kind: "title", order: 0, props: { text: "Orden de compra" } },
+    container(operation, "po-fields", 3, "small", [
+      { kind: "title", order: 0, props: { text: "Purchase order" } },
       {
         kind: "key-values",
         order: 1,
         props: {
           items: [
             { label: "Incoterm", value: String(extracted.incoterm ?? "—") },
-            { label: "ETA solicitada", value: String(extracted.requestedEta ?? "—") },
+            { label: "Requested ETA", value: String(extracted.requestedEta ?? "—") },
           ],
         },
       },
     ]),
-    container(operation, "story", 3, "tall", [
-      { kind: "title", order: 0, props: { text: "Qué pasó con esta orden" } },
+    container(operation, "story", 4, "tall", [
+      { kind: "title", order: 0, props: { text: "What happened with this order" } },
       narrativeTimeline(1, narrative),
+    ]),
+    container(operation, "booking-request-email", 5, "tall", [
+      { kind: "title", order: 0, props: { text: "Ask for booking confirmation" } },
+      {
+        kind: "email-action",
+        order: 1,
+        props: {
+          to: "compras@florestropicales.co",
+          subject: "Follow-up — booking confirmation pending",
+          body:
+            "Hi,\n\nWe still don't have a booking confirmation from the carrier for the " +
+            "September shipment. Standing by for any updates.\n\nBest regards.",
+        },
+      },
     ]),
   ];
 }
