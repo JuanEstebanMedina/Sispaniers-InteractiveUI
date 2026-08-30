@@ -65,7 +65,11 @@ test("an invalid component tree from a tool call is treated as an invalid AI res
   ).rejects.toThrow(InvalidAiComponentError);
 });
 
-test("chat does not offer update_component to the AI", async () => {
+/**
+ * The chat used to be create-only, which made "change the ETA on that panel"
+ * answerable only by building a second panel next to the first.
+ */
+test("chat offers update_component to the AI", async () => {
   const commandRegistry = new CommandRegistry();
   const execute = async () => ({ component: {}, reply: "creado" });
   commandRegistry.register({
@@ -107,7 +111,29 @@ test("chat does not offer update_component to the AI", async () => {
 
   await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "crea uno" });
 
-  expect(offeredTools).toEqual(["create_component"]);
+  expect(offeredTools).toEqual(["create_component", "update_component"]);
+});
+
+/**
+ * Finding the component from a description is the whole point: `id`, `size` and
+ * `childCount` name nothing a user would ever type.
+ */
+test("chat carries the existing components under a name the user could type", async () => {
+  const capture = { systemPrompt: "" };
+  const chart = componentStub({
+    id: "cmp-chart",
+    children: [{ kind: "title", order: 0, props: { text: "Costos por aduana" } }] as never,
+  });
+  const generateComponentFromAi = buildReferencingUseCase([chart], capture);
+
+  await generateComponentFromAi({
+    operationId: OPERATION_ID,
+    trigger: "chat",
+    input: "cambia el de costos",
+  });
+
+  expect(capture.systemPrompt).toContain("Costos por aduana");
+  expect(capture.systemPrompt).toContain("cmp-chart");
 });
 
 test("chat includes prior conversation on later messages", async () => {

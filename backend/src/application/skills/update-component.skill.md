@@ -1,49 +1,53 @@
-## Herramienta: `update_component`
+## Tool: `update_component`
 
-Úsala **únicamente** cuando el mensaje del usuario referencia de forma
-explícita e inequívoca que quiere modificar, actualizar, cambiar o
-reemplazar un componente que ya existe en esta operación (su `id` aparece en
-la lista de componentes existentes del contexto). El historial es
-append-only — nunca "editas" el componente anterior, esta herramienta
-registra el reemplazo.
+Use it when the message points at **exactly one** component that already exists
+in this operation. There are two ways it can point at one:
 
-Señales explícitas de que corresponde `update_component` (en español, las
-frases del usuario contienen algo como): "actualiza", "actualízalo",
-"cambia", "cámbialo", "modifica", "modifícalo", "reemplaza" — combinado con
-una referencia clara a "el/la [componente que ya existe]" (ej. "actualiza el
-panel de envíos", "cambia el gráfico de costos", "modifica el que ya tengo de
-aduanas").
+1. **It was referenced.** The user attached the component to their message, and
+   its full content is in the "pointing at" block. That is the component to
+   update — do not look for another.
+2. **It was described.** The message names a widget's current content or
+   purpose closely enough to match one entry of the existing-components list by
+   its `label`: "change the ETA on the customs panel", "update the shipments
+   chart", "fix the number on the costs one".
 
-Si el mensaje es genérico, nuevo o ambiguo (ej. "crea un componente",
-"muéstrame algo de envíos", "agrega un widget") — **NO uses esta
-herramienta**, aunque ya existan componentes similares en la operación. Usa
-siempre `create_component` en ese caso: es más seguro añadir un componente de
-más que actualizar uno equivocado.
+If the message matches no component, matches more than one, or asks for
+something new or generic, use `create_component` instead. Adding one component
+too many is safer than overwriting the wrong one — an overwrite cannot be
+undone by the user.
 
-### Argumentos
+A question is not an edit. "I don't get this chart", "what does this mean",
+"where does this number come from" are answered in plain text with no tool call,
+even when a component is referenced.
+
+### What it does not do
+
+- It never changes the component's **size** or its position on the grid. There
+  is no `layout` field. Correcting content is not a request to resize.
+- It never touches any other component. Only `componentId` is written.
+
+### Arguments
 
 ```json
 {
   "children": [
-    { "kind": "<uno de component_catalog>", "order": <n>, "props": { ... } }
+    { "kind": "<one of component_catalog>", "order": <n>, "props": { ... } }
   ],
-  "componentId": "<id del componente que reemplaza>",
-  "layout": { "cols": 4, "rows": 2 },
-  "reply": "<mensaje breve en lenguaje natural, dirigido directamente al usuario final y mostrado tal cual en una burbuja de chat>"
+  "componentId": "<id of the existing component to update>",
+  "reply": "<short natural-language message, addressed directly to the end user and shown verbatim in a chat bubble>"
 }
 ```
 
-- IMPORTANTE: `kind` debe ser EXACTAMENTE uno de estos valores, nunca inventes
-  otros: `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`,
-  `label`, `button`, `layout`. Cualquier otro valor será rechazado.
-- `componentId` es **obligatorio** — el `id` que aparece en la lista de
-  componentes existentes del contexto.
-- `reply` es **obligatorio** — mensaje conversacional para el usuario final,
-  sin jerga interna, sin HTML ni markdown ni código, nunca vacío.
-- `layout` es **opcional**: omítelo si solo reemplazas el contenido y el
-  tamaño actual sigue siendo correcto; inclúyelo (mismo formato
-  `{ "cols": n, "rows": n }`) cuando el componente también necesita cambiar
-  de tamaño o reacomodarse en la grilla de `{{grid_columns}}` columnas. Si lo
-  omites, el tamaño actual del componente no cambia.
-- Cuando incluyas `layout`, respeta el rango permitido por el `kind` elegido
-  (`minCols/maxCols`, `minRows/maxRows`), igual que en `create_component`.
+- **`children` replaces the whole tree.** It is not a patch. Whatever you leave
+  out is gone from the component. Start from the content you were given for that
+  component, change what the user asked for, and send back every other node
+  unchanged — same `kind`, same `order`, same `props`. Sending only the node you
+  edited erases the rest of the widget.
+- `componentId` is **required** — an `id` from the existing-components list or
+  from the referenced block. Never invent one: an id that does not belong to
+  this operation is rejected.
+- `reply` is **required** — a conversational message for the end user, with no
+  internal jargon, no HTML, no markdown, no code, never empty. Say what changed.
+- IMPORTANT: `kind` must be EXACTLY one of these values, never invent others:
+  `title`, `trend-chart`, `category-chart`, `breakdown-chart`, `stat`, `label`,
+  `button`, `layout`. Any other value is rejected and the whole update is lost.

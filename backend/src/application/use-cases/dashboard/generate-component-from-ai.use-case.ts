@@ -1,4 +1,5 @@
 import type { CommandRegistry } from "../../../domain/commands/command-registry.js";
+import { componentLabel } from "../../../domain/components/component-label.js";
 import type { Component } from "../../../domain/components/component.js";
 import type { WidgetSizeName } from "../../../domain/components/widget-size.js";
 import {
@@ -50,18 +51,24 @@ const ESTIMATED_PENDING_SIZE: WidgetSizeName = "small";
 
 const GRID_COLUMNS = 4;
 
-function buildExistingComponentsHint(
-  trigger: AiTrigger,
-  existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
-): string {
-  if (trigger === "chat") {
+interface ExistingComponent {
+  id: string;
+  label: string | null;
+  size: WidgetSizeName;
+  childCount: number;
+}
+
+function buildExistingComponentsHint(existing: ExistingComponent[]): string {
+  if (existing.length === 0) {
     return `---
-update_component is not available for chat messages. When the user asks a question or wants an explanation, answer in plain text and call no tool. Use create_component only when they ask for a new component: it always adds one and never modifies an existing one.`;
+This operation has no components yet, so every request that needs one uses create_component.`;
   }
 
   return `---
-Existing components of this operation (use update_component ONLY when the user's message explicitly states they want to modify/update/replace an EXISTING component — for example by naming its current content or purpose — passing its "id" as "componentId"; for any new or generic request always use create_component, even when similar components already exist):
-${JSON.stringify(existingComponents)}`;
+Existing components of this operation. "label" is the name the user sees on the widget, and it is what they will describe a component by:
+${JSON.stringify(existing)}
+
+Use update_component when the message points at exactly one of them — because it was referenced, or because it names that widget's current content or purpose closely enough to leave no doubt — passing its "id" as "componentId". When the request is new or generic, when it matches more than one, or when nothing here matches, use create_component: adding one component too many is safer than overwriting the wrong one.`;
 }
 
 function buildReferencedComponentsHint(referenced: Component[]): string {
@@ -77,14 +84,16 @@ function buildReferencedComponentsHint(referenced: Component[]): string {
   }));
 
   return `\n\n---
-The user is pointing at these components of their dashboard, and this is their full content. Answer about them:
-${JSON.stringify(readable)}`;
+The user is pointing at these components of their dashboard, and this is their full content:
+${JSON.stringify(readable)}
+
+When the message is a question about them, answer it in plain text and call no tool. When it asks for a change to one of them, that is the component to update: pass its "id" as "componentId".`;
 }
 
 function buildSystemPrompt(
   template: string,
   trigger: AiTrigger,
-  existingComponents: Array<{ id: string; size: WidgetSizeName; childCount: number }>,
+  existingComponents: ExistingComponent[],
   referenced: Component[],
   context?: PromptContext,
 ): string {
@@ -96,7 +105,7 @@ function buildSystemPrompt(
     context,
   );
 
-  return `${base}\n\n${buildExistingComponentsHint(trigger, existingComponents)}${buildReferencedComponentsHint(referenced)}`;
+  return `${base}\n\n${buildExistingComponentsHint(existingComponents)}${buildReferencedComponentsHint(referenced)}`;
 }
 
 export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFromAiDeps) {
@@ -117,14 +126,11 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     operationId: string,
     trigger: AiTrigger,
   ): Promise<{ component: Component | null; reply: string }> {
-    const tools = commandRegistry
-      .list()
-      .filter((command) => trigger !== "chat" || command.name !== "update_component")
-      .map((command) => ({
-        name: command.name,
-        description: command.description,
-        inputSchema: command.inputSchema,
-      }));
+    const tools = commandRegistry.list().map((command) => ({
+      name: command.name,
+      description: command.description,
+      inputSchema: command.inputSchema,
+    }));
 
     const result = await aiCompletionPort.complete({
       prompt: input,
@@ -182,8 +188,9 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
     }
 
     const components = await componentRepository.findByOperationId(input.operationId);
-    const existingComponents = components.map((component) => ({
+    const existingComponents: ExistingComponent[] = components.map((component) => ({
       id: component.id,
+      label: componentLabel(component),
       size: component.size,
       childCount: component.children.length,
     }));
