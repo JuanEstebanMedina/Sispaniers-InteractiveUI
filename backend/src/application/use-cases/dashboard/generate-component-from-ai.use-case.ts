@@ -57,11 +57,11 @@ function buildExistingComponentsHint(
 ): string {
   if (trigger === "chat") {
     return `---
-Para mensajes de chat no esta disponible update_component. Usa create_component: siempre agrega un componente nuevo y nunca modifica uno existente.`;
+update_component is not available for chat messages. Use create_component: always add a new component, never modify an existing one.`;
   }
 
   return `---
-Componentes existentes de esta operación (usa update_component SOLO si el mensaje del usuario menciona explicitamente que quiere modificar/actualizar/reemplazar un componente EXISTENTE, ej. menciona su contenido o proposito actual, usando su "id" como "componentId"; para cualquier peticion nueva o generica, usa siempre create_component, incluso si ya existen otros componentes):
+Existing components on this operation (use update_component ONLY if the user's message explicitly mentions wanting to modify/update/replace an EXISTING component, e.g. it names its current content or purpose, using its "id" as "componentId"; for any new or generic request, always use create_component, even if other components already exist):
 ${JSON.stringify(existingComponents)}`;
 }
 
@@ -114,10 +114,16 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         inputSchema: command.inputSchema,
       }));
 
+    // "auto" always has to produce a component — nobody is reading a text
+    // reply from a webhook. "chat" may legitimately have nothing to show
+    // (the user asked for data the operation doesn't have), and forcing a
+    // tool call there just makes the model build an empty component to hang
+    // its answer on instead of saying so.
     const result = await aiCompletionPort.complete({
       prompt: input,
       systemPrompt,
       tools,
+      forceTool: trigger !== "chat",
     });
 
     if (result.kind === "text") {
@@ -125,6 +131,10 @@ export function createGenerateComponentFromAiUseCase(deps: GenerateComponentFrom
         console.log(
           `generateComponentFromAi: chat trigger returned plain text for operation ${operationId}`,
         );
+        // No component is coming for this turn, so the placeholder from
+        // "component-pending" has nothing left to clear it — without this it
+        // sits on screen looking like a stuck blank widget until its timeout.
+        eventPublisher?.publish(operationId, "component-pending-cleared", null);
         return { component: null, reply: result.text };
       }
       console.warn(

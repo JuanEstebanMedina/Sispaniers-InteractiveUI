@@ -51,7 +51,7 @@ export const aiRoutes: FastifyPluginAsyncZod<AiRouteDeps> = async (fastify, deps
           trigger: "chat",
           input: message,
         });
-        reply.code(201).send({ reply: result.reply });
+        reply.code(201).send({ reply: result.reply, component_created: result.component !== null });
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
           reply.code(404).send({ error: "operation_not_found", message: error.message });

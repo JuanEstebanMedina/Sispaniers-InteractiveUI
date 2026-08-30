@@ -1,4 +1,4 @@
-import { type FunctionDeclaration, GoogleGenAI } from "@google/genai";
+import { FunctionCallingConfigMode, type FunctionDeclaration, GoogleGenAI } from "@google/genai";
 
 import type {
   AiCompletionPort,
@@ -34,6 +34,7 @@ export class GeminiCompletionAdapter implements AiCompletionPort {
 
   async complete(request: AiCompletionRequest): Promise<AiCompletionResult> {
     const hasTools = request.tools !== undefined && request.tools.length > 0;
+    const forceTool = request.forceTool ?? true;
 
     const response = await this.getClient().models.generateContent({
       model: this.model,
@@ -49,6 +50,15 @@ export class GeminiCompletionAdapter implements AiCompletionPort {
                   functionDeclarations: toFunctionDeclarations(request.tools as AiToolDefinition[]),
                 },
               ],
+              // ANY forces an actual function call whenever tools are
+              // offered — see the matching note in openai-completion-adapter.
+              // AUTO leaves it up to the model, for a caller with a
+              // legitimate "nothing to show" case (see `forceTool`).
+              toolConfig: {
+                functionCallingConfig: {
+                  mode: forceTool ? FunctionCallingConfigMode.ANY : FunctionCallingConfigMode.AUTO,
+                },
+              },
             },
           }
         : {}),

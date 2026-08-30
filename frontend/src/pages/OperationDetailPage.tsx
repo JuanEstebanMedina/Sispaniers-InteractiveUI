@@ -124,6 +124,14 @@ export default function OperationDetailPage() {
         return
       }
 
+      if (event === 'component-pending-cleared') {
+        // The AI answered in plain text this turn — no component is coming,
+        // so nothing will ever replace the oldest placeholder. Drop it now
+        // instead of leaving it on screen until its timeout.
+        setPending((current) => current.slice(1))
+        return
+      }
+
       if (event === 'component-created' || event === 'component-updated') {
         setPending((current) => current.slice(1))
         void queryClient.invalidateQueries({

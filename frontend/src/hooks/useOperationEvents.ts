@@ -14,6 +14,7 @@ export type OperationEventName =
   | 'component-created'
   | 'component-updated'
   | 'component-pending'
+  | 'component-pending-cleared'
   | 'operation-updated'
   | 'simulation-completed'
 
@@ -58,6 +59,7 @@ function isOperationEventName(value: string): value is OperationEventName {
     value === 'component-created' ||
     value === 'component-updated' ||
     value === 'component-pending' ||
+    value === 'component-pending-cleared' ||
     value === 'operation-updated' ||
     value === 'simulation-completed'
   )
@@ -68,6 +70,7 @@ function parsePayload(
   data: string,
 ): GeneratedComponent | ComponentPendingEvent | Operation | null {
   try {
+    if (name === 'component-pending-cleared') return null
     const json = JSON.parse(data)
     if (name === 'component-pending') return componentPendingSchema.parse(json)
     if (name === 'operation-updated' || name === 'simulation-completed') {
