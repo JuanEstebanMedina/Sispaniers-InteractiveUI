@@ -1,10 +1,10 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import type { Component } from "../../../../../../domain/components/component.js";
 import type {
   GetOperationInput,
   GetOperationResult,
 } from "../../../../../../application/use-cases/dashboard/get-operation.use-case.js";
+import type { Component } from "../../../../../../domain/components/component.js";
 import { deriveOperationStatus } from "../../../../../../domain/logistics/operation-status.js";
 import { OperationNotFoundError } from "../../../../../../domain/model/errors.js";
 import type { ComponentEventPublisher } from "../../../../../../domain/ports/component-event-publisher.port.js";
