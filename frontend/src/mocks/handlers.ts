@@ -87,25 +87,4 @@ export const handlers = [
     if (header?.startsWith('Bearer ')) sessions.delete(header.slice(7))
     return new HttpResponse(null, { status: 204 })
   }),
-
-  /**
-   * MODO HÍBRIDO — lo único que sigue simulado.
-   *
-   * El dominio (`/api/flows`) lo sirve el backend real; MSW no lo intercepta y
-   * `onUnhandledRequest: 'bypass'` lo deja pasar al proxy de Vite. Acá sólo
-   * queda lo que el backend TODAVÍA no tiene, y cada handler se borra el día
-   * que exista de verdad:
-   *
-   *   · auth — el backend no tiene autenticación ("No authentication yet")
-   *   · layout de widgets — no hay endpoint que lo persista
-   */
-  /**
-   * MODO HÍBRIDO — lo único que sigue simulado.
-   *
-   * Todo el dominio (`/api/operations`, sus componentes y su layout) lo sirve
-   * el backend real; MSW no lo intercepta y `onUnhandledRequest: 'bypass'` lo
-   * deja pasar al proxy de Vite. Acá sólo queda la autenticación, porque el
-   * backend todavía no la tiene. El día que exista, este archivo desaparece.
-   */
-  http.get(url('/health'), () => HttpResponse.json({ status: 'ok', mocked: true })),
 ]

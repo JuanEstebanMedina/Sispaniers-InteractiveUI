@@ -37,6 +37,7 @@ export function createCreateOperationUseCase(deps: CreateOperationDeps) {
 
     const operation: Operation = {
       id: idGenerator.newId(),
+      companyId: company.id,
       bookings: [],
       context: { emails: [], documents: [] },
       createdAt: new Date(),
@@ -44,10 +45,6 @@ export function createCreateOperationUseCase(deps: CreateOperationDeps) {
     };
 
     await operationRepository.save(operation);
-    await companyRepository.save({
-      ...company,
-      operationIds: [...company.operationIds, operation.id],
-    });
 
     return { operation, status: deriveOperationStatus(operation) };
   };

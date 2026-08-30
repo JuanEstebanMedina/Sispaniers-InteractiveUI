@@ -2,6 +2,7 @@
   "operations": [
     {
       "id": "op-andes-textiles-001",
+      "companyId": "company-andes-textiles",
       "createdAt": "2026-07-01",
       "bookings": [
         {
@@ -25,7 +26,7 @@
             "messageId": "email-andes-014",
             "from": "docs@maersk.com",
             "to": "ops@andestextiles.co",
-            "subject": "Bill of Lading — booking bkg-andes-001",
+            "subject": "Bill of Lading \u2014 booking bkg-andes-001",
             "receivedAt": "2026-07-04",
             "bodyText": "Please find the signed BL attached."
           }
@@ -38,7 +39,10 @@
             "bucketKey": "operations/op-andes-textiles-001/bl-001.pdf",
             "bookingId": "bkg-andes-001",
             "sourceEmailId": "email-andes-014",
-            "extractedData": { "grossWeightKg": 21400, "packages": 880 },
+            "extractedData": {
+              "grossWeightKg": 21400,
+              "packages": 880
+            },
             "receivedAt": "2026-07-04"
           },
           {
@@ -47,7 +51,10 @@
             "format": "spreadsheet",
             "bucketKey": "operations/op-andes-textiles-001/invoice-001.xlsx",
             "bookingId": "bkg-andes-001",
-            "extractedData": { "currency": "USD", "total": 48250 },
+            "extractedData": {
+              "currency": "USD",
+              "total": 48250
+            },
             "receivedAt": "2026-07-05"
           }
         ]
@@ -55,6 +62,7 @@
     },
     {
       "id": "op-andes-textiles-002",
+      "companyId": "company-andes-textiles",
       "createdAt": "2026-06-09",
       "bookings": [
         {
@@ -78,7 +86,9 @@
             "format": "pdf",
             "bucketKey": "operations/op-andes-textiles-002/arrival-notice-002.pdf",
             "bookingId": "bkg-andes-002",
-            "extractedData": { "freeDaysRemaining": 0 },
+            "extractedData": {
+              "freeDaysRemaining": 0
+            },
             "receivedAt": "2026-07-06"
           }
         ]
@@ -86,6 +96,7 @@
     },
     {
       "id": "op-cafe-del-valle-001",
+      "companyId": "company-cafe-del-valle",
       "createdAt": "2026-07-28",
       "bookings": [
         {
@@ -129,7 +140,10 @@
             "bucketKey": "operations/op-cafe-del-valle-001/packing-list-001.xlsx",
             "bookingId": "bkg-cafe-001",
             "sourceEmailId": "email-cafe-007",
-            "extractedData": { "bags": 640, "originFarm": "Huila" },
+            "extractedData": {
+              "bags": 640,
+              "originFarm": "Huila"
+            },
             "receivedAt": "2026-08-02"
           }
         ]
@@ -137,6 +151,7 @@
     },
     {
       "id": "op-flores-tropicales-001",
+      "companyId": "company-flores-tropicales",
       "createdAt": "2026-08-25",
       "bookings": [],
       "context": {
@@ -157,7 +172,10 @@
             "format": "pdf",
             "bucketKey": "operations/op-flores-tropicales-001/po-001.pdf",
             "sourceEmailId": "email-flores-003",
-            "extractedData": { "incoterm": "FOB", "requestedEta": "2026-09-30" },
+            "extractedData": {
+              "incoterm": "FOB",
+              "requestedEta": "2026-09-30"
+            },
             "receivedAt": "2026-08-25"
           }
         ]
@@ -169,21 +187,18 @@
       "id": "company-andes-textiles",
       "name": "Andes Textiles",
       "contactEmails": ["ops@andestextiles.co", "finanzas@andestextiles.co"],
-      "operationIds": ["op-andes-textiles-001", "op-andes-textiles-002"],
       "preferredNotificationChannel": "email"
     },
     {
       "id": "company-cafe-del-valle",
-      "name": "Café del Valle",
+      "name": "Caf\u00e9 del Valle",
       "contactEmails": ["exports@cafedelvalle.co"],
-      "operationIds": ["op-cafe-del-valle-001"],
       "preferredNotificationChannel": "email"
     },
     {
       "id": "company-flores-tropicales",
       "name": "Flores Tropicales",
       "contactEmails": ["compras@florestropicales.co"],
-      "operationIds": ["op-flores-tropicales-001"],
       "preferredNotificationChannel": "slack"
     }
   ]

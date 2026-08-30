@@ -5,6 +5,7 @@ export function toComponentWireShape(component: Component) {
     id: component.id,
     operation_id: component.operationId,
     kind: component.kind,
+    ...(component.title !== undefined ? { title: component.title } : {}),
     content: component.children,
     size: component.size,
     created_at: component.createdAt.toISOString(),

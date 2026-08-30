@@ -35,7 +35,6 @@ export const WIDGET_SIZE_NAMES = [
   'small',
   'wide',
   'tall',
-  'tower',
   'large',
   'banner',
 ] as const
@@ -71,6 +70,8 @@ export const componentSchema = z.object({
   id: z.string(),
   operation_id: z.string(),
   kind: z.string(),
+  /** El nombre que escribió el usuario encima del que generó el agente. */
+  title: z.string().optional(),
   /** Wire key is `content`; its value is the node tree. */
   content: z.array(componentNodeSchema).catch([]),
   size: z.enum(WIDGET_SIZE_NAMES).catch('small'),

@@ -55,7 +55,7 @@ function lastActivityOf(operation: Operation): number {
 }
 
 function firstCompanyOf(operation: Operation): string | undefined {
-  return operation.bookings.flatMap((booking) => booking.companyIds)[0];
+  return operation.companyId ?? operation.bookings.flatMap((booking) => booking.companyIds)[0];
 }
 
 function compareBy(field: OperationSortField, a: Operation, b: Operation): number {
@@ -78,17 +78,14 @@ export interface ListOperationsDeps {
   companyRepository: CompanyRepository;
 }
 
-function toQueryFilter(
-  input: ListOperationsInput,
-  ids: string[] | undefined,
-): OperationQueryFilter {
+function toQueryFilter(input: ListOperationsInput): OperationQueryFilter {
   const [createdFrom, createdTo] =
     input.date !== undefined
       ? [input.date, new Date(input.date.getTime() + ONE_DAY_MS - 1)]
       : [input.from, input.to];
 
   return {
-    ...(ids !== undefined ? { ids } : {}),
+    ...(input.companyId !== undefined ? { companyId: input.companyId } : {}),
     ...(input.health !== undefined ? { health: input.health } : {}),
     ...(input.search !== undefined ? { search: input.search } : {}),
     ...(createdFrom !== undefined ? { createdFrom } : {}),
@@ -99,14 +96,10 @@ function toQueryFilter(
 export function createListOperationsUseCase(deps: ListOperationsDeps) {
   const { operationRepository, companyRepository } = deps;
 
-  async function operationIdsOf(companyId: string): Promise<string[]> {
-    const company = await companyRepository.findById(companyId);
-
-    if (company === null) {
+  async function assertCompanyExists(companyId: string): Promise<void> {
+    if ((await companyRepository.findById(companyId)) === null) {
       throw new CompanyNotFoundError(companyId);
     }
-
-    return company.operationIds;
   }
 
   return async function listOperations(
@@ -116,8 +109,11 @@ export function createListOperationsUseCase(deps: ListOperationsDeps) {
       throw new InvalidFilterCombinationError("date cannot be combined with from/to");
     }
 
-    const ids = input.companyId === undefined ? undefined : await operationIdsOf(input.companyId);
-    const operations = await operationRepository.findAll(toQueryFilter(input, ids));
+    if (input.companyId !== undefined) {
+      await assertCompanyExists(input.companyId);
+    }
+
+    const operations = await operationRepository.findAll(toQueryFilter(input));
 
     const results = operations
       .map((operation) => ({ operation, status: deriveOperationStatus(operation) }))

@@ -25,6 +25,7 @@ export const componentResponseSchema = z.object({
   id: z.string(),
   operation_id: z.string(),
   kind: z.string(),
+  title: z.string().optional(),
   content: z.array(z.unknown()),
   size: z.string(),
   created_at: z.string(),
@@ -39,20 +40,23 @@ export const getComponentsResponseSchema = z.object({
   layout: z.array(layoutEntrySchema),
 });
 
-export const updateLayoutBodySchema = z.object({
-  cols: gridColsSchema,
-  layout: z.array(layoutEntrySchema),
-});
-
-export const updateLayoutResponseSchema = z.object({
-  cols: gridColsSchema,
-  layout: z.array(layoutEntrySchema),
-});
-
 export const updateComponentContentBodySchema = z.union([
   z.object({ content: componentChildrenSchema }).strict(),
   z.object({ path: z.string().min(1), value: z.unknown() }).strict(),
 ]);
+
+// A widget can be moved and renamed, never resized: position is an index in the
+// operation's sequence, and the grid coordinates are packed from it.
+export const updateComponentPlacementBodySchema = z
+  .object({
+    position: z.number().int().min(0).optional(),
+    title: z.string().max(120).optional(),
+  })
+  .strict()
+  .refine(
+    (body) => body.position !== undefined || body.title !== undefined,
+    "at least one of position or title is required",
+  );
 
 export const updateComponentContentResponseSchema = componentResponseSchema;
 

@@ -27,7 +27,12 @@ export const endpoints = {
     search: '/operations/search',
     detail: (id: string) => `/operations/${id}`,
     components: (id: string) => `/operations/${id}/components`,
-    layout: (id: string) => `/operations/${id}/layout`,
+    /**
+     * Mover y renombrar un widget, de a uno. NO hay un PATCH del layout entero:
+     * la posición es un índice en la secuencia, y las coordenadas salen de ahí.
+     */
+    componentPlacement: (id: string, componentId: string) =>
+      `/operations/${id}/components/${componentId}/placement`,
     componentContent: (id: string, componentId: string) =>
       `/operations/${id}/components/${componentId}`,
   },

@@ -4,13 +4,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/cn'
-import {
-  type GridItem,
-  colsForWidth,
-  moveItem,
-  pack,
-  sameLayout,
-} from '@/lib/grid'
+import { type GridItem, colsForWidth, moveItem, pack } from '@/lib/grid'
 
 const GAP_PX = 12
 
@@ -22,7 +16,6 @@ export interface Widget extends GridItem {
 
 interface WidgetGridProps {
   widgets: Widget[]
-  onLayoutChange?: (layout: GridItem[]) => void
   /**
    * Width, in px, that something else is taking from the row — the side panel.
    * The grid sizes itself as if that space were still its own and overflows
@@ -32,6 +25,18 @@ interface WidgetGridProps {
   reserve?: number
   /** Fires when the user renames a widget, so the caller can persist it. */
   onTitleChange?: (id: string, title: string) => void
+  /**
+   * Fires with the widget the user just moved and its new index in the
+   * sequence. Coordinates are not sent on purpose: the sequence is what the
+   * backend stores, and the grid packs the coordinates back out of it.
+   */
+  onMove?: (id: string, position: number) => void
+  /**
+   * Fires with the column count the grid settled on. The caller needs it
+   * because the backend packs the layout for a specific width, and the two
+   * must agree or the widgets land on different cells.
+   */
+  onColsChange?: (cols: number) => void
   className?: string
 }
 
@@ -46,8 +51,9 @@ interface DragState {
 
 export function WidgetGrid({
   widgets,
-  onLayoutChange,
   onTitleChange,
+  onMove,
+  onColsChange,
   reserve = 0,
   className,
 }: WidgetGridProps) {
@@ -84,6 +90,14 @@ export function WidgetGrid({
   const cols = layoutWidth > 0 ? colsForWidth(layoutWidth, GAP_PX) : 4
   const cell = layoutWidth > 0 ? (layoutWidth - GAP_PX * (cols - 1)) / cols : 0
 
+  const announceCols = useRef(onColsChange)
+  useEffect(() => {
+    announceCols.current = onColsChange
+  })
+  useEffect(() => {
+    announceCols.current?.(cols)
+  }, [cols])
+
   // Widgets the user has never touched — anything the agent just added — keep
   // their incoming order and land at the end.
   const requested = useMemo(() => {
@@ -95,26 +109,6 @@ export function WidgetGrid({
   }, [widgets, order])
 
   const settled = useMemo(() => pack(requested, cols), [requested, cols])
-
-  const notify = useRef(onLayoutChange)
-  useEffect(() => {
-    notify.current = onLayoutChange
-  })
-
-  const reported = useRef<GridItem[] | null>(null)
-  useEffect(() => {
-    if (sameLayout(settled, requested)) return
-    // Compare against what we last announced, not against the request: the
-    // parent re-rendering with a fresh widget array must not look like a new
-    // correction, or persisting one turns into an endless loop.
-    if (reported.current && sameLayout(reported.current, settled)) return
-    // Geometry only. A packed entry still carries the widget's `body`, and a
-    // React element cannot be serialised — it holds fiber back-references, so
-    // JSON.stringify throws on the circular structure.
-    const layout = settled.map(({ id, col, row, w, h }) => ({ id, col, row, w, h }))
-    reported.current = layout
-    notify.current?.(layout)
-  }, [settled, requested])
 
   const target = useMemo(() => {
     if (!drag || cell === 0) return null
@@ -142,18 +136,29 @@ export function WidgetGrid({
   const landing = dragId ? preview.find((item) => item.id === dragId) : undefined
   const origins = useMemo(() => new Map(settled.map((item) => [item.id, item])), [settled])
 
-  const remember = useCallback((layout: GridItem[]) => {
-    setOrder(layout.map((item) => item.id))
-  }, [])
+  const remember = useCallback(
+    (layout: GridItem[], movedId: string) => {
+      const sequence = layout.map((item) => item.id)
+      // A drop or an arrow key that changes nothing — against the edge of the
+      // grid, or back onto the widget's own cell — is not a move. Persisting it
+      // would rewrite every sibling's order for no reason.
+      if (sequence.every((id, index) => id === settled[index]?.id)) return
+
+      setOrder(sequence)
+      const position = sequence.indexOf(movedId)
+      if (position !== -1) onMove?.(movedId, position)
+    },
+    [settled, onMove],
+  )
 
   const commit = useCallback(() => {
-    remember(preview)
+    if (drag) remember(preview, drag.id)
     setDrag(null)
-  }, [preview, remember])
+  }, [drag, preview, remember])
 
   useEffect(() => {
     if (!drag) return
-    const onMove = (event: PointerEvent) => {
+    const onPointerMove = (event: PointerEvent) => {
       if (event.pointerId !== drag.pointerId) return
       setDrag((current) =>
         current
@@ -161,11 +166,11 @@ export function WidgetGrid({
           : current,
       )
     }
-    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', commit)
     window.addEventListener('pointercancel', commit)
     return () => {
-      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', commit)
       window.removeEventListener('pointercancel', commit)
     }
@@ -175,7 +180,7 @@ export function WidgetGrid({
     (id: string, deltaCol: number, deltaRow: number) => {
       const item = settled.find((candidate) => candidate.id === id)
       if (!item) return
-      remember(moveItem(settled, id, item.col + deltaCol, item.row + deltaRow, cols))
+      remember(moveItem(settled, id, item.col + deltaCol, item.row + deltaRow, cols), id)
     },
     [settled, cols, remember],
   )

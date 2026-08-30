@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS builder
+FROM node:22-bookworm-slim AS build
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
@@ -11,7 +11,16 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
+COPY scripts ./scripts
 RUN pnpm run build
+
+
+FROM build AS seed
+
+CMD ["pnpm", "run", "seed"]
+
+
+FROM build AS builder
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod
 

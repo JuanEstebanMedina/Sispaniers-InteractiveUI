@@ -88,3 +88,17 @@ export class InvalidCommandInputError extends Error {
     this.name = "InvalidCommandInputError";
   }
 }
+
+export class BookingNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Booking not found: ${id}`);
+    this.name = "BookingNotFoundError";
+  }
+}
+
+export class ContainerNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Container not found: ${id}`);
+    this.name = "ContainerNotFoundError";
+  }
+}

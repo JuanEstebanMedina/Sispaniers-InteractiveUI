@@ -19,8 +19,10 @@ the operations it is responsible for.
 
 ## Environment
 
-There is one `.env` for the whole repo, at the **root** — not inside `backend/`.
-Copy `.env.example` to `.env` and fill it in.
+Env vars live in `backend/.env` (this directory), not at the repo root. Copy
+`backend/.env.example` to `backend/.env` and fill it in. `docker compose` at the repo
+root needs `--env-file backend/.env --env-file frontend/.env` to pick up both — see the
+root README.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -37,6 +39,7 @@ Copy `.env.example` to `.env` and fill it in.
 | `GEMINI_MODEL` | `gemini-2.0-flash` | model id for the Gemini adapter |
 | `SUPABASE_URL` | — | project URL, used to upload email attachments to Storage |
 | `SUPABASE_SERVICE_ROLE_KEY` | — | service role (secret) key — bypasses RLS for server-side uploads |
+| `SIMULATION_TICK_INTERVAL_MS` | `20000` | how often the shipment simulator advances (see below) |
 
 Mongo connection resolution order (`src/infrastructure/config/mongo.ts`):
 `MONGODB_URI` → a URI built from `MONGO_USER`/`MONGO_PASSWORD`/`MONGO_PORT`/`MONGO_DB`
@@ -100,7 +103,7 @@ Todos los campos son opcionales; un body vacío lista todo.
 | `search` | string | subcadena sin distinguir mayúsculas sobre el id de la operación, los ids de empresa y los puertos |
 | `status` | container state | filtra sobre el status **derivado**, en memoria |
 | `health` | `ok` \| `warning` \| `error` | filtra en Mongo |
-| `company_id` | string | operaciones de esa empresa |
+| `company_id` | string | la empresa dueña o cualquier parte de una reserva, en Mongo |
 | `from` / `to` | fecha ISO | rango sobre `created_at` |
 | `date` | fecha ISO | ese día UTC; **no se combina** con `from`/`to` |
 | `sort_by` | `updatedAt` \| `company` \| `id` | `updatedAt` es derivado: el cambio de ETA más reciente, o la creación |
@@ -125,6 +128,78 @@ curl http://127.0.0.1:8000/api/operations/op-andes-textiles-001
 An operation object is `id`, `company_ids`, `status`, `health`, `created_at`,
 `bookings[]` and `context`. Run the curl above against a seeded database for the full
 shape.
+
+### The shipment simulator
+
+There is no real carrier tracking feed wired in, so a simulator stands in for one. Every
+operation created from now on (via `POST /api/operations` or a booking-linking email —
+existing/seeded operations are untouched) gets, at creation time:
+
+- a synthetic `Booking` (carrier, vessel, ports, an initial schedule, one container),
+  saved immediately — this is why a freshly created operation already has a booking a
+  moment after the `201` response, not inside it
+- a random script from `SIMULATION_SCRIPTS` (`domain/logistics/simulation-script.ts`) —
+  five canned narratives (`smooth`, `transshipment_delay`, `customs_hold`,
+  `ahead_of_schedule`, `compound_problem`) so operations running side by side don't all
+  tell the same story
+
+A single server-wide timer (`SIMULATION_TICK_INTERVAL_MS`, default 20s) advances every
+registered operation by one step of its script each tick — mutating `vesselPosition`,
+appending a `ScheduleChange`, or moving a container to its next `ContainerState` — and
+publishes the change (see SSE, below). A script that runs out (some end mid-journey on
+purpose, e.g. `customs_hold`) stops advancing that operation and publishes
+`simulation-completed`, which closes that operation's SSE stream (see below) — nothing
+errors, and the operation itself is untouched, just no more events will ever arrive
+for it.
+
+Multiple operations run independently and concurrently — there's no cross-operation
+locking, so a slow step for one never delays another. If a step fails for one operation
+(Mongo hiccup, etc.), only that tick's remaining operations are skipped for that round;
+none of them lose progress, they're all retried on the next tick since nothing gets
+marked as advanced until it actually succeeds. The registry is in-memory, per process:
+restarting the server resets every operation's simulation back to its first step.
+
+Disconnecting from the SSE stream (below) does **not** pause the simulation — the timer
+keeps running server-side regardless of who's watching. Reconnect later and you'll see
+the operation's current state, just not the events you missed in between (SSE pushes
+live, nothing is buffered for reconnects).
+
+```bash
+# force one specific event instead of waiting for the timer — useful live
+curl -X POST http://127.0.0.1:8000/api/operations/op-andes-textiles-001/tracking-events \
+  -H "Content-Type: application/json" \
+  -d '{ "type": "schedule_change", "booking_id": "b-1", "new_eta": "2026-09-30T00:00:00Z", "reason": "manual test" }'
+```
+
+`type` is `vessel_position` (`booking_id`, `lat`, `lng`) | `schedule_change`
+(`booking_id`, `new_eta`, `reason`) | `container_state` (`booking_id`, `container_id`,
+`state`). `200` → the updated operation object. `404` → `operation_not_found`,
+`booking_not_found` or `container_not_found`.
+
+### `GET /api/operations/:id/events` — Server-Sent Events
+
+One stream per operation, meant for an `EventSource` in the browser — no extra library
+needed on either side. Multiple viewers of the **same** operation all get the **same**
+events at the same time: the publisher is one shared in-process event emitter keyed by
+operation id, so every open connection is just another subscriber on it.
+
+```bash
+curl -N http://127.0.0.1:8000/api/operations/op-andes-textiles-001/events
+```
+
+Three event types share the stream, distinguished by SSE's `event:` field:
+
+| `event:` | `data:` payload | Fired by |
+|---|---|---|
+| `operation-updated` | the full operation object (same shape as `GET /api/operations/:id`) | the simulator's timer, `POST .../tracking-events`, or enrolling a new operation |
+| `simulation-completed` | the full operation object, same shape | the simulator's timer, once that operation's script has no steps left |
+| `component-created` / `component-updated` | a generated-UI component | the dashboard component endpoints (`operation-components.routes.ts` — not documented here yet) |
+
+`simulation-completed` is terminal: the server writes that one event and then closes
+the connection (`reply.raw.end()`) — there's nothing left to stream once a script runs
+out, so the stream ends instead of sitting open silently forever. A client that wants
+to know when an operation's story is "done" watches for this event rather than for the
+connection just going quiet.
 
 ### `POST /api/operations/:id/documents`
 
@@ -262,15 +337,26 @@ Every error response is `{ "error": "<machine_code>", "message": "<human text>" 
 | `404` | `operation_not_found` | no operation with that id |
 | `404` | `company_not_found` | no company with that id |
 | `404` | `document_not_found` | no document with that id on that operation |
+| `404` | `booking_not_found` | no booking with that id on that operation |
+| `404` | `container_not_found` | no container with that id on that booking |
 | `502` | `email_send_failed` | SMTP rejected the message |
 | `502` | `document_upload_failed` | Supabase Storage rejected the upload |
 
 ## Things the code will not tell you at a glance
 
-**`company_ids` on an operation is derived, never stored.** It is the union of
-`bookings[].companyIds`, computed when the response is built. Ownership itself lives in
-one place only: `Company.operationIds`. An operation with no bookings answers with an
-empty list, which is the truth.
+**A widget's position is its place in a sequence, not a pair of coordinates.**
+`Component.order` is what the user controls by dragging; `col`/`row` are packed from that
+order for whatever column count is asked for, so one arrangement serves every screen
+width and nothing has to be stored per breakpoint. Widgets can be moved and renamed
+(`Component.title` overrides the name the agent generated) but never resized: the size
+comes from `Component.size` alone.
+
+**Two different company links, on purpose.** `Operation.companyId` is the company the
+operation was opened *for* — absent when the operation came from an inbound email, where
+no company is known yet. `bookings[].companyIds` are the parties on each booking, which
+may differ per booking. The `company_ids` field in the response is the union of both,
+computed when the response is built and never stored, and `?company_id=` matches either.
+A company holds no list of its operations: that duplicate could only drift.
 
 **Documents are pointers, not payloads.** A `Document` carries a `bucketKey` into an
 S3-compatible bucket (Supabase Storage, not AWS) plus a `format` (`pdf`, `spreadsheet`,
