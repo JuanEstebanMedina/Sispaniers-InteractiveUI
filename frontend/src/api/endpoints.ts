@@ -72,6 +72,8 @@ export const queryKeys = {
   },
   operations: {
     all: ['operations'] as const,
+    /** Every list query regardless of filters — for invalidating all of them at once. */
+    listAll: ['operations', 'list'] as const,
     list: (body?: unknown) => ['operations', 'list', body ?? {}] as const,
     detail: (id: string) => ['operations', 'detail', id] as const,
     componentsAll: (id: string) => ['operations', 'components', id] as const,

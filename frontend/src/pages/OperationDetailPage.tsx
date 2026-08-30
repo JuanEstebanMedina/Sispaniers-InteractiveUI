@@ -197,7 +197,11 @@ export default function OperationDetailPage() {
       const nextOperation = payload as Operation | null
       if (nextOperation) {
         queryClient.setQueryData(queryKeys.operations.detail(trackId), nextOperation)
-        void queryClient.invalidateQueries({ queryKey: queryKeys.operations.list() })
+        // Not queryKeys.operations.list() — that key carries an empty {} body,
+        // which only matches list queries with no filters. listAll is the bare
+        // ['operations','list'] prefix, so every filtered/sorted grid still
+        // gets the update instead of needing a reload to see it.
+        void queryClient.invalidateQueries({ queryKey: queryKeys.operations.listAll })
       }
     },
     [queryClient, trackId],
