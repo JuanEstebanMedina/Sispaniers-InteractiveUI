@@ -15,6 +15,7 @@ export interface PromptContext {
   clientMemory: string[];
   runHistory: ChatMessage[];
   componentCatalog: Milestone[];
+  operationContext?: unknown;
 }
 
 const EMPTY_PROMPT_CONTEXT: PromptContext = {
@@ -44,6 +45,10 @@ function renderMilestones(milestones: Milestone[]): string {
     .join("\n");
 }
 
+function renderOperationContext(context: unknown): string {
+  return context === undefined ? NOT_AVAILABLE : JSON.stringify(context);
+}
+
 export function buildBasePrompt(
   template: string,
   trigger: AiTrigger,
@@ -56,12 +61,13 @@ export function buildBasePrompt(
     "{{client_memory}}": renderKnowledgeList(context.clientMemory),
     "{{run_history}}": renderChatHistory(context.runHistory),
     "{{component_catalog}}": renderMilestones(context.componentCatalog),
+    "{{operation_context}}": renderOperationContext(context.operationContext),
     "{{trigger}}": trigger,
     "{{current_input}}": currentInput,
     "{{grid_columns}}": String(gridColumns),
   };
   const placeholderPattern =
-    /\{\{(company_knowledge|client_memory|run_history|component_catalog|trigger|current_input|grid_columns)\}\}/g;
+    /\{\{(company_knowledge|client_memory|run_history|component_catalog|operation_context|trigger|current_input|grid_columns)\}\}/g;
   return template.replace(
     placeholderPattern,
     (placeholder) => replacements[placeholder] ?? placeholder,
