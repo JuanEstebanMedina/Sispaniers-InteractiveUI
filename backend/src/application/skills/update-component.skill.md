@@ -26,15 +26,58 @@ Reading to answer is allowed. A node whose `props.dataKey` looks like
 any other `dataKey` you have no tool: say the figure comes from the operation's
 records and that you cannot read it from here, rather than guessing at it.
 
+### Change one field, not the component
+
+There are two shapes, and the narrow one is the default:
+
+- **`path` + `value`** — rewrite a single field. `path` is dotted and rooted at
+  `children`: `children.1.props.body` is the message of the second node.
+  `value` is the new text. Nothing else in the component is read or written, so
+  nothing else can drift. The field has to exist already; a `path` naming a
+  prop that is not there is rejected rather than invented.
+- **`children`** — the whole new tree, and only when the set of nodes itself has
+  to change: a node added, removed, or reordered. Whatever you leave out is
+  deleted, so every node and every prop you still want has to come back byte for
+  byte.
+
+Almost every edit is one field. "Reword this", "make it warmer", "shorten the
+message", "fix that label", "translate this line" — all of them are one `path`.
+Reaching for `children` to change a sentence is how a title disappears and a
+recipient comes back empty.
+
+### An edit means what the user pointed at, and no more
+
+The user names the thing they want changed. Everything they did not name is a
+decision they already made, and it stays.
+
+An `email-action` is the case worth spelling out, because it holds three fields
+the user chose separately:
+
+- "edit the email", "reword it", "make it more formal" → `props.body`. The
+  message is what those words mean.
+- The recipient (`props.to`) changes only when the user names a different
+  person, and the subject (`props.subject`) only when they ask about the
+  subject. Neither one follows from rewriting the message.
+- The container's title is not part of the email at all. Leave it.
+
+If you believe a second field genuinely has to change too, do the one that was
+asked and say in `reply` what else you would change and why. Asking costs the
+user one sentence; guessing costs them the address they typed.
+
 ### Layout changes
 
-`layout` resizes this component. `position` moves it in zero-based component
-sequence shown in existing-components list. Backend repacks grid and shifts
-siblings as needed.
+`layout` resizes this component. `position` moves it in the zero-based component
+sequence shown in the existing-components list. The backend repacks the grid and
+shifts siblings as needed.
 
-Only send either field when user explicitly asks for size or move and target is
-exactly one component. Never infer resize from content, or move from vague
-request such as "make it better". For content-only edit, omit both fields.
+Only send either field when the user explicitly asks for a size or a move and
+the target is exactly one component. Never infer a resize from content, or a
+move from a vague request such as "make it better". For a content-only edit,
+omit both.
+
+### What it does not do
+
+- It never touches any other component. Only `componentId` is written.
 - **It never changes the data.** The figures a widget shows are the company's
   record of what happened, not text you may edit.
 
@@ -65,6 +108,19 @@ is fine when it helps you say what the current figure actually is.
 
 ### Arguments
 
+One field — the shape to reach for first:
+
+```json
+{
+  "path": "children.<index>.props.<prop>",
+  "value": "<the new text>",
+  "componentId": "<id of the existing component to update>",
+  "reply": "<short natural-language message, addressed directly to the end user and shown verbatim in a chat bubble>"
+}
+```
+
+The whole tree — only when nodes are added, removed or reordered:
+
 ```json
 {
   "componentId": "<id of existing component to update>",
@@ -77,19 +133,25 @@ is fine when it helps you say what the current figure actually is.
 }
 ```
 
-`children` is optional for layout-only update. It uses exactly same `kind` index, same props per component and
-the same data sources (`dataKey`) as `create_component` — there is no separate
-list for updates.
+Both content shapes are optional for a layout-only update. `children` uses
+exactly the same `kind` index, the same props per component and the same data
+sources (`dataKey`) as `create_component` — there is no separate list for
+updates.
 
+- Send **either** `path` and `value` **or** `children`. Both together is
+  rejected: they are two edits that disagree about the result.
 - **`children` replaces the whole tree.** It is not a patch. Whatever you leave
   out is gone from the component. Start from the content you were given for that
   component, change what the user asked for, and send back every other node
   unchanged — same `kind`, same `order`, same `props`. Sending only the node you
   edited erases the rest of the widget.
+- `path` counts nodes as they were given to you, from zero, and points at one
+  prop: `children.0.props.text`, `children.2.props.label`.
 - `componentId` is **required** — an `id` from the existing-components list or
   from the referenced block. Never invent one: an id that does not belong to
   this operation is rejected.
 - `reply` is **required** — a conversational message for the end user, with no
   internal jargon, no HTML, no markdown, no code, never empty. Say what changed.
-- `layout` is optional. Send requested grid dimensions (`cols`, `rows`) only for explicit resize; they map to nearest supported size.
-- `position` is optional. Send it only for explicit move; `0` is first component.
+- `layout` is optional. Send the requested grid dimensions (`cols`, `rows`) only
+  for an explicit resize; they map to the nearest supported size.
+- `position` is optional. Send it only for an explicit move; `0` is first.

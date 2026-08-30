@@ -32,7 +32,7 @@ import {
   type ColorName,
 } from './colors'
 import { useDataset, useOperation } from './ComponentData'
-import { useNode, useProps, type PropReader } from './NodeContext'
+import { useComponentId, useNode, useOnEmailSent, useProps, type PropReader } from './NodeContext'
 
 /**
  * THE PARTS
@@ -195,17 +195,56 @@ export function Button() {
  * the agent already knows; this proposes a draft and a human has to review,
  * possibly edit, and explicitly send it — the agent never gets to.
  */
+/** Kept in step with the exit transition below, so the node dies once it is invisible. */
+const LEAVE_MS = 520
+
 export function EmailAction() {
   const props = useProps()
   const { t } = useTranslation('domain')
   const operation = useOperation()
 
-  const [to, setTo] = useState(props.str('to'))
-  const [subject, setSubject] = useState(props.str('subject'))
-  const [body, setBody] = useState(props.str('body'))
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
+  const componentId = useComponentId()
+  const onEmailSent = useOnEmailSent()
+  const proposed = {
+    to: props.str('to'),
+    subject: props.str('subject'),
+    body: props.str('body'),
+  }
 
-  const canSend = status === 'idle' && to.trim() !== '' && subject.trim() !== '' && body.trim() !== ''
+  const [to, setTo] = useState(proposed.to)
+  const [subject, setSubject] = useState(proposed.subject)
+  const [body, setBody] = useState(proposed.body)
+  const [status, setStatus] = useState<'idle' | 'sending' | 'leaving'>('idle')
+  const [lastProposed, setLastProposed] = useState(proposed)
+
+  // The draft is the user's to edit, so it lives in state rather than reading
+  // props every render. That state is seeded once at mount, so an agent
+  // rewriting this component would otherwise never reach the screen: the node
+  // stays mounted and the new props are ignored.
+  if (
+    lastProposed.to !== proposed.to ||
+    lastProposed.subject !== proposed.subject ||
+    lastProposed.body !== proposed.body
+  ) {
+    setLastProposed(proposed)
+    setTo(proposed.to)
+    setSubject(proposed.subject)
+    setBody(proposed.body)
+    setStatus('idle')
+  }
+
+  const leaving = status === 'leaving'
+  const canSend =
+    status === 'idle' && to.trim() !== '' && subject.trim() !== '' && body.trim() !== ''
+
+  // A sent draft has nothing left to offer: the mail is gone, and a form that
+  // still invites a second send is the only way to send it twice. It fades out
+  // first so the user sees which widget just left the grid.
+  useEffect(() => {
+    if (!leaving || componentId === undefined) return
+    const timer = window.setTimeout(() => onEmailSent?.(componentId), LEAVE_MS)
+    return () => window.clearTimeout(timer)
+  }, [leaving, componentId, onEmailSent])
 
   async function send() {
     if (!canSend) {
@@ -221,11 +260,11 @@ export function EmailAction() {
         subject: subject.trim(),
         body_text: body.trim(),
       })
-      setStatus('sent')
       toast.success(t('operation.emailAction.sent'))
+      setStatus('leaving')
     } catch (error) {
-      setStatus('idle')
       toast.apiError(error)
+      setStatus('idle')
     }
   }
 
@@ -236,13 +275,19 @@ export function EmailAction() {
   )
 
   return (
-    <div className="flex min-h-40 min-w-0 flex-1 flex-col gap-1.5">
+    <div
+      className={cn(
+        'flex min-h-40 min-w-0 flex-1 flex-col gap-1.5',
+        'transition-all duration-500 ease-out',
+        leaving && 'pointer-events-none -translate-y-1 scale-95 opacity-0 blur-xs',
+      )}
+    >
       <label className="flex flex-col gap-0.5 text-2xs text-fg-subtle">
         {t('operation.emailAction.to')}
         <input
           type="email"
           value={to}
-          disabled={status === 'sent'}
+          disabled={leaving}
           onChange={(event) => setTo(event.target.value)}
           className={fieldClass}
         />
@@ -251,7 +296,7 @@ export function EmailAction() {
         {t('operation.emailAction.subject')}
         <input
           value={subject}
-          disabled={status === 'sent'}
+          disabled={leaving}
           onChange={(event) => setSubject(event.target.value)}
           className={fieldClass}
         />
@@ -260,7 +305,7 @@ export function EmailAction() {
         {t('operation.emailAction.body')}
         <textarea
           value={body}
-          disabled={status === 'sent'}
+          disabled={leaving}
           onChange={(event) => setBody(event.target.value)}
           className={cn(fieldClass, 'min-h-16 flex-1 resize-none')}
         />
@@ -272,14 +317,14 @@ export function EmailAction() {
         className={cn(
           'inline-flex h-control-sm shrink-0 items-center justify-center rounded-md border px-3',
           'text-xs font-medium',
-          status === 'sent' ? SOFT_COLOR.success : SOFT_COLOR.brand,
+          leaving ? SOFT_COLOR.success : SOFT_COLOR.brand,
           !canSend && 'cursor-not-allowed opacity-60',
         )}
       >
-        {status === 'sending'
-          ? t('operation.emailAction.sending')
-          : status === 'sent'
-            ? t('operation.emailAction.sent')
+        {leaving
+          ? t('operation.emailAction.sent')
+          : status === 'sending'
+            ? t('operation.emailAction.sending')
             : t('operation.emailAction.send')}
       </button>
     </div>
