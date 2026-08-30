@@ -55,6 +55,14 @@ const ARI_SYSTEM_PROMPT = readFileSync(
   join(process.cwd(), "src/application/prompts/ari-system-prompt.md"),
   "utf-8",
 );
+const CREATE_COMPONENT_SKILL = readFileSync(
+  join(process.cwd(), "src/application/commands/create-component.skill.md"),
+  "utf-8",
+);
+const UPDATE_COMPONENT_SKILL = readFileSync(
+  join(process.cwd(), "src/application/commands/update-component.skill.md"),
+  "utf-8",
+);
 
 // TODO: sending an email still doesn't persist anything — it's only logged
 // (request.log.warn in the routes). Receiving an email now persists via
@@ -216,20 +224,26 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     geminiAdapter,
   );
   const commandRegistry = new CommandRegistry();
-  commandRegistry.register(createCreateComponentCommand({ createComponent }));
+  commandRegistry.register(
+    createCreateComponentCommand({ createComponent, skill: CREATE_COMPONENT_SKILL }),
+  );
   commandRegistry.register(
     createUpdateComponentCommand({
       updateComponentContent,
-      componentRepository,
-      eventPublisher: componentEventPublisher,
+      skill: UPDATE_COMPONENT_SKILL,
     }),
   );
+  const skills = commandRegistry
+    .list()
+    .map((command) => command.skill)
+    .filter((skill): skill is string => skill !== undefined)
+    .join("\n\n---\n\n");
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository,
     componentRepository,
     aiCompletionPort,
     commandRegistry,
-    promptTemplate: ARI_SYSTEM_PROMPT,
+    promptTemplate: `${ARI_SYSTEM_PROMPT}\n\n---\n\n${skills}`,
   });
 
   const app = buildApp({

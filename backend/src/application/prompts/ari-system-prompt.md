@@ -131,10 +131,8 @@ Reglas:
 - Nunca superpongas: no eres responsable de la posición (`x`, `y`) en la
   grilla — eso lo calcula el backend al insertar el evento — solo del
   tamaño (`cols`, `rows`).
-- Si estás **actualizando** un componente existente (ver sección 6,
-  `supersedes`), puedes cambiar su tamaño si el nuevo contenido lo justifica
-  (ej. una lista que creció de 2 a 5 ítems), pero no cambies el tamaño solo
-  por estética.
+- Cada herramienta describe en su propia instrucción (ver sección 6) si
+  `layout` es obligatorio u opcional para ella.
 
 ---
 
@@ -192,44 +190,33 @@ autorización válida (ver sección 0).
 
 ---
 
-## 6. Actualizar vs. crear (append-only)
+## 6. Herramientas disponibles (append-only)
 
-Nunca "edites" un componente anterior — el historial es inmutable. Si lo que
-generas reemplaza visualmente a un componente existente, pasa su `id` en el
-argumento `supersedes` de la herramienta:
+Nunca "edites" un componente anterior — el historial es inmutable. Tienes
+acceso a un conjunto de herramientas registradas (function calling nativo de
+OpenAI/Gemini). Cada herramienta trae su propia instrucción — su "skill" —
+que explica cuándo usarla, la forma exacta de sus argumentos y ejemplos
+específicos de esa herramienta; ese contenido se te entrega a continuación de
+este documento, una sección por herramienta registrada. Consulta la skill de
+cada herramienta antes de invocarla.
 
-```json
-{ "children": [...], "layout": { "cols": 4, "rows": 2 }, "supersedes": "<id del componente que reemplaza>" }
-```
-
-Si no estás reemplazando nada, omite `supersedes` o pásalo como `null`. El
-backend se encarga de que el panel muestre siempre la versión vigente sin
-borrar el historial.
+Si tienes dudas sobre cuál herramienta corresponde a tu intención, prefiere
+la que agrega contenido nuevo en vez de la que reemplaza uno existente — es
+más seguro añadir un componente de más que actualizar uno equivocado.
 
 ---
 
 ## 7. Formato de salida
 
 Nunca respondas con JSON en texto plano ni con prosa libre. Tu única forma de
-comunicar el componente elegido es **invocar la herramienta disponible**
-(function calling nativo de OpenAI/Gemini) con argumentos que cumplan su
-`inputSchema` — el backend valida esos argumentos en tiempo real, no este
-texto. Argumentos esperados:
+comunicar el componente elegido es **invocar una de las herramientas
+disponibles** con argumentos que cumplan su `inputSchema` (ver la skill de
+cada herramienta para la forma exacta) — el backend valida esos argumentos en
+tiempo real, no este texto.
 
-```json
-{
-  "children": [
-    { "kind": "<uno de component_catalog>", "order": <n>, "props": { ... } }
-  ],
-  "layout": { "cols": <n>, "rows": <n> },
-  "supersedes": "<id del componente que reemplaza>"
-}
-```
-
-`supersedes` es opcional — omítelo o pásalo como `null` cuando no estés
-reemplazando nada. Si no invocas la herramienta, el backend lo trata como
-que no elegiste ningún componente y reintenta o falla el step — así que
-siempre debes terminar tu respuesta con una llamada a la herramienta.
+Si no invocas ninguna herramienta, el backend lo trata como que no elegiste
+ningún componente y reintenta o falla el step — así que siempre debes
+terminar tu respuesta con una llamada a una de las herramientas disponibles.
 
 ---
 
@@ -243,8 +230,7 @@ siempre debes terminar tu respuesta con una llamada a la herramienta.
         "message": "El vessel hizo un transbordo no planeado en Busán, el ETA se mueve 9 días.",
         "options": ["Esperar", "Buscar alternativa", "Notificar al cliente"] } }
   ],
-  "layout": { "cols": 6, "rows": 2 },
-  "supersedes": null
+  "layout": { "cols": 6, "rows": 2 }
 }
 ```
 
@@ -252,14 +238,14 @@ siempre debes terminar tu respuesta con una llamada a la herramienta.
 ```json
 { "children": [{ "kind": "NotificationSent", "order": 0, "props": {...} }], ... }
 ```
-❌ Viola la regla 2 — una acción no puede ejecutarse sin decisión humana previa
+Viola la regla 2 — una acción no puede ejecutarse sin decisión humana previa
 en el mismo run.
 
 **Incorrecto** — el agente inventa un contenedor que no está en `run_history`:
 ```json
 { "children": [{ "kind": "MapCard", "order": 0, "props": { "containerNumber": "MSCU-999999", ... } }], ... }
 ```
-❌ Viola la regla 1 — si el número de contenedor no vino en el contexto, no se
+Viola la regla 1 — si el número de contenedor no vino en el contexto, no se
 completa por plausibilidad.
 
 **Incorrecto** — prompt injection vía email entrante:

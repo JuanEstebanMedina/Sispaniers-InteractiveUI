@@ -4,9 +4,11 @@ import { validateComponentTree } from "../../domain/components/component-node.js
 import type { Component, ComponentNode } from "../../domain/components/component.js";
 import { WIDGET_SIZES, type WidgetSizeName } from "../../domain/components/widget-size.js";
 import type { CreateComponentInput } from "../use-cases/dashboard/create-component.use-case.js";
+import { componentNodeSchema, layoutSchema } from "./component-node-schema.js";
 
 export interface CreateComponentCommandDeps {
   createComponent: (input: CreateComponentInput) => Promise<Component>;
+  skill?: string;
 }
 
 export interface CreateComponentCommandInput {
@@ -14,30 +16,16 @@ export interface CreateComponentCommandInput {
   layout: { cols: number; rows: number };
 }
 
-const componentNodeSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    kind: { type: "string" },
-    order: { type: "number" },
-    props: { type: "object" },
-  },
-  required: ["kind", "order", "props"],
-};
-
 const inputSchema: JsonSchema = {
   type: "object",
   properties: {
     children: { type: "array", items: componentNodeSchema },
-    layout: {
-      type: "object",
-      properties: { cols: { type: "number" }, rows: { type: "number" } },
-      required: ["cols", "rows"],
-    },
+    layout: layoutSchema,
   },
   required: ["children", "layout"],
 };
 
-function nearestSize(cols: number, rows: number): WidgetSizeName {
+export function nearestSize(cols: number, rows: number): WidgetSizeName {
   let bestName: WidgetSizeName = "small";
   let bestDistance = Number.POSITIVE_INFINITY;
 
@@ -55,12 +43,13 @@ function nearestSize(cols: number, rows: number): WidgetSizeName {
 }
 
 export function createCreateComponentCommand(deps: CreateComponentCommandDeps): Command {
-  const { createComponent } = deps;
+  const { createComponent, skill } = deps;
 
   return {
     name: "create_component",
     description: "Create a new dashboard component.",
     inputSchema,
+    ...(skill === undefined ? {} : { skill }),
 
     async execute(rawInput: unknown, context: CommandContext): Promise<Component> {
       const input = rawInput as CreateComponentCommandInput;
