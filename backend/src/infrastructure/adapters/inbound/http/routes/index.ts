@@ -104,7 +104,7 @@ export const apiRoutes: FastifyPluginAsyncZod<RouteDependencies> = async (fastif
       createComponent,
       deleteComponent,
     });
-    await protectedRoutes.register(aiRoutes, { generateComponentFromAi, respondToChat });
+    await protectedRoutes.register(aiRoutes, { generateComponentFromAi });
     await protectedRoutes.register(operationEventsRoutes, {
       componentEventPublisher,
       operationEventPublisher,
