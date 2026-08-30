@@ -24,7 +24,9 @@ test("save_company_context persists one company fact without duplicates", async 
       findByName: async () => null,
       findByContactEmail: async () => null,
       findAll: async () => [],
-      save: async (updated) => Object.assign(company, updated),
+      save: async (updated) => {
+        Object.assign(company, updated);
+      },
     },
   });
   const command = createSaveCompanyContextCommand({ saveCompanyContext });

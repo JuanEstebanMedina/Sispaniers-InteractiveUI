@@ -158,7 +158,14 @@ test("chat includes durable company knowledge", async () => {
       save: async () => {},
     },
     companyRepository: {
-      findById: async () => ({ generalContext: ["Salida semanal desde Cartagena."] }),
+      findById: async () => ({
+        id: "company-1",
+        name: "Acme",
+        contactEmails: [],
+        preferredNotificationChannel: "email",
+        generalContext: ["Salida semanal desde Cartagena."],
+        active: true,
+      }),
       findByName: async () => null,
       findByContactEmail: async () => null,
       findAll: async () => [],
