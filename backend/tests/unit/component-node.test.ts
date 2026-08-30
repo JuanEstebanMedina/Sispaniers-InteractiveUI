@@ -77,7 +77,7 @@ test("rejects a tree nested 5 levels deep", () => {
 });
 
 test("rejects an unknown kind", () => {
-  expect(() => validateComponentTree([{ kind: "map", order: 0, props: {} }])).toThrow(
+  expect(() => validateComponentTree([{ kind: "chart-3d", order: 0, props: {} }])).toThrow(
     InvalidComponentTreeError,
   );
 });
@@ -179,8 +179,19 @@ test("finds a chart nested inside a layout when checking the size", () => {
   expect(() => validateComponentSize("tile", children)).toThrow(InvalidComponentTreeError);
 });
 
-test("a container with no chart fits any size", () => {
-  expect(() => validateComponentSize("tile", [statNode(0)])).not.toThrow();
+test("rejects any kind in a tile — no exceptions, not even sparkline", () => {
+  expect(() => validateComponentSize("tile", [statNode(0)])).toThrow(InvalidComponentTreeError);
+  expect(() => validateComponentSize("tile", [{ kind: "sparkline", order: 0, props: {} }])).toThrow(
+    InvalidComponentTreeError,
+  );
+  expect(() => validateComponentSize("tile", [{ kind: "title", order: 0, props: {} }])).toThrow(
+    InvalidComponentTreeError,
+  );
+});
+
+test("a non-chart node fits any size but tile", () => {
+  expect(() => validateComponentSize("small", [statNode(0)])).not.toThrow();
+  expect(() => validateComponentSize("banner", [statNode(0)])).not.toThrow();
 });
 
 test("rejects a dataKey the frontend cannot resolve", () => {

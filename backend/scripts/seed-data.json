@@ -30,7 +30,8 @@
             ["MSKU1029384", "in_transit"],
             ["MSKU1029385", "in_transit"],
             ["MSKU1029386", "booking_confirmed"]
-          ]
+          ],
+          "vesselPosition": { "lat": 18.5, "lng": -145.2, "updatedAt": "2026-08-25" }
         },
         {
           "id": "bkg-andes-001b",
@@ -42,7 +43,8 @@
           "etd": "2026-07-15",
           "eta": "2026-08-25",
           "delays": [],
-          "containers": [["CMAU4471120", "arrived_port"], ["CMAU4471121", "customs"]]
+          "containers": [["CMAU4471120", "arrived_port"], ["CMAU4471121", "customs"]],
+          "vesselPosition": { "lat": 10.39, "lng": -75.51, "updatedAt": "2026-08-21" }
         }
       ],
       "context": {
@@ -224,7 +226,8 @@
               "occurredAt": "2026-07-01"
             }
           ],
-          "containers": [["HLXU8811223", "delivered"], ["HLXU8811224", "delivered"]]
+          "containers": [["HLXU8811223", "delivered"], ["HLXU8811224", "delivered"]],
+          "vesselPosition": { "lat": 10.96, "lng": -74.78, "updatedAt": "2026-07-08" }
         }
       ],
       "context": {
@@ -322,7 +325,8 @@
             ["MSCU5566778", "arrived_port"],
             ["MSCU5566779", "customs"],
             ["MSCU5566780", "in_transit"]
-          ]
+          ],
+          "vesselPosition": { "lat": 25.1, "lng": -55.4, "updatedAt": "2026-08-10" }
         },
         {
           "id": "bkg-cafe-002",

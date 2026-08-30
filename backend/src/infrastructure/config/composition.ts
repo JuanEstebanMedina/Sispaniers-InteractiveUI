@@ -234,12 +234,14 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     overrides.operationEventPublisher ?? new InMemoryOperationEventPublisher();
   const upsertOperationFromEmail = createUpsertOperationFromEmailUseCase({
     operationRepository,
+    componentRepository,
     resolveCompany,
     idGenerator,
     operationEventPublisher,
   });
   const createOperation = createCreateOperationUseCase({
     operationRepository,
+    componentRepository,
     resolveCompany,
     idGenerator,
     operationEventPublisher,

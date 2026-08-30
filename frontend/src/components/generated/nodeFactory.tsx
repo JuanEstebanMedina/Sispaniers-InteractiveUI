@@ -28,6 +28,8 @@ registerNode('timeline', Part.Timeline)
 registerNode('progress', Part.Progress)
 registerNode('sparkline', Part.Sparkline)
 registerNode('file', Part.FileCard)
+registerNode('map', Part.Map)
+registerNode('email-action', Part.EmailAction)
 
 export function createNode(node: ComponentNode, key: string): ReactElement {
   const Component = parts.get(node.kind) ?? Part.Unknown

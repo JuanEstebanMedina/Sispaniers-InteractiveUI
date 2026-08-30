@@ -8,6 +8,7 @@ import '@fontsource-variable/geist'
 import '@fontsource-variable/geist-mono'
 import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
+import 'leaflet/dist/leaflet.css'
 
 import './index.css'
 

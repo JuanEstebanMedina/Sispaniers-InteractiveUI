@@ -10,7 +10,7 @@ import {
   NESTABLE_ATOMIC_NODE_KINDS,
 } from "../enums/widget-kind.js";
 import { InvalidComponentPathError, InvalidComponentTreeError } from "../model/errors.js";
-import { type WidgetSizeName, fitsChart, isChartNodeKind } from "./widget-size.js";
+import { type WidgetSizeName, fitsKind } from "./widget-size.js";
 
 export const MAX_COMPONENT_NODE_DEPTH = 4;
 
@@ -128,26 +128,27 @@ export function validateComponentTree(children: unknown): asserts children is Co
   }
 }
 
-function containsChart(nodes: ComponentNode[]): boolean {
-  return nodes.some(
-    (node) =>
-      isChartNodeKind(node.kind) ||
-      ("children" in node && node.children !== undefined && containsChart(node.children)),
-  );
+/** Every kind in the tree, root and nested, depth-first. */
+function collectKinds(nodes: ComponentNode[]): string[] {
+  return nodes.flatMap((node) => [
+    node.kind,
+    ...("children" in node && node.children !== undefined ? collectKinds(node.children) : []),
+  ]);
 }
 
 /**
- * A chart in a `tile` or a `banner` is one cell tall. It renders, but nobody
- * can read it — so the container is rejected rather than shipped illegible.
+ * A node in a slot too small to render legibly still renders — nobody can
+ * read it, so the container is rejected rather than shipped illegible.
  *
  * Separate from validateComponentTree because that one only ever sees the tree;
  * this rule is about the tree AND the slot it was given.
  */
 export function validateComponentSize(size: WidgetSizeName, children: ComponentNode[]): void {
-  if (fitsChart(size) || !containsChart(children)) {
+  const offender = collectKinds(children).find((kind) => !fitsKind(size, kind));
+  if (offender === undefined) {
     return;
   }
-  throw new InvalidComponentTreeError(`size ${size} is too small to hold a chart`);
+  throw new InvalidComponentTreeError(`size ${size} is too small to hold a "${offender}" node`);
 }
 
 function resolveParent(
