@@ -5,6 +5,7 @@ import { createListOperationsUseCase } from "../../application/use-cases/dashboa
 import { createReceiveEmailUseCase } from "../../application/use-cases/email/receive-email.use-case.js";
 import { createSendEmailUseCase } from "../../application/use-cases/email/send-email.use-case.js";
 import type { AttachmentExtractor } from "../../domain/ports/attachment-extractor.port.js";
+import type { AttachmentStorage } from "../../domain/ports/attachment-storage.port.js";
 import type { EmailSender } from "../../domain/ports/email-sender.port.js";
 import type { OperationRepository } from "../../domain/ports/operation.repository.js";
 import { buildApp } from "../adapters/inbound/http/app.js";
@@ -12,6 +13,7 @@ import { MultiFormatAttachmentExtractor } from "../adapters/outbound/attachment/
 import { NodemailerEmailSender } from "../adapters/outbound/email/nodemailer-email-sender.js";
 import { CryptoIdGenerator } from "../adapters/outbound/id/crypto-id-generator.js";
 import { MongoOperationRepository } from "../adapters/outbound/mongo/operation.repository.js";
+import { SupabaseAttachmentStorage } from "../adapters/outbound/storage/supabase-attachment-storage.js";
 import { connectMongo } from "./mongo.js";
 
 // TODO: recibir/enviar correo todavía no persiste nada — solo se registra vía
@@ -21,6 +23,7 @@ import { connectMongo } from "./mongo.js";
 export interface CreateAppOverrides {
   emailSender?: EmailSender;
   attachmentExtractor?: AttachmentExtractor;
+  attachmentStorage?: AttachmentStorage;
   operationRepository?: OperationRepository;
 }
 
@@ -31,6 +34,16 @@ function buildEmailSender(override: EmailSender | undefined): EmailSender {
   return new NodemailerEmailSender(
     process.env.GMAIL_USER ?? "",
     process.env.GMAIL_APP_PASSWORD ?? "",
+  );
+}
+
+function buildAttachmentStorage(override: AttachmentStorage | undefined): AttachmentStorage {
+  if (override !== undefined) {
+    return override;
+  }
+  return new SupabaseAttachmentStorage(
+    process.env.SUPABASE_URL ?? "",
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
   );
 }
 
@@ -53,11 +66,16 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
   const idGenerator = new CryptoIdGenerator();
   const emailSender = buildEmailSender(overrides.emailSender);
   const attachmentExtractor = overrides.attachmentExtractor ?? new MultiFormatAttachmentExtractor();
+  const attachmentStorage = buildAttachmentStorage(overrides.attachmentStorage);
   const { repository: operationRepository, close } = await buildOperationRepository(
     overrides.operationRepository,
   );
 
-  const receiveEmail = createReceiveEmailUseCase({ idGenerator, attachmentExtractor });
+  const receiveEmail = createReceiveEmailUseCase({
+    idGenerator,
+    attachmentExtractor,
+    attachmentStorage,
+  });
   const sendEmail = createSendEmailUseCase({ emailSender, idGenerator });
   const createOperation = createCreateOperationUseCase({ operationRepository, idGenerator });
   const getOperation = createGetOperationUseCase({ operationRepository });

@@ -36,6 +36,8 @@ function attachmentLogSummary(attachments: ReceiveEmailResult["attachments"]) {
     ...(attachment.kind === "image" && attachment.content !== undefined
       ? { base64_length: attachment.content.length }
       : {}),
+    ...(attachment.storagePath !== undefined ? { storage_path: attachment.storagePath } : {}),
+    ...(attachment.storageError !== undefined ? { storage_error: attachment.storageError } : {}),
   }));
 }
 

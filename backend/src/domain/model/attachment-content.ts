@@ -6,4 +6,6 @@ export interface ExtractedAttachment {
   kind: AttachmentContentKind;
   content?: string;
   error?: string;
+  storagePath?: string;
+  storageError?: string;
 }
