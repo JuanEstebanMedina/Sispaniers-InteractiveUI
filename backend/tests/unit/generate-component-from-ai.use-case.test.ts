@@ -223,6 +223,33 @@ test("auto flow can ingest, query, then create a component", async () => {
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository: {
       findById: async () => ({ id: OPERATION_ID }) as Operation,
+      findAll: async () => [],
+      save: async () => {},
+    },
+    componentRepository: {
+      findByOperationId: async () => [],
+      findById: async () => null,
+      save: async () => {},
+      setField: async () => {},
+      deleteById: async () => {},
+    },
+    aiCompletionPort: {
+      complete: async ({ prompt }) => {
+        prompts.push(prompt);
+        return responses.shift() ?? { kind: "text", text: "unexpected" };
+      },
+    },
+    commandRegistry,
+    promptTemplate: "{{trigger}}",
+  });
+
+  await expect(
+    generateComponentFromAi({ operationId: OPERATION_ID, trigger: "auto", input: "email" }),
+  ).resolves.toEqual({ component: { id: "component-1" }, reply: "Created." });
+  expect(prompts).toHaveLength(3);
+  expect(prompts[2]).toContain("query_company_concepts result");
+});
+
 test("chat can query company concepts before answering without creating a component", async () => {
   const prompts: string[] = [];
   const commandRegistry = new CommandRegistry();
@@ -261,26 +288,20 @@ test("chat can query company concepts before answering without creating a compon
     aiCompletionPort: {
       complete: async ({ prompt }) => {
         prompts.push(prompt);
-        return responses.shift() ?? { kind: "text", text: "unexpected" };
         calls += 1;
         return calls === 1
           ? {
-              kind: "tool_call",
+              kind: "tool_call" as const,
               toolName: "query_company_concepts",
               input: { conceptIds: ["monthly-volume"] },
             }
-          : { kind: "text", text: "Volumen mensual registrado: 42 contenedores." };
+          : { kind: "text" as const, text: "Volumen mensual registrado: 42 contenedores." };
       },
     },
     commandRegistry,
     promptTemplate: "{{trigger}}",
   });
 
-  await expect(
-    generateComponentFromAi({ operationId: OPERATION_ID, trigger: "auto", input: "email" }),
-  ).resolves.toEqual({ component: { id: "component-1" }, reply: "Created." });
-  expect(prompts).toHaveLength(3);
-  expect(prompts[2]).toContain("query_company_concepts result");
   const result = await generateComponentFromAi({
     operationId: OPERATION_ID,
     trigger: "chat",
