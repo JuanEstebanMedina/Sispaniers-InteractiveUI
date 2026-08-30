@@ -10,6 +10,13 @@ interface RailSectionProps {
   /** Shown beside the title, and the only signal left once it is collapsed. */
   badge?: number
   /**
+   * A control next to the title — e.g. a direct-upload button — that acts
+   * without expanding or collapsing the section. Rendered as a sibling of the
+   * toggle button, never inside it: nesting an interactive control inside the
+   * header's own button is invalid HTML and breaks its click target.
+   */
+  action?: ReactNode
+  /**
    * Share of the leftover height this section takes while open, relative to its
    * open siblings. Two sections at 2 and 1 split the panel two thirds / one.
    */
@@ -33,6 +40,7 @@ export function RailSection({
   open,
   onToggle,
   badge = 0,
+  action,
   weight = 1,
   children,
 }: RailSectionProps) {
@@ -43,14 +51,14 @@ export function RailSection({
       className={cn('flex min-h-0 flex-col', open ? 'flex-1' : 'shrink-0')}
       style={open ? { flexGrow: weight } : undefined}
     >
-      <header className="shrink-0">
+      <header className="flex shrink-0 items-center gap-1 pr-1">
         <button
           type="button"
           onClick={onToggle}
           aria-expanded={open}
           aria-controls={bodyId}
           className={cn(
-            'flex w-full items-center gap-2 px-card py-2.5 text-left',
+            'flex min-w-0 flex-1 items-center gap-2 px-card py-2.5 text-left',
             'transition-colors hover:bg-surface-hover',
             'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
           )}
@@ -76,6 +84,8 @@ export function RailSection({
             </span>
           )}
         </button>
+
+        {action}
       </header>
 
       {/* Hidden, not unmounted. The chat holds sent messages, a draft and a

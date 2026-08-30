@@ -161,10 +161,13 @@
       "componentGenerated": "Component updated in the panel.",
       "sendError": "Could not send the message to the agent.",
       "referencing": "Widgets this message points at",
-      "removeReference": "Stop pointing at {{title}}"
+      "removeReference": "Stop pointing at {{title}}",
+      "uploadError": "The file could not be uploaded",
+      "fileTooLarge": "{{name}} is larger than 8 MB"
     },
     "files": {
       "title": "Files",
+      "upload": "Upload a file",
       "emptyTitle": "Nothing has arrived yet",
       "empty": "Documents the agent received by email show up here: BLs, invoices, packing lists.",
       "ask": "Ask the AI",

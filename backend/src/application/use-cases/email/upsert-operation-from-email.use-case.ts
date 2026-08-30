@@ -100,6 +100,7 @@ function toDocument(
     // — for now everything arriving through this flow is assumed to be a PO.
     type: "PO",
     format: attachment.format,
+    ...(attachment.filename !== undefined ? { filename: attachment.filename } : {}),
     bucketKey: attachment.storagePath,
     sourceEmailId: messageId,
     extractedData: attachment.format === "image" ? {} : { text: attachment.content ?? null },

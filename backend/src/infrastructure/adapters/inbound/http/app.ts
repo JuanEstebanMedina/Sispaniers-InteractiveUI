@@ -8,8 +8,19 @@ import {
 import { healthHandler } from "./routes/health.routes.js";
 import { type RouteDependencies, apiRoutes } from "./routes/index.js";
 
+/**
+ * 16 MB, matching `client_max_body_size` in the frontend's nginx.
+ *
+ * Fastify defaults to 1 MB, which is fine for JSON and far too small for a
+ * document upload: the file travels base64-encoded, so an 8 MB PDF arrives as
+ * roughly 10.7 MB. The two limits have to agree, or the request dies at
+ * whichever is lower — and nginx letting a body through only for Fastify to
+ * reject it wastes the entire upload.
+ */
+const BODY_LIMIT_BYTES = 16 * 1024 * 1024;
+
 export function buildApp(deps: RouteDependencies): FastifyInstance {
-  const app = Fastify({ logger: process.env.NODE_ENV !== "test" });
+  const app = Fastify({ logger: process.env.NODE_ENV !== "test", bodyLimit: BODY_LIMIT_BYTES });
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);

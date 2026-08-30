@@ -82,12 +82,13 @@ export const uploadDocumentBodySchema = z.object({
 export const documentResponseSchema = z.object({
   id: z.string(),
   type: z.enum(DOCUMENT_TYPES),
+  filename: z.string().optional(),
   format: z.enum(DOCUMENT_FORMATS),
-  bucket_key: z.string(),
-  booking_id: z.string().optional(),
-  source_email_id: z.string().optional(),
-  extracted_data: z.record(z.string(), z.unknown()),
-  received_at: z.string(),
+  bucketKey: z.string(),
+  bookingId: z.string().optional(),
+  sourceEmailId: z.string().optional(),
+  extractedData: z.record(z.string(), z.unknown()),
+  receivedAt: z.string(),
 });
 
 export const uploadDocumentResponseSchema = z.object({

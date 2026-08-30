@@ -85,17 +85,20 @@ export function toOperationResponse(operation: Operation, status: ContainerState
   };
 }
 
+/**
+ * A document on the wire.
+ *
+ * camelCase, matching the documents inside an operation. `toOperationResponse`
+ * sends `context` straight through, so those already travel in the domain's
+ * shape — converting to snake_case here made the same entity arrive two
+ * different ways depending on which endpoint returned it, which is exactly
+ * what broke the frontend's parser (and silently dropped `filename` too,
+ * since it was never in the hand-written field list).
+ *
+ * Only `receivedAt` is touched: it is a Date, and the wire wants a string.
+ */
 function toDocumentResponse(document: Document) {
-  return {
-    id: document.id,
-    type: document.type,
-    format: document.format,
-    bucket_key: document.bucketKey,
-    ...(document.bookingId !== undefined ? { booking_id: document.bookingId } : {}),
-    ...(document.sourceEmailId !== undefined ? { source_email_id: document.sourceEmailId } : {}),
-    extracted_data: document.extractedData,
-    received_at: document.receivedAt.toISOString(),
-  };
+  return { ...document, receivedAt: document.receivedAt.toISOString() };
 }
 
 export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = async (

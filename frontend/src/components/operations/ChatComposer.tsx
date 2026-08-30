@@ -1,4 +1,4 @@
-import { AtSign, FileText, SendHorizonal, X } from 'lucide-react'
+import { AtSign, Clock, FileText, Loader2, Paperclip, SendHorizonal, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -14,10 +14,20 @@ interface ChatComposerProps {
   onDetach: (documentId: string) => void
   references: ChatReference[]
   onUnreference: (componentId: string) => void
+  /** Elegidos y aún sin subir: se suben recién cuando se envía el mensaje. */
+  pendingFiles: File[]
+  onRemovePendingFile: (index: number) => void
+  onPickFiles: (files: FileList) => void
+  /** Sólo cierto mientras `onSend` sube los `pendingFiles`, no al elegirlos. */
+  uploading?: boolean
   disabled?: boolean
 }
 
 export function ChatComposer({
+  onPickFiles,
+  pendingFiles,
+  onRemovePendingFile,
+  uploading = false,
   draft,
   onDraftChange,
   onSend,
@@ -29,6 +39,7 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const { t } = useTranslation('domain')
   const draftRef = useRef<HTMLTextAreaElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   // Grows with the content up to the CSS max-height, then scrolls. `rows`
   // cannot do this: it fixes the height and a long message hides under the fold.
@@ -64,7 +75,58 @@ export function ChatComposer({
         </ul>
       )}
 
+      {/* Elegidos, no subidos aún: se suben recién al enviar. Es lo que
+          distingue esta lista de `docs`, que ya son archivos reales de la
+          operación. */}
+      {pendingFiles.length > 0 && (
+        <ul className="space-y-1 px-card pt-2">
+          {pendingFiles.map((file, index) => (
+            <PendingFile
+              key={`${file.name}-${index}`}
+              file={file}
+              onRemove={() => onRemovePendingFile(index)}
+              disabled={uploading}
+            />
+          ))}
+        </ul>
+      )}
+
       <div className="flex items-end gap-2 px-card py-3">
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          className="sr-only"
+          onChange={(event) => {
+            const { files } = event.currentTarget
+            if (files?.length) onPickFiles(files)
+            // Se limpia para que elegir el mismo archivo dos veces seguidas
+            // vuelva a disparar el evento.
+            event.currentTarget.value = ''
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          aria-label={t('operation.chat.attach')}
+          title={t('operation.chat.attach')}
+          className={cn(
+            'flex size-control-sm shrink-0 items-center justify-center rounded-md',
+            'border border-line text-fg-muted transition-colors',
+            'hover:bg-surface-hover hover:text-fg',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+          )}
+        >
+          {uploading ? (
+            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+          ) : (
+            <Paperclip className="size-3.5" aria-hidden />
+          )}
+        </button>
+
         <textarea
           ref={draftRef}
           rows={1}
@@ -89,7 +151,13 @@ export function ChatComposer({
         <button
           type="button"
           onClick={onSend}
-          disabled={disabled || (!draft.trim() && docs.length === 0 && references.length === 0)}
+          disabled={
+            disabled ||
+            (!draft.trim() &&
+              docs.length === 0 &&
+              references.length === 0 &&
+              pendingFiles.length === 0)
+          }
           aria-label={t('operation.chat.send')}
           title={t('operation.chat.send')}
           className={cn(
@@ -126,6 +194,43 @@ function ReferencedWidget({
         className="shrink-0 rounded-xs text-fg-subtle hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
       >
         <X className="size-3" aria-hidden />
+      </button>
+    </li>
+  )
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  const kb = bytes / 1024
+  if (kb < 1024) return `${kb.toFixed(0)} KB`
+  return `${(kb / 1024).toFixed(1)} MB`
+}
+
+/** Un archivo elegido, pendiente de subir. El reloj marca que aún no es real. */
+function PendingFile({
+  file,
+  onRemove,
+  disabled,
+}: {
+  file: File
+  onRemove: () => void
+  disabled?: boolean
+}) {
+  const { t } = useTranslation('domain')
+
+  return (
+    <li className="flex items-center gap-2 rounded-md bg-surface-hover px-2 py-1.5 text-xs">
+      <Clock className="size-3.5 shrink-0 text-fg-subtle" aria-hidden />
+      <span className="min-w-0 flex-1 truncate text-fg-muted">{file.name}</span>
+      <span className="shrink-0 text-2xs text-fg-subtle">{formatFileSize(file.size)}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={disabled}
+        aria-label={t('operation.chat.removeFile', { name: file.name })}
+        className="shrink-0 rounded-xs text-fg-subtle hover:text-fg disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+      >
+        <X className="size-3.5" aria-hidden />
       </button>
     </li>
   )

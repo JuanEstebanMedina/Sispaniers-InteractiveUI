@@ -60,6 +60,8 @@ export type DocumentFormat = (typeof DOCUMENT_FORMATS)[number]
 const documentSchema = z.object({
   id: idSchema,
   type: z.string(),
+  /** El nombre con el que se subió. Ausente en documentos anteriores al campo. */
+  filename: z.string().optional(),
   // A format nobody has seen yet gets the generic icon rather than taking the
   // whole document list down with it.
   format: z.enum(DOCUMENT_FORMATS).catch('other'),
@@ -71,6 +73,18 @@ const documentSchema = z.object({
 })
 
 export type LogisticsDocument = z.infer<typeof documentSchema>
+
+/**
+ * Lo que devuelve `POST /operations/:id/documents`.
+ *
+ * Usa el mismo `documentSchema` que los documentos dentro de una operación: es
+ * la misma entidad y el backend la manda igual por los dos caminos.
+ */
+export const uploadDocumentResponseSchema = z.object({
+  document: documentSchema,
+  url: z.string(),
+  expires_in_seconds: z.number(),
+})
 
 export const documentPreviewSchema = z.object({
   url: z.string(),
