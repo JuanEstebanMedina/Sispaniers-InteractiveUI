@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/cn'
+import { documentFilename } from '@/lib/document'
 import type { LogisticsDocument } from '@/schemas'
 import type { ChatReference } from '@/stores/chatReferenceStore'
 
@@ -14,11 +15,9 @@ interface ChatComposerProps {
   onDetach: (documentId: string) => void
   references: ChatReference[]
   onUnreference: (componentId: string) => void
-  /** Elegidos y aún sin subir: se suben recién cuando se envía el mensaje. */
   pendingFiles: File[]
   onRemovePendingFile: (index: number) => void
   onPickFiles: (files: FileList) => void
-  /** Sólo cierto mientras `onSend` sube los `pendingFiles`, no al elegirlos. */
   uploading?: boolean
   disabled?: boolean
 }
@@ -41,8 +40,6 @@ export function ChatComposer({
   const draftRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Grows with the content up to the CSS max-height, then scrolls. `rows`
-  // cannot do this: it fixes the height and a long message hides under the fold.
   useEffect(() => {
     const field = draftRef.current
     if (!field) return
@@ -75,9 +72,6 @@ export function ChatComposer({
         </ul>
       )}
 
-      {/* Elegidos, no subidos aún: se suben recién al enviar. Es lo que
-          distingue esta lista de `docs`, que ya son archivos reales de la
-          operación. */}
       {pendingFiles.length > 0 && (
         <ul className="space-y-1 px-card pt-2">
           {pendingFiles.map((file, index) => (
@@ -100,8 +94,7 @@ export function ChatComposer({
           onChange={(event) => {
             const { files } = event.currentTarget
             if (files?.length) onPickFiles(files)
-            // Se limpia para que elegir el mismo archivo dos veces seguidas
-            // vuelva a disparar el evento.
+            // Reset so picking the same file twice in a row still fires onChange.
             event.currentTarget.value = ''
           }}
         />
@@ -139,8 +132,6 @@ export function ChatComposer({
             'bg-surface px-2 py-1.5 text-xs text-fg placeholder:text-fg-subtle',
             'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
           )}
-          // Enter sends, Shift+Enter breaks the line: this is a chat, not a
-          // document, and reaching for the button on every message is friction.
           onKeyDown={(event) => {
             if (event.key !== 'Enter' || event.shiftKey) return
             event.preventDefault()
@@ -206,7 +197,6 @@ function formatFileSize(bytes: number): string {
   return `${(kb / 1024).toFixed(1)} MB`
 }
 
-/** Un archivo elegido, pendiente de subir. El reloj marca que aún no es real. */
 function PendingFile({
   file,
   onRemove,
@@ -244,7 +234,7 @@ function AttachedDoc({
   onDetach: (documentId: string) => void
 }) {
   const { t } = useTranslation('domain')
-  const label = t(`operation.files.types.${document.type}`, { defaultValue: document.type })
+  const label = documentFilename(document)
 
   return (
     <li className="flex items-center gap-2 rounded-md bg-brand-subtle px-2 py-1.5 text-xs">

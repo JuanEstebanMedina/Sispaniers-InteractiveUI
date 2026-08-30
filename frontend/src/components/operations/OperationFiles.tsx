@@ -10,12 +10,13 @@ import {
   Sparkles,
   Upload,
 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { api$ } from '@/api/client'
 import { endpoints, queryKeys } from '@/api/endpoints'
 import { cn } from '@/lib/cn'
+import { documentFilename } from '@/lib/document'
 import { MAX_UPLOAD_BYTES, mimetypeOf, toBase64 } from '@/lib/file'
 import { formatCalendarDate } from '@/lib/format'
 import { toast } from '@/lib/toast'
@@ -90,14 +91,8 @@ function FileRow({
 
   const Icon = FORMAT_ICONS[document.format]
   const kind = t(`operation.files.types.${document.type}`, { defaultValue: document.type })
-  // El nombre con el que la persona subió el archivo. `Document` no tiene campo
-  // de nombre: vive dentro de `bucketKey`, que es `<ruta>/<archivo>`. Sin esto
-  // la lista mostraba el TIPO, y como al subir el tipo por defecto es `PO`,
-  // "Incapacidad.pdf" aparecía llamándose "Orden de compra".
-  // El nombre real primero; para los documentos guardados antes de que el
-  // backend tuviera el campo, el último segmento de `bucketKey` es la pista.
-  const filename = document.filename ?? document.bucketKey.split('/').pop() ?? ''
-  const label = filename || kind
+  const filename = documentFilename(document)
+  const label = filename
 
   async function open() {
     if (!operation) return
@@ -126,8 +121,6 @@ function FileRow({
     openSection('chat')
   }
 
-  // `text` es el documento entero y no cabe en una ficha: se separa y se
-  // muestra recortado. Lo demás son datos cortos con nombre — `bags: 640`.
   const { text, ...structured } = document.extractedData
   const facts = Object.entries(structured).slice(0, 4)
   const bodyText = typeof text === 'string' ? text.trim() : ''
@@ -141,8 +134,6 @@ function FileRow({
           <p className="truncate text-sm font-medium text-fg" title={label}>
             {label}
           </p>
-          {/* El tipo baja a la segunda línea: sigue diciendo qué es el
-              documento, pero deja de suplantar al nombre del archivo. */}
           <p className="mt-0.5 truncate text-xs text-fg-subtle">
             {filename
               ? `${kind} · ${formatCalendarDate(document.receivedAt)}`
@@ -191,8 +182,6 @@ function FileRow({
       {bodyText && (
         <p
           className="mt-1.5 pl-6 text-xs leading-relaxed text-fg-subtle"
-          // Dos líneas: bastan para reconocer el archivo, y evitan que un PDF
-          // de cuarenta páginas empuje al resto fuera de la vista.
           style={{
             display: '-webkit-box',
             WebkitBoxOrient: 'vertical',
@@ -208,7 +197,6 @@ function FileRow({
   )
 }
 
-/** Un valor de ficha en una línea. Un objeto anidado se serializa y se recorta. */
 function factValue(value: unknown): string {
   const text = typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)
   return text.length > 60 ? `${text.slice(0, 60)}…` : text
@@ -247,22 +235,23 @@ function IconButton({
   )
 }
 
-/**
- * Botón directo, junto al título de la sección: elige y sube al instante, sin
- * pasar por el chat ni esperar a que alguien envíe un mensaje.
- *
- * Es lo contrario del flujo del chat a propósito. Ahí el archivo espera al
- * envío porque va a citarse en un mensaje; acá no hay mensaje que esperar, así
- * que demorar la subida no protegería nada — sólo agregaría un paso.
- */
 export function DirectUploadButton({ operationId }: { operationId: string }) {
   const { t } = useTranslation('domain')
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const queryClient = useQueryClient()
+  const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(
+    () => () => {
+      if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current)
+    },
+    [],
+  )
 
   async function upload(files: FileList) {
     setUploading(true)
+    let uploadedAny = false
     try {
       for (const file of Array.from(files)) {
         if (file.size > MAX_UPLOAD_BYTES) {
@@ -274,8 +263,18 @@ export function DirectUploadButton({ operationId }: { operationId: string }) {
           mimetype: mimetypeOf(file),
           data: await toBase64(file),
         })
+        uploadedAny = true
       }
-      void queryClient.invalidateQueries({ queryKey: queryKeys.operations.detail(operationId) })
+      // `operations.all`, no sólo `.detail`: esta misma sección de Archivos se
+      // alimenta de `.list()` a través de `OperationsLayout` — invalidar sólo
+      // `.detail` no la refresca.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.operations.all })
+
+      if (uploadedAny) {
+        refetchTimerRef.current = setTimeout(() => {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.operations.all })
+        }, 15_000)
+      }
     } catch {
       toast.error(t('operation.chat.uploadError'))
     } finally {
@@ -300,8 +299,6 @@ export function DirectUploadButton({ operationId }: { operationId: string }) {
       <button
         type="button"
         onClick={(event) => {
-          // El header entero también alterna la sección: sin esto, el clic
-          // abriría o cerraría "Archivos" además de abrir el explorador.
           event.stopPropagation()
           fileRef.current?.click()
         }}

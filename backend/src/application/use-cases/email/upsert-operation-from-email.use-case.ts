@@ -21,12 +21,6 @@ function inboundOperationId(messageId: string): string {
   return `inbound-${createHash("sha256").update(messageId).digest("hex").slice(0, 16)}`;
 }
 
-// Looks for a labelled "Compañía: <name>" / "Company: <name>" line anywhere
-// in the email body — the same free-text convention as the subject's "Orden
-// de compra #<id>", not a structured field on the webhook payload. Make
-// forwards the raw email; whoever composes it (or the client's own PO
-// template) is expected to include this line for the company to be linked
-// automatically instead of left unset.
 const COMPANY_LINE_PATTERN = /^[ \t]*(?:compañ[ií]a|company)[ \t]*:[ \t]*(.+)$/im;
 const CONTACT_LINE_PATTERN = /^[ \t]*(?:contacto|contact)[ \t]*:[ \t]*(.+)$/im;
 
@@ -88,16 +82,12 @@ function toDocument(
   messageId: string,
   idGenerator: IdGenerator,
 ): Document | undefined {
-  // Without a bucketKey the document doesn't point at any real file — not
-  // worth persisting it (the attachment never made it to Supabase Storage).
   if (attachment.storagePath === undefined) {
     return undefined;
   }
 
   return {
     id: idGenerator.newId(),
-    // TODO: classify the document's real type (invoice, BL, packing list...)
-    // — for now everything arriving through this flow is assumed to be a PO.
     type: "PO",
     format: attachment.format,
     ...(attachment.filename !== undefined ? { filename: attachment.filename } : {}),
@@ -108,9 +98,6 @@ function toDocument(
   };
 }
 
-// A purchase-order number keeps related email on one operation. Emails
-// without one still get a stable operation from their message id, so inbound
-// AI processing always has an operation context.
 export function createUpsertOperationFromEmailUseCase(deps: UpsertOperationFromEmailDeps) {
   const {
     operationRepository,
@@ -130,8 +117,6 @@ export function createUpsertOperationFromEmailUseCase(deps: UpsertOperationFromE
     const existing = await operationRepository.findById(operationId);
     const created = existing === null;
 
-    // Only resolved on first touch — an operation's company link, once set,
-    // is never overwritten by a later email in the same thread.
     let companyId = existing?.companyId;
     if (created) {
       const companyInfo = extractCompanyInfoFromBody(input.email.bodyText);

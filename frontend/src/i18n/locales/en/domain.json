@@ -180,7 +180,8 @@
         "BillOfLading": "Bill of lading",
         "Invoice": "Invoice",
         "PackingList": "Packing list",
-        "ArrivalNotice": "Arrival notice"
+        "ArrivalNotice": "Arrival notice",
+        "Other": "Document"
       }
     },
     "events": {

@@ -41,8 +41,6 @@ describe('mimetype', () => {
   })
 
   test('an unrecognised extension becomes a generic binary, not an empty string', () => {
-    // The API requires a non-empty mimetype, and the browser leaves `type`
-    // empty for anything it does not know — an upload would 422 on that.
     expect(mimetypeOf(new File([''], 'manifiesto.edi'))).toBe('application/octet-stream')
   })
 })

@@ -15,6 +15,10 @@ import type {
   GetOperationResult,
 } from "../../../../../../application/use-cases/dashboard/get-operation.use-case.js";
 import type {
+  ListOperationDocumentsInput,
+  ListOperationDocumentsResult,
+} from "../../../../../../application/use-cases/dashboard/list-operation-documents.use-case.js";
+import type {
   ListOperationsInput,
   ListOperationsResultItem,
 } from "../../../../../../application/use-cases/dashboard/list-operations.use-case.js";
@@ -40,6 +44,7 @@ import { errorResponseSchema } from "../../schemas/error.schema.js";
 import {
   createOperationBodySchema,
   documentPreviewUrlResponseSchema,
+  listOperationDocumentsResponseSchema,
   listOperationsResponseSchema,
   operationResponseSchema,
   searchOperationsBodySchema,
@@ -58,6 +63,9 @@ export interface OperationsRouteDeps {
   createOperation: (input: CreateOperationInput) => Promise<CreateOperationResult>;
   getOperation: (input: GetOperationInput) => Promise<GetOperationResult>;
   listOperations: (input: ListOperationsInput) => Promise<ListOperationsResultItem[]>;
+  listOperationDocuments: (
+    input: ListOperationDocumentsInput,
+  ) => Promise<ListOperationDocumentsResult>;
   getDocumentPreviewUrl: (
     input: GetDocumentPreviewUrlInput,
   ) => Promise<GetDocumentPreviewUrlResult>;
@@ -85,18 +93,6 @@ export function toOperationResponse(operation: Operation, status: ContainerState
   };
 }
 
-/**
- * A document on the wire.
- *
- * camelCase, matching the documents inside an operation. `toOperationResponse`
- * sends `context` straight through, so those already travel in the domain's
- * shape — converting to snake_case here made the same entity arrive two
- * different ways depending on which endpoint returned it, which is exactly
- * what broke the frontend's parser (and silently dropped `filename` too,
- * since it was never in the hand-written field list).
- *
- * Only `receivedAt` is touched: it is a Date, and the wire wants a string.
- */
 function toDocumentResponse(document: Document) {
   return { ...document, receivedAt: document.receivedAt.toISOString() };
 }
@@ -190,17 +186,6 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
     },
   );
 
-  /**
-   * `POST /operations/search` — el ÚNICO listado.
-   *
-   * Había también un `GET /operations` y se eliminó: dos rutas para lo mismo
-   * significan dos contratos que mantener y dos sitios donde arreglar un bug
-   * de filtrado. Los filtros de la web —texto libre, estado, salud, empresa,
-   * rango de fechas y orden— no caben en una query string legible, así que la
-   * que sobrevive es la que puede con todo.
-   *
-   * Un body vacío lista todo, que es lo que el GET hacía.
-   */
   app.post(
     "/operations/search",
     {
@@ -279,7 +264,36 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
     },
   );
 
-  // TODO: protect this endpoint with a shared secret/auth before production
+  app.get(
+    "/operations/:id/documents",
+    {
+      schema: {
+        params: operationParamsSchema,
+        response: { 200: listOperationDocumentsResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+
+      try {
+        const { actor } = request;
+        const result = await deps.listOperationDocuments({
+          operationId: id,
+          ...(actor.role !== "superadmin" && actor.companyId !== undefined
+            ? { requesterCompanyId: actor.companyId }
+            : {}),
+        });
+        reply.code(200).send({ documents: result.documents.map(toDocumentResponse) });
+      } catch (error) {
+        if (error instanceof OperationNotFoundError) {
+          reply.code(404).send({ error: "operation_not_found", message: error.message });
+          return;
+        }
+        throw error;
+      }
+    },
+  );
+
   app.post(
     "/operations/:id/documents",
     {
@@ -325,8 +339,6 @@ export const operationsRoutes: FastifyPluginAsyncZod<OperationsRouteDeps> = asyn
     },
   );
 
-  // Manual override for the automatic simulator (see run-simulation-tick.use-case.ts)
-  // — force a specific tracking event on demand, e.g. during a live demo.
   app.post(
     "/operations/:id/tracking-events",
     {

@@ -42,21 +42,10 @@ export const listOperationsResponseSchema = z.object({
   operations: z.array(operationResponseSchema),
 });
 
-/**
- * Cuerpo de `POST /operations/search`.
- *
- * Existe como POST y no como query string porque los filtros ya no caben ahí:
- * texto libre, estado, salud, empresa, rango de fechas y ordenamiento. Una URL
- * con todo eso se vuelve ilegible y choca con los límites de longitud en
- * cuanto la búsqueda lleva caracteres escapados.
- *
- * Todos los campos son opcionales: un body vacío lista todo.
- */
 export const searchOperationsBodySchema = z.object({
   status: z.enum(CONTAINER_STATES).optional(),
   health: z.enum(OPERATION_HEALTH_STATES).optional(),
   company_id: z.string().optional(),
-  /** Texto libre sobre id de operación, ids de empresa y puertos. */
   search: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
@@ -95,6 +84,10 @@ export const uploadDocumentResponseSchema = z.object({
   document: documentResponseSchema,
   url: z.string(),
   expires_in_seconds: z.number(),
+});
+
+export const listOperationDocumentsResponseSchema = z.object({
+  documents: z.array(documentResponseSchema),
 });
 
 export const trackingEventBodySchema = z.discriminatedUnion("type", [

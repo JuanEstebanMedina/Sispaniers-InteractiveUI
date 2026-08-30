@@ -180,7 +180,8 @@
         "BillOfLading": "Conhecimento de embarque",
         "Invoice": "Fatura",
         "PackingList": "Lista de embalagem",
-        "ArrivalNotice": "Aviso de chegada"
+        "ArrivalNotice": "Aviso de chegada",
+        "Other": "Documento"
       }
     },
     "events": {

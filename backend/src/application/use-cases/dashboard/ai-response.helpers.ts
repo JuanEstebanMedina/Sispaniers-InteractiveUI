@@ -45,14 +45,6 @@ function renderMilestones(milestones: Milestone[]): string {
     .join("\n");
 }
 
-/**
- * Per-document budget, in characters.
- *
- * A Bill of Lading is a page; a customs pack can be forty. The operation is
- * serialised whole, so without a cap one long upload crowds out the chat
- * history and the company policy, and the model answers from a context where
- * everything else fell off the end.
- */
 const MAX_DOCUMENT_CHARS = 4_000;
 
 function truncate(text: string): string {
@@ -61,7 +53,6 @@ function truncate(text: string): string {
   return `${text.slice(0, MAX_DOCUMENT_CHARS)}\n[...truncado: ${cut} caracteres más. No afirmes nada sobre la parte que no ves.]`;
 }
 
-/** Caps the extracted text of every document, leaving the rest untouched. */
 function withBoundedDocuments(context: unknown): unknown {
   if (typeof context !== "object" || context === null) return context;
 
@@ -92,13 +83,6 @@ function withBoundedDocuments(context: unknown): unknown {
   };
 }
 
-/**
- * The operation, fenced and bounded.
- *
- * Fenced because its documents are content people emailed in: an instruction
- * written inside a PDF has to read as text to quote, never as an order. Bounded
- * because one long attachment would otherwise eat the whole context window.
- */
 function renderOperationContext(context: unknown): string {
   if (context === undefined) return NOT_AVAILABLE;
 

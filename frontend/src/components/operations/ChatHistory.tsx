@@ -44,8 +44,6 @@ function EmptyChat() {
 }
 
 function Bubble({ message }: { message: ChatMessage }) {
-  const { t } = useTranslation('domain')
-
   return (
     <div
       className={cn(
@@ -62,12 +60,13 @@ function Bubble({ message }: { message: ChatMessage }) {
         </span>
       ))}
 
-      {message.docs.map((type) => (
-        <span key={type} className="mt-1 flex items-center gap-1.5 text-xs text-fg-muted">
+      {/* `message.docs` ya trae el nombre del archivo, no su tipo: mostrar el
+          tipo aquí llevó a que un ":)" con un archivo de incapacidad quedara
+          etiquetado "Orden de compra" en la burbuja del mensaje. */}
+      {message.docs.map((filename) => (
+        <span key={filename} className="mt-1 flex items-center gap-1.5 text-xs text-fg-muted">
           <FileText className="size-3.5 shrink-0" aria-hidden />
-          <span className="truncate">
-            {t(`operation.files.types.${type}`, { defaultValue: type })}
-          </span>
+          <span className="truncate">{filename}</span>
         </span>
       ))}
     </div>

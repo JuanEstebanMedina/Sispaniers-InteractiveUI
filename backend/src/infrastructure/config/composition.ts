@@ -24,6 +24,7 @@ import { createGetOperationComponentsUseCase } from "../../application/use-cases
 import { createGetOperationUseCase } from "../../application/use-cases/dashboard/get-operation.use-case.js";
 import { createIngestCompanyConceptsUseCase } from "../../application/use-cases/dashboard/ingest-company-concepts.use-case.js";
 import { createListCompaniesUseCase } from "../../application/use-cases/dashboard/list-companies.use-case.js";
+import { createListOperationDocumentsUseCase } from "../../application/use-cases/dashboard/list-operation-documents.use-case.js";
 import { createListOperationsUseCase } from "../../application/use-cases/dashboard/list-operations.use-case.js";
 import { createQueryCompanyConceptsUseCase } from "../../application/use-cases/dashboard/query-company-concepts.use-case.js";
 import { createRunSimulationTickUseCase } from "../../application/use-cases/dashboard/run-simulation-tick.use-case.js";
@@ -254,6 +255,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     eventPublisher: componentEventPublisher,
   });
   const getOperation = createGetOperationUseCase({ operationRepository });
+  const listOperationDocuments = createListOperationDocumentsUseCase({ operationRepository });
   const getDocumentPreviewUrl = createGetDocumentPreviewUrlUseCase({
     operationRepository,
     attachmentStorage,
@@ -377,6 +379,7 @@ export async function createApp(overrides: CreateAppOverrides = {}): Promise<Fas
     createOperation,
     getOperation,
     listOperations,
+    listOperationDocuments,
     getDocumentPreviewUrl,
     uploadOperationDocument,
     applyTrackingEvent,

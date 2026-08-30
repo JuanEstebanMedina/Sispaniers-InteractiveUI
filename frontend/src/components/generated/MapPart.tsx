@@ -7,7 +7,6 @@ import { useDataset } from './ComponentData'
 import { colorOf, type VesselPositionRow } from './parts'
 import { useProps } from './NodeContext'
 
-
 function InvalidateOnResize() {
   const map = useMap()
 
@@ -28,7 +27,6 @@ function averageCenter(rows: VesselPositionRow[]): LatLngExpression {
   ]
 }
 
-/** Live vessel positions. A booking with nothing reported yet has no marker to show. */
 export default function MapPart() {
   const props = useProps()
   const rows = useDataset(props.text('dataKey')) as VesselPositionRow[] | undefined
@@ -71,4 +69,3 @@ export default function MapPart() {
     </div>
   )
 }
-
