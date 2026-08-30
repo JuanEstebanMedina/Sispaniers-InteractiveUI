@@ -144,6 +144,9 @@ function collectKinds(nodes: ComponentNode[]): string[] {
  * this rule is about the tree AND the slot it was given.
  */
 export function validateComponentSize(size: WidgetSizeName, children: ComponentNode[]): void {
+  if (size === "tile") {
+    throw new InvalidComponentTreeError("size tile (1x1) is not allowed");
+  }
   const offender = collectKinds(children).find((kind) => !fitsKind(size, kind));
   if (offender === undefined) {
     return;

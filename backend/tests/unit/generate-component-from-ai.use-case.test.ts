@@ -116,6 +116,7 @@ test("chat offers update_component to the AI", async () => {
   });
 
   let offeredTools: string[] = [];
+  let systemPrompt = "";
   const generateComponentFromAi = createGenerateComponentFromAiUseCase({
     operationRepository: {
       findById: async () => ({ id: OPERATION_ID }) as unknown as Operation,
@@ -130,8 +131,9 @@ test("chat offers update_component to the AI", async () => {
       deleteById: async () => {},
     },
     aiCompletionPort: {
-      complete: async ({ tools }) => {
+      complete: async ({ tools, systemPrompt: prompt }) => {
         offeredTools = (tools ?? []).map((tool) => tool.name);
+        systemPrompt = prompt ?? "";
         return { kind: "tool_call", toolName: "create_component", input: {} };
       },
     },
@@ -142,6 +144,9 @@ test("chat offers update_component to the AI", async () => {
   await generateComponentFromAi({ operationId: OPERATION_ID, trigger: "chat", input: "crea uno" });
 
   expect(offeredTools).toEqual(["create_component", "update_component"]);
+  expect(systemPrompt).toContain("Available tools for this request");
+  expect(systemPrompt).toContain("create_component: stub");
+  expect(systemPrompt).toContain("update_component: stub");
 });
 
 /**

@@ -6,7 +6,9 @@ import {
 } from "../../../../../domain/enums/widget-kind.js";
 import { componentChildrenSchema } from "./component-node.schema.js";
 
-const widgetSizeNames = Object.keys(WIDGET_SIZES) as [WidgetSizeName, ...WidgetSizeName[]];
+const widgetSizeNames = Object.keys(WIDGET_SIZES).filter(
+  (size) => size !== "tile",
+) as [Exclude<WidgetSizeName, "tile">, ...Exclude<WidgetSizeName, "tile">[]];
 
 export const widgetSizeSchema = z.enum(widgetSizeNames);
 export const gridComponentKindSchema = z.enum(GRID_COMPONENT_KINDS);

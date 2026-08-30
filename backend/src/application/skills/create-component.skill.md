@@ -289,6 +289,20 @@ size any component may ever request.
 Charts and the map need more than area — they need height for an axis, a
 legend or a marker to read, so `banner` (4×1) is off limits for them too.
 
+Choose size by information density, not by individual node count:
+
+| content | preferred size |
+|---|---|
+| one short figure, status, progress, or compact key/value summary | `small` (2×2) |
+| title plus several related counts/statuses in one summary | `wide` (4×2) |
+| chart or map by itself | `wide` (4×2), unless it needs a long legend/details |
+| table, timeline, document fields, or long editable email | `tall` (2×4) or `large` (4×4) |
+| title + summary/counts + chart/map, or any mixed operational overview | `large` (4×4) |
+
+Use a `layout` node with `direction: "row"` for related counts beside each
+other, then place the chart or map below it. Do not split one operational
+question into tiny components merely because it has several node kinds.
+
 | `kind` | never fits |
 |---|---|
 | `trend-chart`, `category-chart`, `breakdown-chart`, `map` | `tile`, `banner` |
