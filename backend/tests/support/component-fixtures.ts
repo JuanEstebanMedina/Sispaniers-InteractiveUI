@@ -9,12 +9,12 @@ export function aComponent(overrides: Partial<Component> = {}): Component {
   return {
     id: randomUUID(),
     operationId: randomUUID(),
-    kind: "metric",
-    content: { kind: "metric" },
+    kind: "container",
+    children: [{ kind: "title", order: 0, props: { text: "Vessel ETA" } }],
     size: "small" satisfies WidgetSizeName,
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     ...overrides,
-  } as Component;
+  };
 }
 
 export class InMemoryComponentRepository implements ComponentRepository {
@@ -32,6 +32,14 @@ export class InMemoryComponentRepository implements ComponentRepository {
 
   async save(component: Component): Promise<void> {
     this.components.set(component.id, component);
+  }
+
+  async setField(id: string, path: string, value: unknown): Promise<void> {
+    const component = this.components.get(id);
+    if (component === undefined) {
+      return;
+    }
+    this.components.set(id, { ...component, [path]: value } as Component);
   }
 
   async deleteById(id: string): Promise<void> {

@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod, ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
+import type { CreateComponentInput } from "../../../../../../application/use-cases/dashboard/create-component.use-case.js";
 import type { DeleteComponentInput } from "../../../../../../application/use-cases/dashboard/delete-component.use-case.js";
 import type {
   GetOperationComponentsInput,
@@ -14,11 +15,16 @@ import type { Component } from "../../../../../../domain/components/component.js
 import type { LayoutEntry } from "../../../../../../domain/components/layout.js";
 import {
   ComponentNotFoundError,
+  InvalidComponentPathError,
+  InvalidComponentTreeError,
   InvalidLayoutError,
   OperationNotFoundError,
 } from "../../../../../../domain/model/errors.js";
+import { toComponentWireShape } from "../../mappers/component.mapper.js";
 import { errorResponseSchema } from "../../schemas/error.schema.js";
 import {
+  componentResponseSchema,
+  createComponentBodySchema,
   getComponentsQuerySchema,
   getComponentsResponseSchema,
   updateComponentContentBodySchema,
@@ -41,6 +47,7 @@ export interface OperationComponentsRouteDeps {
     input: UpdateOperationLayoutInput,
   ) => Promise<UpdateOperationLayoutResult>;
   updateComponentContent: (input: UpdateComponentContentInput) => Promise<Component>;
+  createComponent: (input: CreateComponentInput) => Promise<Component>;
   deleteComponent: (input: DeleteComponentInput) => Promise<void>;
 }
 
@@ -54,17 +61,6 @@ function toLayoutEntryResponse(entry: LayoutEntry) {
     throw new InvalidLayoutError(`entry ${entry.id} has an unexpected width ${w}`);
   }
   return { ...entry, w };
-}
-
-function toComponentResponse(component: Component) {
-  return {
-    id: component.id,
-    operation_id: component.operationId,
-    kind: component.kind,
-    content: component.content,
-    size: component.size,
-    created_at: component.createdAt.toISOString(),
-  } as const;
 }
 
 export const operationComponentsRoutes: FastifyPluginAsyncZod<
@@ -88,7 +84,7 @@ export const operationComponentsRoutes: FastifyPluginAsyncZod<
       try {
         const result = await deps.getOperationComponents({ operationId: id, cols });
         reply.code(200).send({
-          components: result.components.map(toComponentResponse),
+          components: result.components.map(toComponentWireShape),
           layout: result.layout.map(toLayoutEntryResponse),
         });
       } catch (error) {
@@ -152,15 +148,15 @@ export const operationComponentsRoutes: FastifyPluginAsyncZod<
     },
     async (request, reply) => {
       const { id, componentId } = request.params;
-      const { content } = request.body;
+      const body = request.body;
 
       try {
-        const component = await deps.updateComponentContent({
-          operationId: id,
-          componentId,
-          content,
-        });
-        reply.code(200).send(toComponentResponse(component));
+        const component = await deps.updateComponentContent(
+          "path" in body
+            ? { operationId: id, componentId, path: body.path, value: body.value }
+            : { operationId: id, componentId, children: body.content },
+        );
+        reply.code(200).send(toComponentWireShape(component));
       } catch (error) {
         if (error instanceof OperationNotFoundError) {
           reply.code(404).send({ error: "operation_not_found", message: error.message });
@@ -168,6 +164,45 @@ export const operationComponentsRoutes: FastifyPluginAsyncZod<
         }
         if (error instanceof ComponentNotFoundError) {
           reply.code(404).send({ error: "component_not_found", message: error.message });
+          return;
+        }
+        if (
+          error instanceof InvalidComponentPathError ||
+          error instanceof InvalidComponentTreeError
+        ) {
+          reply.code(400).send({ error: "invalid_component_content", message: error.message });
+          return;
+        }
+        throw error;
+      }
+    },
+  );
+
+  // ponytail/TEMPORARY: dev-only scaffold to exercise create -> validate ->
+  // persist -> SSE-notify end-to-end without the real AI-agent caller wired
+  // up yet (SPEC-CC-007). Remove once create-component has a real caller.
+  app.post(
+    "/operations/:id/components/test-create",
+    {
+      schema: {
+        params: operationParamsSchema,
+        body: createComponentBodySchema,
+        response: {
+          201: componentResponseSchema,
+          400: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+      const { kind, size, children } = request.body;
+
+      try {
+        const component = await deps.createComponent({ operationId: id, kind, size, children });
+        reply.code(201).send(toComponentWireShape(component));
+      } catch (error) {
+        if (error instanceof InvalidComponentTreeError) {
+          reply.code(400).send({ error: "invalid_component_tree", message: error.message });
           return;
         }
         throw error;

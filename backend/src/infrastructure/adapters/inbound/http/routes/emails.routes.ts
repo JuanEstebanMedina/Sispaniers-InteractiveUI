@@ -89,7 +89,7 @@ export const emailsRoutes: FastifyPluginAsyncZod<EmailsRouteDeps> = async (fasti
     },
   );
 
-  // TODO: proteger este endpoint con un secreto compartido con Make antes de producción
+  // TODO: protect this endpoint with a secret shared with Make before production
   app.post(
     "/emails/send",
     {
