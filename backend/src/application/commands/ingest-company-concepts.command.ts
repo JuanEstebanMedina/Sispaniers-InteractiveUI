@@ -43,13 +43,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseInput(rawInput: unknown): Omit<IngestCompanyConceptsInput, "operationId"> {
-  if (!isRecord(rawInput) || !Array.isArray(rawInput.definitions) || !Array.isArray(rawInput.observations)) {
+  if (
+    !isRecord(rawInput) ||
+    !Array.isArray(rawInput.definitions) ||
+    !Array.isArray(rawInput.observations)
+  ) {
     throw new InvalidCommandInputError("definitions and observations must be arrays");
   }
   if (
     rawInput.definitions.some(
       (definition) =>
-        !isRecord(definition) || typeof definition.id !== "string" || typeof definition.name !== "string",
+        !isRecord(definition) ||
+        typeof definition.id !== "string" ||
+        typeof definition.name !== "string",
     ) ||
     rawInput.observations.some(
       (observation) =>
@@ -59,12 +65,16 @@ function parseInput(rawInput: unknown): Omit<IngestCompanyConceptsInput, "operat
         !isRecord(observation.value),
     )
   ) {
-    throw new InvalidCommandInputError("concept definitions and observations have an invalid shape");
+    throw new InvalidCommandInputError(
+      "concept definitions and observations have an invalid shape",
+    );
   }
   return rawInput as Omit<IngestCompanyConceptsInput, "operationId">;
 }
 
-export function createIngestCompanyConceptsCommand(deps: IngestCompanyConceptsCommandDeps): Command {
+export function createIngestCompanyConceptsCommand(
+  deps: IngestCompanyConceptsCommandDeps,
+): Command {
   const { ingestCompanyConcepts, skill } = deps;
 
   return {

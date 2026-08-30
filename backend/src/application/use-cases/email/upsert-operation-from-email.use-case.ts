@@ -114,7 +114,8 @@ export function createUpsertOperationFromEmailUseCase(deps: UpsertOperationFromE
     input: UpsertOperationFromEmailInput,
   ): Promise<UpsertOperationFromEmailResult | undefined> {
     const operationId =
-      extractOperationIdFromSubject(input.email.subject) ?? inboundOperationId(input.email.messageId);
+      extractOperationIdFromSubject(input.email.subject) ??
+      inboundOperationId(input.email.messageId);
 
     const existing = await operationRepository.findById(operationId);
     const created = existing === null;

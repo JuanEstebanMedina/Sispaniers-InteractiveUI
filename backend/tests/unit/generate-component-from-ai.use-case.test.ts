@@ -206,7 +206,9 @@ test("auto flow can ingest, query, then create a component", async () => {
     name: "query_company_concepts",
     description: "stub",
     inputSchema: { type: "object", properties: {} },
-    execute: async () => ({ concepts: [{ id: "monthly-volume", name: "Monthly volume", values: [] }] }),
+    execute: async () => ({
+      concepts: [{ id: "monthly-volume", name: "Monthly volume", values: [] }],
+    }),
   });
   commandRegistry.register({
     name: "create_component",

@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import type { CompanyConceptObservation } from "../../../domain/logistics/company-concept.js";
-import { InvalidCompanyConceptError, OperationNotFoundError } from "../../../domain/model/errors.js";
+import {
+  InvalidCompanyConceptError,
+  OperationNotFoundError,
+} from "../../../domain/model/errors.js";
 import type { CompanyConceptRepository } from "../../../domain/ports/company-concept.repository.js";
 import type { OperationRepository } from "../../../domain/ports/operation.repository.js";
 import {
@@ -55,7 +58,9 @@ function toObservations(
 export function createIngestCompanyConceptsUseCase(deps: IngestCompanyConceptsDeps) {
   const { operationRepository, companyConceptRepository } = deps;
   const saveDefinitions = createSaveCompanyConceptDefinitionsUseCase({ companyConceptRepository });
-  const saveObservations = createSaveCompanyConceptObservationsUseCase({ companyConceptRepository });
+  const saveObservations = createSaveCompanyConceptObservationsUseCase({
+    companyConceptRepository,
+  });
 
   return async function ingestCompanyConcepts(input: IngestCompanyConceptsInput) {
     const operation = await operationRepository.findById(input.operationId);
